@@ -120,8 +120,13 @@ int main(int argc, char** argv )
         printf("No image data \n");
         return -1;
     }
+    //**Testing
+    String orig_name = (String)argv[1];
+    //std::cout << s << std::endl;
+    //std::cout << s.String::substr(s.String::rfind('/')+1) << std::endl;
+    //**
 
-    // get black and white version
+ // get black and white version
     Mat image_bw = imread( argv[1], IMREAD_GRAYSCALE );
 
 
@@ -150,7 +155,7 @@ int main(int argc, char** argv )
     namedWindow("Display Undistorted Image", WINDOW_GUI_EXPANDED );
     imshow("Display Undistorted Image", img_undistorted );
 
-    imwrite( "output.jpg", img_undistorted );
+    imwrite(orig_name.String::substr(orig_name.String::rfind('/')+1) , img_undistorted );
 
     waitKey(0);
     //delete img3;
