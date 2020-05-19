@@ -8,15 +8,31 @@ cd FeatureReco
 cmake .
 make
 
-The initial version only has some code to play with OpenCV to remove image distortion.  For example running:
 
-./DisplayImage /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG
+# Undistortion program
 
-opens the input file, displays it, along with a black-and-white version that has the distortion removed.  The undistored image is written to output.jpg
+Simple program to take input JPG, apply undistortion, and write out undistoted image.
 
-Future improvements:
-1) Output to filename based on input name
-2) Start looking for features and output them to text files
-3) Cleanup unused code
+./UndistortImage /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG [output-file]
+
+If output file is not specified, then it names output file undistorted<input-file-name>
+
+# Feature finding code
+
+Still needs lots of work.  So far it reads in an input file and applies a Gaussian blur, and bilateral filter.  Outputs two images: one with with the Gaussian blur, the other with bilateral filter.
+
+./FindBoltLocations /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG [output-file]
+
+Output file names are gausblur<input-file-name> and bifilter<input-file-name>
+
+To do list:
+* make a config file to read in parameters of bluring, and which filtering to apply
+* add code to find features (Sobel, Canny, Prewitt??)
+* think about how to find the bolts.
+
+
+
+
+
 
 
