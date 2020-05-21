@@ -2,8 +2,11 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
-
+#include "Configuration.hpp"
 #include <string>
+
+#include <TFile.h>
+#include <TH1D.h>
 
 using std::string;
  
@@ -18,6 +21,40 @@ string build_output_filename( const string& in, const string& tag ){
 }
 
 
+
+void histogram_channel0( const Mat& img, const std::string hname="hist" ){
+
+  TH1D* hout = new TH1D(hname.c_str(),"Intensity ; Intensity; Count/bin",256, -0.5, 255.5);
+
+  int nRows = img.rows;
+  int nCols = img.cols;
+
+  for ( int x = 0; x<nCols; ++x){
+    for ( int y = 0; y<nRows; ++y){
+      Scalar intensity = img.at<uchar>(y, x);
+      hout->Fill( intensity.val[0] );
+    }
+  }
+
+
+}
+
+void apply_image_threshold( Mat& img, int threshold=250 ){
+  
+ 
+  int nRows = img.rows;
+  int nCols = img.cols;
+  
+  for ( int x = 0; x<nCols; ++x){
+    for ( int y = 0; y<nRows; ++y){
+      Scalar intensity = img.at<uchar>(y, x);
+      if ( intensity.val[0] < threshold ) {
+	img.at<uchar>(y, x) = 0;
+      }
+    }
+  }
+}
+
 int main(int argc, char** argv )
 {
     if ( argc != 2 )
@@ -27,20 +64,24 @@ int main(int argc, char** argv )
     }
 
 
-    Mat image = imread( argv[1], IMREAD_COLOR );
+    Mat image = imread( argv[1], IMREAD_GRAYSCALE );// IMREAD_COLOR );
     if ( !image.data )
     {
         printf("No image data \n");
         return -1;
     }
 
+    // Open a root file to put histograms into
+    TFile * fout = new TFile("histogram_ch0.root","recreate");
+
+
     string outputname;
     outputname = build_output_filename( argv[1], "gausblur" );
     
     // Gaussian blur
     Mat img_blur = image.clone();
-    int blurpixels = 11;            // size of kernel in pixels (must be odd)
-    double blursigma = 10.0;        // sigma of gaussian in pixels
+    int blurpixels = config::Get_int("blurpixels");            // size of kernel in pixels (must be odd)
+    double blursigma = config::Get_double("blursigma");        // sigma of gaussian in pixels
     GaussianBlur( image, img_blur, Size( blurpixels, blurpixels ), blursigma );
     imwrite( outputname, img_blur );
     
@@ -49,9 +90,9 @@ int main(int argc, char** argv )
     outputname = build_output_filename( argv[1], "bifilter" );
 
     Mat img_flt = image.clone();
-    int d = 9; // value 5-9 distance around each pixel to filter (must be odd)
-    int sigColor = d*2; // range of colours to call the same
-    int sigSpace = d/2; // ???
+    int d = config::Get_int("d"); // value 5-9 distance around each pixel to filter (must be odd)
+    int sigColor = config::Get_int("sigColor"); // range of colours to call the same
+    int sigSpace = config::Get_int("sigSpace"); // ???
     bilateralFilter ( image, img_flt, d, sigColor, sigSpace );
 
     imwrite( outputname, img_flt );
@@ -60,8 +101,8 @@ int main(int argc, char** argv )
 
     /// Do Sobel edge detection
 
-    int scale = 1;
-    int delta = 0;
+    int scale = config::Get_int("scale");
+    int delta = config::Get_int("delta");
     int ddepth = CV_16S;
 
     /// Generate grad_x and grad_y
@@ -82,9 +123,17 @@ int main(int argc, char** argv )
     /// Total Gradient (approximate)
     addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
+    histogram_channel0( grad, "hsobel" );
+    int threshold = config::Get_int("threshold");
+    apply_image_threshold( grad, threshold );
+    histogram_channel0( grad, "hsobel_thresholded");
+
     outputname = build_output_filename( argv[1], "sobel" );
     imwrite( outputname, grad );
 
+
+    fout->Write();
+    fout->Close();
 
     return 0;
 }

@@ -1,0 +1,19 @@
+#comment with # are ignored.
+                      #               isn't case sensative.
+            #whitespace insensative.
+#format is [variable] = [value]
+#Gaussian blur
+blurpixels = 11  #size of kernal in pixels (must be odd)
+blursigma =  10.0  #sigma of gaussian in pixels
+
+#Bilateral filter
+d =	9   #value 5-9 distance around each pixels to filter(must be odd)
+sigColor =18 #range of colours to call the same
+sigSpace =4  #???
+
+#Sobel edge detection
+scale = 1 #some value 
+delta = 0
+
+#Threshold applied to image
+threshold = 225
