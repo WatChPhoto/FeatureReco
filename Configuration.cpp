@@ -50,7 +50,11 @@ double config::Get_double(string key){
 
     while(true){
 
-      if(Load.eof()) {cerr <<"Error variable "+key+" not found"<<endl;  Load.close(); exit(1);}
+      if(Load.eof()) {
+	cerr <<"Error variable "+key+" not found"<<endl;  
+	Load.close(); 
+	throw key;
+      }
      
       getline(Load,line);            
       
@@ -91,7 +95,9 @@ int config::Get_int(string key){
 
     while(true){
 
-      if(Load.eof()) {cerr <<"Error variable "+key+" not found"<<endl;  Load.close(); exit(1);}
+      if(Load.eof()) {cerr <<"Error variable "+key+" not found"<<endl;  Load.close(); 
+	throw key;
+      }
      
       getline(Load,line);            
       

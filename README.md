@@ -19,16 +19,22 @@ If output file is not specified, then it names output file undistorted<input-fil
 
 # Feature finding code
 
-Still needs lots of work.  So far it reads in an input file and applies a Gaussian blur, bilateral filter, and Sobel transform.  Outputs three images: one with with the Gaussian blur, one with bilateral filter, and third with bilateral filter follwed by Sobel.
+Locate bolts in image by applying filters and hough transform.
 
 ./FindBoltLocations /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG 
 
-Output file names are gausblur[input-file-name] and bifilter[input-file-name]
+Output file names are: 
+  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
+  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
+  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
+  circles[input-file-name]   -- original image with circles found by hough added
 
 To do list:
-* make a config file to read in parameters of bluring, and which filtering to apply
 * add code to find features (Canny, Prewitt??)
-* think about how to find the bolts.
+* read in bolt locations from Patrick and Michael's output
+* histogram shortest distance between each circle we find and closest bolt from Patrick's file
+* optimize mean of above histogram by changing filter parametres and hough parameters.
+
 
 
 
