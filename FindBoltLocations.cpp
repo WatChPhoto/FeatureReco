@@ -141,6 +141,19 @@ int main(int argc, char** argv )
     outputname = build_output_filename( argv[1], "sobel" );
     imwrite( outputname, grad );
 
+    // Edited by Tapendra                                                                                                                    
+    //Canny edge detector.                                                                                                                   
+    // bool do_canny = (bool)config::Get_int("do_canny");                                                                                     
+    int thresh_low = config::Get_int("thresh_low"); //The gradient value below thresh_low will be discarded.                                  
+    int thresh_high = config::Get_int("thresh_high"); //The gradient value above thresh_high will be used. The inbetween gradient is kept if \the edge is connected.                                                                                                                        
+  Mat img_can;
+  Canny(img_blur,img_can, thresh_low, thresh_high );
+
+  outputname = build_output_filename( argv[1], "canny" );
+
+  imwrite(outputname,img_can);
+
+ //Tapendra's edit ends here.  
 
     /// Hough Transform
     vector<Vec3f> circles;

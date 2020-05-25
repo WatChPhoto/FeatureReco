@@ -4,7 +4,7 @@
 #format is [variable] = [value]
 #Gaussian blur
 do_gaus_blur = 1 # 0 for off, any other number for on
-blurpixels = 11  #size of kernal in pixels (must be odd)
+blurpixels = 11  #size of kernal in pixels (must be odd) |5X5 for canny
 blursigma =  10.0  #sigma of gaussian in pixels
 
 #Bilateral filter
@@ -19,6 +19,11 @@ delta = 0
 
 #Threshold applied to image
 threshold = 100
+
+Canny edge detector parameters.
+thresh_low = 50     #The gradient value below this will be discarded.
+thresh_high = 100   #The gradient valu agreater than this will be kept.
+                     #The gradient value inbetween is kept if the line is connected else discarded.
 
 #Hough transform parameters
 hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
