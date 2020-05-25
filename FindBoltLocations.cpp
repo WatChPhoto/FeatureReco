@@ -2,12 +2,15 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include "Configuration.hpp"
 #include <string>
 #include <vector>
 
 #include <TFile.h>
 #include <TH1D.h>
+
+
+#include "Configuration.hpp"
+#include "MedianTextReader.hpp"
 
 using std::string;
 using std::vector;
@@ -57,11 +60,29 @@ void apply_image_threshold( Mat& img, int threshold=250 ){
   }
 }
 
+
+void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextData& mtd ){
+  TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
+
+  
+  for ( const Vec3f & circ : circles ){
+    float mindist = 10000;
+    for ( const MedianTextRecord & rec : mtd ){
+      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+				 (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      if ( dist < mindist ) mindist = dist; 
+    }
+    hout->Fill( mindist );
+  }
+}
+
+
+
 int main(int argc, char** argv )
 {
-    if ( argc != 2 )
+    if ( argc != 3 )
     {
-        printf("usage: FindBoltLocations <Input_image_with_path>\n");
+        printf("usage: FindBoltLocations <Input_image_with_path> <median-bolt-loc-filename>\n");
         return -1;
     }
 
@@ -155,33 +176,49 @@ int main(int argc, char** argv )
 
  //Tapendra's edit ends here.  
 
-    /// Hough Transform
-    vector<Vec3f> circles;
-    int dp = config::Get_int("hough_dp"); // Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
-    int minDist = config::Get_int("hough_minDist"); // min distance between circles
-    int param1 = config::Get_int("hough_param1"); // threshold placed on image
-    int param2 = config::Get_int("hough_param2"); // minimum accumulator value to call it a circle
-    int minR   = config::Get_int("hough_minR"); //= 3 # minimum radius in pixels
-    int maxR   = config::Get_int("hough_maxR"); // = 10 # maximum radius in pixels
-    HoughCircles( grad, circles, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
-
-    for( size_t i = 0; i < circles.size(); i++ ) {
-      Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+  /// Hough Transform
+  vector<Vec3f> circles;
+  int dp = config::Get_int("hough_dp"); // Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
+  int minDist = config::Get_int("hough_minDist"); // min distance between circles
+  int param1 = config::Get_int("hough_param1"); // threshold placed on image
+  int param2 = config::Get_int("hough_param2"); // minimum accumulator value to call it a circle
+  int minR   = config::Get_int("hough_minR"); //= 3 # minimum radius in pixels
+  int maxR   = config::Get_int("hough_maxR"); // = 10 # maximum radius in pixels
+  HoughCircles( grad, circles, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+  
+  for( size_t i = 0; i < circles.size(); i++ ) {
+    Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
       int radius = cvRound(circles[i][2]);
       // draw the circle center
       //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
       // draw the circle outline
       circle( image_color, center, radius, Scalar(0,0,255), 3, 8, 0 );
       std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
-    }
+  }
+  
+  outputname = build_output_filename( argv[1], "circles" );
+  imwrite( outputname, image_color );
+  
 
-    outputname = build_output_filename( argv[1], "circles" );
-    imwrite( outputname, image_color );
-
-
+  
+  /// Read in bolt locations
+  MedianTextReader *boltreader = MedianTextReader::Get();
+  boltreader->set_input_file( string( argv[2] ) );
+  const MedianTextData& mtd = boltreader->get_data();
+  for ( const MedianTextRecord & rec : mtd ){
+    std::cout<< rec;
+  }
+  
+  /// Make a histogram of closest distance between one of our circles and one of the text records
+  make_bolt_dist_histogram( circles, mtd );
+  
+  
+  
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
     }
+    
+
 
     fout->Write();
     fout->Close();

@@ -21,18 +21,18 @@ If output file is not specified, then it names output file undistorted<input-fil
 
 Locate bolts in image by applying filters and hough transform.
 
-./FindBoltLocations /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG 
+./FindBoltLocations [input-image-file-name-with-path] [bolt-location-textfile-with-path]
 
 Output file names are: 
   gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
   bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
   sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
   circles[input-file-name]   -- original image with circles found by hough added
+  histogram_ch0.root         -- root histograms
 
 To do list:
-* add code to find features (Canny, Prewitt??)
-* read in bolt locations from Patrick and Michael's output
-* histogram shortest distance between each circle we find and closest bolt from Patrick's file
+* add code to find features (Prewitt??)
+* add code to overlay bolts read from Micheal and Patrick's file on our circles
 * optimize mean of above histogram by changing filter parametres and hough parameters.
 
 
