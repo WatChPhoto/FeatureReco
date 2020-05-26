@@ -24,16 +24,27 @@ Locate bolts in image by applying filters and hough transform.
 ./FindBoltLocations [input-image-file-name-with-path] [bolt-location-textfile-with-path]
 
 Output file names are: 
-  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
-  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
-  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
-  circles[input-file-name]   -- original image with circles found by hough added
-  histogram_ch0.root         -- root histograms
+*  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
+*  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
+*  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
+*  circles[input-file-name]   -- original image with circles found by hough added
+*  histogram_ch0.root         -- root histograms
 
 To do list:
-* add code to find features (Prewitt??)
-* add code to overlay bolts read from Micheal and Patrick's file on our circles
-* optimize mean of above histogram by changing filter parametres and hough parameters.
+Updates to output michel.jpg
+* Make red and green circles 1 pixel wide
+* Add a blue line from the matches between red and green circles (for distance < some threshold)
+Updtes to histogram_ch0.root
+* Rename output root file to FindBoltLocations.root
+* make histogram of distance from each green circle (instead of from each red circle)
+* update range of histogram... distance can only be positive 
+Pick a run to use to do optimization on, and check optimization histogram is okay.
+Optimize mean of above histogram by changing filter parametres and hough parameters
+* write script to run many different parameter variations (eg. in bash, sed to edit Config.txt, awk to parse a string; or use python)
+* each run done in a seperate folder, and save config file to that folder
+* write a root macro to collect results from the parameter scans
+
+
 
 
 
