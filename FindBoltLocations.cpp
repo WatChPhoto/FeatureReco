@@ -212,8 +212,17 @@ int main(int argc, char** argv )
   /// Make a histogram of closest distance between one of our circles and one of the text records
   make_bolt_dist_histogram( circles, mtd );
   
+  //Drawing Michel's point in the picture.
+  for ( const MedianTextRecord & rec : mtd ){
+    Point center_michel(rec.x(), rec.y());   
+ //used radius of 20 pixels and green color.
+  circle( image_color, center_michel, 20, Scalar(0,255,0), 3, 8, 0 );
+  }
+  outputname = build_output_filename( argv[1], "michel" );
+  imwrite( outputname, image_color );
+  //end of drawing michel's points.
   
-  
+
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
     }
