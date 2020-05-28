@@ -1,4 +1,3 @@
-<pre>
 # FeatureReco
 
 Code to do feature recognition to locate bolts and PMT centers.  Implemented using OpenCV libraries.
@@ -23,7 +22,7 @@ If output file is not specified, then it names output file undistorted<input-fil
 Locate bolts in image by applying filters and hough transform.
 
 ./FindBoltLocations [input-image-file-name-with-path] [bolt-location-textfile-with-path]
-
+<pre>
 Output file names are: 
 *  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
 *  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
