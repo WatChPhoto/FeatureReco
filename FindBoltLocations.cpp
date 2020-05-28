@@ -27,7 +27,7 @@ string build_output_filename( const string& in, const string& tag ){
 
 
 
-void histogram_channel0( const Mat& img, const std::string hname="hist" ){
+void histogram_channel0( const Mat& img,  std::string hname="hist" ){
 
   TH1D* hout = new TH1D(hname.c_str(),"Intensity ; Intensity; Count/bin",256, -0.5, 255.5);
 
@@ -90,7 +90,7 @@ void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const Media
       if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1];}  //I am assuming that we will find point closer than d=10000
     }
     //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
-    if(mindist <10){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0), 3); }
+    if(mindist <10){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
     hout1->Fill( mindist );
   }
 }
@@ -122,7 +122,7 @@ int main(int argc, char** argv )
     cvtColor( image_color, image, COLOR_RGBA2GRAY );
 
     // Open a root file to put histograms into
-    TFile * fout = new TFile("histogram_ch0.root","recreate");
+    TFile * fout = new TFile("FindBoltLocation.root","recreate");
 
 
     string outputname;
