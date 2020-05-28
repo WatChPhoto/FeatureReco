@@ -76,6 +76,29 @@ void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextDat
   }
 }
 
+//edited
+void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img ){
+  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
+
+
+  for (const MedianTextRecord & rec : mtd ){
+    float  mindist = 10000;
+    unsigned x,y;
+    for ( const Vec3f & circ : circles ){
+      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1];}  //I am assuming that we will find point closer than d=10000
+    }
+    //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
+    if(mindist <10){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0), 3); }
+    hout1->Fill( mindist );
+  }
+}
+
+//edited
+
+
+
 
 
 int main(int argc, char** argv )
@@ -192,7 +215,7 @@ int main(int argc, char** argv )
       // draw the circle center
       //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
       // draw the circle outline
-      circle( image_color, center, radius, Scalar(0,0,255), 3, 8, 0 );
+      circle( image_color, center, radius, Scalar(0,0,255), 1, 8, 0 );
       std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
   }
   
@@ -211,12 +234,17 @@ int main(int argc, char** argv )
   
   /// Make a histogram of closest distance between one of our circles and one of the text records
   make_bolt_dist_histogram( circles, mtd );
-  
+
+  //Edited by tapendra  
+  //Make a histogram of closest distance from one of text records to our circles.
+  make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
+  //till here
+
   //Drawing Michel's point in the picture.
   for ( const MedianTextRecord & rec : mtd ){
     Point center_michel(rec.x(), rec.y());   
- //used radius of 20 pixels and green color.
-  circle( image_color, center_michel, 20, Scalar(0,255,0), 3, 8, 0 );
+ //used radius of 10 pixels and green color.
+  circle( image_color, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
   }
   outputname = build_output_filename( argv[1], "michel" );
   imwrite( outputname, image_color );
