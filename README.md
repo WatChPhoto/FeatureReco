@@ -28,8 +28,8 @@ Output file names are:
 *  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
 *  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
 *  circles[input-file-name]   -- original image with circles found by hough added
-*  FindBoltLocation.root         -- root histograms
-
+*  FindBoltLocation.root      -- root histograms
+</pre>
 To do list:
 Updates to output michel.jpg
 * Make red and green circles 1 pixel wide                                             ---Completed
@@ -43,7 +43,7 @@ Optimize mean of above histogram by changing filter parametres and hough paramet
 * write script to run many different parameter variations (eg. in bash, sed to edit Config.txt, awk to parse a string; or use python)
 * each run done in a seperate folder, and save config file to that folder
 * write a root macro to collect results from the parameter scans
-</pre>
+
 
 
 
