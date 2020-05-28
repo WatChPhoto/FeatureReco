@@ -22,21 +22,21 @@ If output file is not specified, then it names output file undistorted<input-fil
 Locate bolts in image by applying filters and hough transform.
 
 ./FindBoltLocations [input-image-file-name-with-path] [bolt-location-textfile-with-path]
-
+<pre>
 Output file names are: 
 *  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
 *  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
 *  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
 *  circles[input-file-name]   -- original image with circles found by hough added
-*  histogram_ch0.root         -- root histograms
-
+*  FindBoltLocation.root      -- root histograms
+</pre>
 To do list:
 Updates to output michel.jpg
-* Make red and green circles 1 pixel wide
+* Make red and green circles 1 pixel wide                                             ---Completed
 * Add a blue line from the matches between red and green circles (for distance < some threshold)
-Updtes to histogram_ch0.root
-* Rename output root file to FindBoltLocations.root
-* make histogram of distance from each green circle (instead of from each red circle)
+Updtes to histogram_ch0.root                                                          ---Completed. Added black line instead for visiblity reason.
+* Rename output root file to FindBoltLocations.root                                   ---Completed
+* make histogram of distance from each green circle (instead of from each red circle) ---Completed.
 * update range of histogram... distance can only be positive 
 Pick a run to use to do optimization on, and check optimization histogram is okay.
 Optimize mean of above histogram by changing filter parametres and hough parameters
