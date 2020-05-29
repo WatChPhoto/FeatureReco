@@ -63,7 +63,7 @@ void apply_image_threshold( Mat& img, int threshold=250 ){
 
 void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextData& mtd ){
   TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
-
+  hout->SetAxisRange(0,501,"X");
   
   for ( const Vec3f & circ : circles ){
     float mindist = 10000;
@@ -79,6 +79,7 @@ void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextDat
 //edited
 void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img ){
   TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
+hout1->SetAxisRange(0,501,"X");
 
 
   for (const MedianTextRecord & rec : mtd ){
