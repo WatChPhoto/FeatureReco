@@ -91,7 +91,7 @@ hout1->SetAxisRange(0,501,"X");
       if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1];}  //I am assuming that we will find point closer than d=10000
     }
     //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
-    if(mindist <10){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
+    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
     hout1->Fill( mindist );
   }
 }
@@ -156,107 +156,114 @@ int main(int argc, char** argv )
 
 
     /// Do Sobel edge detection
-    int scale = config::Get_int("scale");
-    int delta = config::Get_int("delta");
-    int ddepth = CV_16S;
+    bool do_sobel = (bool)config::Get_int("do_sobel");
+    Mat grad = img_flt.clone();
+    if ( do_sobel ){
+      int scale = config::Get_int("scale");
+      int delta = config::Get_int("delta");
+      int ddepth = CV_16S;
+      
+      /// Generate grad_x and grad_y
+      
+      Mat grad_x, grad_y;
+      Mat abs_grad_x, abs_grad_y;
+      
+      /// Gradient X
+      //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+      Sobel( img_flt, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+      convertScaleAbs( grad_x, abs_grad_x );
 
-    /// Generate grad_x and grad_y
-    Mat grad;
-    Mat grad_x, grad_y;
-    Mat abs_grad_x, abs_grad_y;
+      /// Gradient Y
+      //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+      Sobel( img_flt, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+      convertScaleAbs( grad_y, abs_grad_y );
 
-    /// Gradient X
-    //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
-    Sobel( img_flt, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-    convertScaleAbs( grad_x, abs_grad_x );
+      /// Total Gradient (approximate)
+      addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
-    /// Gradient Y
-    //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
-    Sobel( img_flt, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-    convertScaleAbs( grad_y, abs_grad_y );
+      outputname = build_output_filename( argv[1], "sobel" );
+      imwrite( outputname, grad );
+    }
 
-    /// Total Gradient (approximate)
-    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
-    histogram_channel0( grad, "hsobel" );
-    int threshold = config::Get_int("threshold");
-    apply_image_threshold( grad, threshold );
-    histogram_channel0( grad, "hsobel_thresholded");
-
-    outputname = build_output_filename( argv[1], "sobel" );
-    imwrite( outputname, grad );
-
-    // Edited by Tapendra                                                                                                                    
     //Canny edge detector.                                                                                                                   
-    // bool do_canny = (bool)config::Get_int("do_canny");                                                                                     
+    bool do_canny = (bool)config::Get_int("do_canny");                                              
     int thresh_low = config::Get_int("thresh_low"); //The gradient value below thresh_low will be discarded.                                  
     int thresh_high = config::Get_int("thresh_high"); //The gradient value above thresh_high will be used. The inbetween gradient is kept if \the edge is connected.                                                                                                                        
-  Mat img_can;
-  Canny(img_blur,img_can, thresh_low, thresh_high );
+    Mat img_can = grad.clone();
+    if ( do_canny ){
+      Canny(grad, img_can, thresh_low, thresh_high );
 
-  outputname = build_output_filename( argv[1], "canny" );
+      outputname = build_output_filename( argv[1], "canny" );
 
-  imwrite(outputname,img_can);
+      imwrite(outputname,img_can);
 
- //Tapendra's edit ends here.  
+    }
 
-  /// Hough Transform
-  vector<Vec3f> circles;
-  int dp = config::Get_int("hough_dp"); // Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
-  int minDist = config::Get_int("hough_minDist"); // min distance between circles
-  int param1 = config::Get_int("hough_param1"); // threshold placed on image
-  int param2 = config::Get_int("hough_param2"); // minimum accumulator value to call it a circle
-  int minR   = config::Get_int("hough_minR"); //= 3 # minimum radius in pixels
-  int maxR   = config::Get_int("hough_maxR"); // = 10 # maximum radius in pixels
-  HoughCircles( grad, circles, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+    
+    histogram_channel0( img_can, "hbefore_thres_cut" );
+    int threshold = config::Get_int("threshold");
+    apply_image_threshold( img_can, threshold );
+    histogram_channel0( grad, "hafter_thres_cut");
+   
+
+    /// Hough Transform
+    vector<Vec3f> circles;
+    int dp = config::Get_int("hough_dp"); // Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
+    int minDist = config::Get_int("hough_minDist"); // min distance between circles
+    int param1 = config::Get_int("hough_param1"); // threshold placed on image
+    int param2 = config::Get_int("hough_param2"); // minimum accumulator value to call it a circle
+    int minR   = config::Get_int("hough_minR"); //= 3 # minimum radius in pixels
+    int maxR   = config::Get_int("hough_maxR"); // = 10 # maximum radius in pixels
+    HoughCircles( img_can, circles, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
   
-  for( size_t i = 0; i < circles.size(); i++ ) {
-    Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+    for( size_t i = 0; i < circles.size(); i++ ) {
+      Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
       int radius = cvRound(circles[i][2]);
       // draw the circle center
       //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
       // draw the circle outline
       circle( image_color, center, radius, Scalar(0,0,255), 1, 8, 0 );
       std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
-  }
-  
-  outputname = build_output_filename( argv[1], "circles" );
-  imwrite( outputname, image_color );
+    }
+    
+    outputname = build_output_filename( argv[1], "circles" );
+    imwrite( outputname, image_color );
   
 
   
-  /// Read in bolt locations
-  MedianTextReader *boltreader = MedianTextReader::Get();
-  boltreader->set_input_file( string( argv[2] ) );
-  const MedianTextData& mtd = boltreader->get_data();
-  for ( const MedianTextRecord & rec : mtd ){
-    std::cout<< rec;
-  }
-  
-  /// Make a histogram of closest distance between one of our circles and one of the text records
-  make_bolt_dist_histogram( circles, mtd );
-
-  //Edited by tapendra  
-  //Make a histogram of closest distance from one of text records to our circles.
-  make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
-  //till here
-
-  //Drawing Michel's point in the picture.
-  for ( const MedianTextRecord & rec : mtd ){
-    Point center_michel(rec.x(), rec.y());   
- //used radius of 10 pixels and green color.
-  circle( image_color, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
-  }
-  outputname = build_output_filename( argv[1], "michel" );
-  imwrite( outputname, image_color );
-  //end of drawing michel's points.
-  
+    /// Read in bolt locations
+    MedianTextReader *boltreader = MedianTextReader::Get();
+    boltreader->set_input_file( string( argv[2] ) );
+    const MedianTextData& mtd = boltreader->get_data();
+    for ( const MedianTextRecord & rec : mtd ){
+      std::cout<< rec;
+    }
+    
+    /// Make a histogram of closest distance between one of our circles and one of the text records
+    make_bolt_dist_histogram( circles, mtd );
+    
+    //Edited by tapendra  
+    //Make a histogram of closest distance from one of text records to our circles.
+    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
+    //till here
+    
+    //Drawing Michel's point in the picture.
+    for ( const MedianTextRecord & rec : mtd ){
+      Point center_michel(rec.x(), rec.y());   
+      //used radius of 10 pixels and green color.
+      circle( image_color, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
+    }
+    outputname = build_output_filename( argv[1], "michel" );
+    imwrite( outputname, image_color );
+    //end of drawing michel's points.
+    
 
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
     }
     
-
+    
 
     fout->Write();
     fout->Close();
