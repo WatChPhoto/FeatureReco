@@ -34,3 +34,4 @@ hough_param1 = 150 #100 # threshold placed on image| Minimum brightness to use f
 hough_param2 = 9 #7  # minimum accumulator value to call it a circle
 hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
+
