@@ -3,34 +3,35 @@
             #whitespace insensative.
 #format is [variable] = [value]
 #Gaussian blur
-do_gaus_blur = 1 # 0 for off, any other number for on
-blurpixels = 5  #size of kernal in pixels (must be odd) |5X5 for canny
-blursigma =  5.0  #sigma of gaussian in pixels
+do_gaus_blur = 0 # 0 for off, any other number for on
+blurpixels = 23 #11 #size of kernal in pixels (must be odd) |5X5 for canny
+blursigma = 40  #10.0  #sigma of gaussian in pixels
 
 #Bilateral filter
-do_bifilter = 0 # 0 for off, any other number for on
-d =	5  #value 5-9 distance around each pixels to filter(must be odd)
-sigColor =10 #range of colours to call the same
-sigSpace =2  #???
+do_bifilter = 1 # 0 for off, any other number for on
+d =	5 #5  #value 5-9 distance around each pixels to filter(must be odd)
+sigColor = 250 #10 #range of colours to call the same
+sigSpace = 10  #???
 
 #Sobel edge detection
-do_sobel = 0 # 0 for off, any other number for on
-scale = 1 #some value 
-delta = 0
+do_sobel = 1 # 0 for off, any other number for on
+scale = 1 #Scalar to multiply the gradient 
+delta = 15 #0
 
 Canny edge detector parameters.
-do_canny = 1 # 0 for off, any other number for on
+do_canny = 0 # 0 for off, any other number for on
 thresh_low = 200     #The gradient value below this will be discarded.
-thresh_high = 210   #The gradient valu agreater than this will be kept.
+thresh_high = 230   #The gradient valu agreater than this will be kept.
                      #The gradient value inbetween is kept if the line is connected else discarded.
 
 #Threshold applied to image
-threshold = 200
+threshold = 0
 
 #Hough transform parameters
-hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
-hough_minDist = 35 # min distance between circles
-hough_param1 = 200 # threshold placed on image
-hough_param2 = 7  # minimum accumulator value to call it a circle
-hough_minR = 3 # minimum radius in pixels
-hough_maxR = 10 # maximum radius in pixels
+hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
+hough_minDist = 20 #35 # min distance between circles
+hough_param1 = 150 #100 # threshold placed on image| Minimum brightness to use for hough space
+hough_param2 = 9 #7  # minimum accumulator value to call it a circle
+hough_minR = 3 #5 # minimum radius in pixels
+hough_maxR = 6 #10 # maximum radius in pixels
+
