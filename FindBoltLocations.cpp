@@ -99,7 +99,44 @@ hout1->SetAxisRange(0,501,"X");
 //edited
 
 
+/// Calculate a metric to identify a bolt
+/// Ratio of average pixel intensity inside identified bolt radius over
+/// pixel intensity outside bolt to 2*radius
+/// Returns -1 if no pixels match this criteria.
+double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
+  float circ_x = circ[0];
+  float circ_y = circ[1];
+  float circ_r = circ[2];
 
+  unsigned ninside = 0;
+  unsigned noutside =0;
+  double avg_inside =0.;
+  double avg_outside=0.;
+
+  int nRows = img.rows;
+  int nCols = img.cols;
+  
+  for ( int x = 0; x<nCols; ++x){
+    for ( int y = 0; y<nRows; ++y){
+      Scalar intensity = img.at<uchar>(y, x);
+      double cur_radius = sqrt( (x-circ_x)*(x-circ_x) + (y-circ_y)*(y-circ_y) );
+      if ( cur_radius <= circ_r ){
+	++ninside;
+	avg_inside += intensity.val[0];
+      } else if ( cur_radius <= 2*circ_r ) {
+	++noutside;
+	avg_outside += intensity.val[0];
+      }
+    }
+  }
+
+  if ( ninside >0 && noutside >0 ){
+    return (avg_inside/ninside)  / (avg_outside/noutside) ;
+  }
+
+  return -1.;
+
+}
 
 
 int main(int argc, char** argv )
