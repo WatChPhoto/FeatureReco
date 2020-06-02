@@ -95,16 +95,16 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
 
   int nRows = img.rows;
   int nCols = img.cols;
+  
+  int n = 2; //n factor by which second radius is bigger. 
+  int x_low = ((circ_x-n*circ_r-1)>0)?(circ_x-n*circ_r-1):0;
+  int x_high = ((circ_x + n*circ_r+1)<nCols)?(circ_x + n*circ_r+1):nCols;
+  int y_low = ((circ_y - (n*circ_r)-1)>0)?(circ_y - (n*circ_r)-1):0;
+  int y_high = ((circ_y + n*circ_r + 1)<nRows)?(circ_y + n*circ_r + 1):nRows;  
 
-  /* 
-  int x_low = circ_x-2*circ_r-1;
-  int x_high = circ_x + 2*circ_r+1;
-  int y_low = circ_y - (2*circ_r)-1;
-  int y_high = circ_y + 2*circ_r + 1;  
-  */
 
-  for ( int x = 0; x<nCols; ++x){
-    for ( int y = 0; y<nRows; ++y){
+  for ( int x = x_low; x<x_high; ++x){
+    for ( int y = y_low; y<y_high; ++y){
       Scalar intensity = img.at<uchar>(y, x);
       double cur_radius = sqrt( (x-circ_x)*(x-circ_x) + (y-circ_y)*(y-circ_y) );
       if ( cur_radius <= circ_r ){
