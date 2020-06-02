@@ -16,6 +16,7 @@ class MedianTextRecord{
 public:
   MedianTextRecord( unsigned num, unsigned pmt, unsigned bolt, unsigned x, unsigned y, std::string id);
   MedianTextRecord();
+  bool is_bolt();
 
   // Getters
   unsigned photo_num() const { return fNum; } // photo number		   
