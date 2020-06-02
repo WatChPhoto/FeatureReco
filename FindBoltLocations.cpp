@@ -7,7 +7,7 @@
 
 #include <TFile.h>
 #include <TH1D.h>
-
+#include <TH2D.h>
 
 #include "Configuration.hpp"
 #include "MedianTextReader.hpp"
@@ -84,6 +84,19 @@ void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextDat
 /// pixel intensity outside bolt to 2*radius
 /// Returns -1 if no pixels match this criteria.
 double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
+
+  static int callcount = 0;
+
+  TH1D* hinbolt=nullptr; 
+  TH1D* houtbolt=nullptr;
+  if ( callcount == 0 ){
+    std::cout<<"Make hinbolt and houtbolt histograms"<<std::endl;
+    hinbolt = new TH1D("hinbolt","hinbolt",256, -0.5,255.5 ); 
+    houtbolt = new TH1D("houtbolt","houtbolt",256, -0.5,255.5 ); 
+    ++callcount;
+  }
+ 
+
   float circ_x = circ[0];
   float circ_y = circ[1];
   float circ_r = circ[2];
@@ -107,18 +120,22 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
     for ( int y = y_low; y<y_high; ++y){
       Scalar intensity = img.at<uchar>(y, x);
       double cur_radius = sqrt( (x-circ_x)*(x-circ_x) + (y-circ_y)*(y-circ_y) );
-      if ( cur_radius <= circ_r ){
+      if ( cur_radius < circ_r ){
 	++ninside;
-	avg_inside += intensity.val[0];
-      } else if ( cur_radius <= 2*circ_r ) {
+	avg_inside += intensity.val[0]; 
+	if (hinbolt) hinbolt->Fill( intensity.val[0] );
+     } else if ( cur_radius < n*circ_r ) {
 	++noutside;
 	avg_outside += intensity.val[0];
+	if (houtbolt) houtbolt->Fill( intensity.val[0] );
+
       }
     }
   }
 
   if ( ninside >0 && noutside >0 ){
     return (avg_inside/ninside)  / (avg_outside/noutside) ;
+    //return (avg_inside/ninside);//  / (avg_outside/noutside) ;
   }
 
   return -1.;
@@ -127,32 +144,56 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
 
 
 //edited
-void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img, Mat &imbw){
-  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
+void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img ){
+  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
 hout1->SetAxisRange(0,501,"X");
 
-  //Tapendra Edit
- TH1D* metric = new TH1D("Metric", "avg inside to outside intensity ;Inside to outside Intensity ratio; Count",1001, -500.5, 500.5);
-  //End
-
+ 
   for (const MedianTextRecord & rec : mtd ){
     float  mindist = 10000;
     unsigned x,y;
-    int index = 0, j = 0;
     for ( const Vec3f & circ : circles ){
       float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
 			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
-      if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1]; index =j;}  //I am assuming that we will find point closer than d=10000
-      j++;
+      if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1]; }  //I am assuming that we will find point closer than d=10000
+    
     }
     //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
     if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
     hout1->Fill( mindist );
-    
-    //June 1 edit
-    if(mindist < 1){ metric->Fill(calculate_bolt_metric( circles[index], imbw )); }
-	//end
+  }
+}
+
+
+
+void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &imbw){
+  
+  TH1D* metric_all  = new TH1D("Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+  TH1D* metric_good = new TH1D("Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+  TH1D* metric_bad  = new TH1D("Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+ 
+  TH2D* metric_2d   = new TH2D("Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 255.5 );
+
+
+  for (const MedianTextRecord & rec : mtd ){
+    float  mindist = 10000;
+    int index = 0, j = 0;
+    for ( const Vec3f & circ : circles ){
+      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      if ( dist < mindist ) {mindist = dist; index =j;}  //I am assuming that we will find point closer than d=10000
+      j++;
     }
+
+    double metric_val = calculate_bolt_metric( circles[index], imbw ); 
+    metric_all->Fill( metric_val );
+    if (mindist < 4) { 
+      metric_good->Fill( metric_val );
+    } else {
+      metric_bad->Fill( metric_val );
+    }
+    metric_2d->Fill( mindist,  metric_val );
+  }
 }
 
 
@@ -300,7 +341,8 @@ int main(int argc, char** argv )
     
     //Edited by tapendra  
     //Make a histogram of closest distance from one of text records to our circles.
-    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color, image );
+    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
+    make_bolt_metric_histograms( circles, mtd, image );
     //till here
     
     //Drawing Michel's point in the picture.
