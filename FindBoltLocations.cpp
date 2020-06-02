@@ -64,7 +64,7 @@ void apply_image_threshold( Mat& img, int threshold=250 ){
 void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextData& mtd ){
   TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
   hout->SetAxisRange(0,501,"X");
-  
+
   for ( const Vec3f & circ : circles ){
     float mindist = 10000;
     for ( const MedianTextRecord & rec : mtd ){
@@ -73,26 +73,6 @@ void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextDat
       if ( dist < mindist ) mindist = dist; 
     }
     hout->Fill( mindist );
-  }
-}
-
-//edited
-void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img ){
-  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
-hout1->SetAxisRange(0,501,"X");
-
-
-  for (const MedianTextRecord & rec : mtd ){
-    float  mindist = 10000;
-    unsigned x,y;
-    for ( const Vec3f & circ : circles ){
-      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
-			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
-      if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1];}  //I am assuming that we will find point closer than d=10000
-    }
-    //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
-    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
-    hout1->Fill( mindist );
   }
 }
 
@@ -116,8 +96,15 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
   int nRows = img.rows;
   int nCols = img.cols;
   
-  for ( int x = 0; x<nCols; ++x){
-    for ( int y = 0; y<nRows; ++y){
+  int n = 2; //n factor by which second radius is bigger. 
+  int x_low = ((circ_x-n*circ_r-1)>0)?(circ_x-n*circ_r-1):0;
+  int x_high = ((circ_x + n*circ_r+1)<nCols)?(circ_x + n*circ_r+1):nCols;
+  int y_low = ((circ_y - (n*circ_r)-1)>0)?(circ_y - (n*circ_r)-1):0;
+  int y_high = ((circ_y + n*circ_r + 1)<nRows)?(circ_y + n*circ_r + 1):nRows;  
+
+
+  for ( int x = x_low; x<x_high; ++x){
+    for ( int y = y_low; y<y_high; ++y){
       Scalar intensity = img.at<uchar>(y, x);
       double cur_radius = sqrt( (x-circ_x)*(x-circ_x) + (y-circ_y)*(y-circ_y) );
       if ( cur_radius <= circ_r ){
@@ -137,6 +124,37 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
   return -1.;
 
 }
+
+
+//edited
+void make_bolt_dist_histogram_wrt_txt( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &img, Mat &imbw){
+  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
+hout1->SetAxisRange(0,501,"X");
+
+  //Tapendra Edit
+ TH1D* metric = new TH1D("Metric", "avg inside to outside intensity ;Inside to outside Intensity ratio; Count",1001, -500.5, 500.5);
+  //End
+
+  for (const MedianTextRecord & rec : mtd ){
+    float  mindist = 10000;
+    unsigned x,y;
+    int index = 0, j = 0;
+    for ( const Vec3f & circ : circles ){
+      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1]; index =j;}  //I am assuming that we will find point closer than d=10000
+      j++;
+    }
+    //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
+    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
+    hout1->Fill( mindist );
+    
+    //June 1 edit
+    if(mindist < 1){ metric->Fill(calculate_bolt_metric( circles[index], imbw )); }
+	//end
+    }
+}
+
 
 
 int main(int argc, char** argv )
@@ -282,7 +300,7 @@ int main(int argc, char** argv )
     
     //Edited by tapendra  
     //Make a histogram of closest distance from one of text records to our circles.
-    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
+    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color, image );
     //till here
     
     //Drawing Michel's point in the picture.
