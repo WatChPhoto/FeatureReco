@@ -61,22 +61,87 @@ void apply_image_threshold( Mat& img, int threshold=250 ){
 }
 
 
-void make_bolt_dist_histogram( const vector<Vec3f>& circles, const MedianTextData& mtd ){
-  TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, -500.5, 500.5);
-  hout->SetAxisRange(0,501,"X");
 
-  for ( const Vec3f & circ : circles ){
-    float mindist = 10000;
-    for ( const MedianTextRecord & rec : mtd ){
+/// Simple structure to hold indices into two vectors of matches with distance between those two indices stored
+struct IndexMatchDist {
+  unsigned idx_txt;   //index of medianTextReader
+  unsigned idx_circ;  //index of circles
+  float    dist;
+  IndexMatchDist( unsigned itxt=0, unsigned icirc=0, float fdist=-1. ) : idx_txt( itxt ), idx_circ( icirc ), dist( fdist ) { }
+};
+
+
+/// find_closest_matches finds closest match to each entry in mtd to the closest entry in circles
+/// without using any circle twice.
+vector< IndexMatchDist > find_closest_matches( const vector<Vec3f>& circles, const MedianTextData & mtd ){
+  vector< IndexMatchDist > data;
+  vector< IndexMatchDist > data121;
+  int i=0;
+
+  for (const MedianTextRecord & rec : mtd ){
+    float  mindist = 10000;
+    int index = 0, j = 0;
+    for ( const Vec3f & circ : circles ){
       float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
-				 (circ[1] - rec.y())*(circ[1] - rec.y()) );
-      if ( dist < mindist ) mindist = dist; 
+			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      if ( dist < mindist ) {mindist = dist; index =j;}  //I am assuming that we will find point closer than d=10000
+      ++j;
     }
-    hout->Fill( mindist );
+    IndexMatchDist temp;
+    temp.idx_txt= i;   //index of medianTextReader
+    temp.idx_circ= index;  //index of circles
+    temp.dist = mindist;  //mindist
+    data.push_back(temp);
+    ++i;
   }
+
+  int k=0;
+  for ( IndexMatchDist & rec : data ){
+    int mtd_index = rec.idx_txt;
+    int index = rec.idx_circ;
+    float dist = rec.dist;
+    int i=0;
+    int new_index=k;
+    float min_dist = dist;
+    for( IndexMatchDist & ab : data){
+      int mtd_index1 = ab.idx_txt;
+      int index1 = ab.idx_circ;
+      float dist1 = ab.dist;
+      
+      if( mtd_index!=mtd_index1 && index==index1){   //if point from text file is different but from found circle is same.
+	if(dist1<min_dist){
+	  min_dist = dist1;
+	  new_index = i;
+	}
+	
+      } 
+      ++i;
+    }
+
+    bool copy = false;
+    for( IndexMatchDist& d : data121){
+      if( d.idx_txt == data[ new_index ].idx_txt ){
+	copy=true;
+      }
+    }
+    if(!copy){
+      data121.push_back( data[new_index] );
+    }
+    ++k;
+  }
+
+  return data121;
 }
 
-//edited
+
+
+
+void make_bolt_dist_histogram( const vector< IndexMatchDist > & matches){
+  TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, 0.5, 500.5);
+  for ( const IndexMatchDist& m : matches ){
+    hout->Fill( m.dist );
+  }
+}
 
 
 /// Calculate a metric to identify a bolt
@@ -168,75 +233,18 @@ hout1->SetAxisRange(0,501,"X");
 
 
 
-void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianTextData& mtd, Mat &imbw){
+
+void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianTextData& mtd, const vector< IndexMatchDist >& data121,  Mat &imbw,  Mat &imcol){
   
   TH1D* metric_all  = new TH1D("Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
   TH1D* metric_good = new TH1D("Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
   TH1D* metric_bad  = new TH1D("Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
  
   TH2D* metric_2d   = new TH2D("Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 255.5 );
-  //Edit june 3
-  vector <Vec3f> data ;
-  vector<Vec3f> data121;
-  int i=0;
-//Edit end
-  for (const MedianTextRecord & rec : mtd ){
-    float  mindist = 10000;
-    int index = 0, j = 0;
-    for ( const Vec3f & circ : circles ){
-      float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
-			      (circ[1] - rec.y())*(circ[1] - rec.y()) );
-      if ( dist < mindist ) {mindist = dist; index =j;}  //I am assuming that we will find point closer than d=10000
-      j++;
-    }
-    //Edit june 3
-    Vec3f temp;
-    temp[0]= i;   //index of medianTextReader
-    temp[1]= index;  //index of circles
-    temp[2]= mindist;  //mindist
-    data.push_back(temp);
-    //end june 
 
-    //Edit june 3
-    i++;
-    //Edit end
-  }
-
-  //Edit
-  int k=0;
-  for ( Vec3f & rec : data ){
-    int mtd_index = rec[0];
-    int index = rec[1];
-    float dist = rec[2];
-    int i=0;
-    int new_index=k;
-    float min_dist = dist;
-    for(Vec3f & ab : data){
-      int mtd_index1 = ab[0];
-      int index1 = ab[1];
-      float dist1 = ab[2];
-      
-      if( mtd_index!=mtd_index1 && index==index1){   //if point from text file is different but from found circle is same.
-	if(dist1<min_dist){
-	  min_dist = dist1;
-	  new_index = i;
-	}
-	
-      } 
-      i++;
-    }
-
-    bool copy = false;
-    for(Vec3f d : data121){if(d[0]==data[new_index][0]){copy=true;}}
-    if(!copy){
-    data121.push_back(data[new_index]);
-    }
-    k++;
-  }
-  //  data.clear();
-  for ( Vec3f & rec : data121 ){ 
-    int index = rec[1];
-    float mindist = rec[2];
+  for ( const IndexMatchDist & rec : data121 ){ 
+    int index = rec.idx_circ;
+    float mindist = rec.dist;
     double metric_val = calculate_bolt_metric( circles[index], imbw ); 
     metric_all->Fill( metric_val );
     if (mindist < 4) { 
@@ -246,16 +254,16 @@ void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianText
     }
     metric_2d->Fill( mindist,  metric_val );
 
-    int in = rec[0];
-   int m_x= mtd[in].x();
-   int m_y= mtd[in].y();
-   int x=circles[index][0];
-   int y=circles[index][1];
+    int in = rec.idx_txt;
+    int m_x= mtd[in].x();
+    int m_y= mtd[in].y();
+    int x=circles[index][0];
+    int y=circles[index][1];
     // if(mindist <100)
-      { arrowedLine(imbw,Point(m_x,m_y), Point(x,y),  (0,0,0)); }
+      { arrowedLine(imcol, Point(m_x,m_y), Point(x,y),  (0,0,0)); }
   
   }
-  imwrite("new.jpg",imbw);
+  //imwrite("new.jpg",imbw);
   //Edit end
 
 
@@ -402,15 +410,16 @@ int main(int argc, char** argv )
       std::cout<< rec;
     }
     
+    /// Find matches between circles found and bolts labelled in text file
+    vector< IndexMatchDist > bolt_matches = find_closest_matches( circles, mtd );    
+
     /// Make a histogram of closest distance between one of our circles and one of the text records
-    make_bolt_dist_histogram( circles, mtd );
+    make_bolt_dist_histogram( bolt_matches );
     
-    //Edited by tapendra  
     //Make a histogram of closest distance from one of text records to our circles.
     make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
-    make_bolt_metric_histograms( circles, mtd, image );
-    //till here
-    
+    make_bolt_metric_histograms( circles, mtd, bolt_matches, image, image_color );
+
     //Drawing Michel's point in the picture.
     for ( const MedianTextRecord & rec : mtd ){
       Point center_michel(rec.x(), rec.y());   
