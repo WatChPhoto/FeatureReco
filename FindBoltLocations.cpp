@@ -124,7 +124,7 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
 	++ninside;
 	avg_inside += intensity.val[0]; 
 	if (hinbolt) hinbolt->Fill( intensity.val[0] );
-     } else if ( cur_radius < n*circ_r ) {
+      } else if ( cur_radius < n*circ_r) {
 	++noutside;
 	avg_outside += intensity.val[0];
 	if (houtbolt) houtbolt->Fill( intensity.val[0] );
@@ -134,10 +134,12 @@ double calculate_bolt_metric( const Vec3f& circ, const Mat& img ) {
   }
 
   if ( ninside >0 && noutside >0 ){
-    return (avg_inside/ninside)  / (avg_outside/noutside) ;
-    //return (avg_inside/ninside);//  / (avg_outside/noutside) ;
+    //    return avg_outside/(pow(circ_r+3,2)-pow(circ_r,2));
+    //return (avg_inside/ninside)  / (avg_outside/noutside) ;
+    return (avg_inside/ninside) / (avg_outside/noutside) ;
   }
 
+    
   return -1.;
 
 }
@@ -159,7 +161,7 @@ hout1->SetAxisRange(0,501,"X");
     
     }
     //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
-    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
+    //    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
     hout1->Fill( mindist );
   }
 }
@@ -173,8 +175,11 @@ void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianText
   TH1D* metric_bad  = new TH1D("Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
  
   TH2D* metric_2d   = new TH2D("Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 255.5 );
-
-
+  //Edit june 3
+  vector <Vec3f> data ;
+  vector<Vec3f> data121;
+  int i=0;
+//Edit end
   for (const MedianTextRecord & rec : mtd ){
     float  mindist = 10000;
     int index = 0, j = 0;
@@ -184,7 +189,54 @@ void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianText
       if ( dist < mindist ) {mindist = dist; index =j;}  //I am assuming that we will find point closer than d=10000
       j++;
     }
+    //Edit june 3
+    Vec3f temp;
+    temp[0]= i;   //index of medianTextReader
+    temp[1]= index;  //index of circles
+    temp[2]= mindist;  //mindist
+    data.push_back(temp);
+    //end june 
 
+    //Edit june 3
+    i++;
+    //Edit end
+  }
+
+  //Edit
+  int k=0;
+  for ( Vec3f & rec : data ){
+    int mtd_index = rec[0];
+    int index = rec[1];
+    float dist = rec[2];
+    int i=0;
+    int new_index=k;
+    float min_dist = dist;
+    for(Vec3f & ab : data){
+      int mtd_index1 = ab[0];
+      int index1 = ab[1];
+      float dist1 = ab[2];
+      
+      if( mtd_index!=mtd_index1 && index==index1){   //if point from text file is different but from found circle is same.
+	if(dist1<min_dist){
+	  min_dist = dist1;
+	  new_index = i;
+	}
+	
+      } 
+      i++;
+    }
+
+    bool copy = false;
+    for(Vec3f d : data121){if(d[0]==data[new_index][0]){copy=true;}}
+    if(!copy){
+    data121.push_back(data[new_index]);
+    }
+    k++;
+  }
+  //  data.clear();
+  for ( Vec3f & rec : data121 ){ 
+    int index = rec[1];
+    float mindist = rec[2];
     double metric_val = calculate_bolt_metric( circles[index], imbw ); 
     metric_all->Fill( metric_val );
     if (mindist < 4) { 
@@ -193,7 +245,21 @@ void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianText
       metric_bad->Fill( metric_val );
     }
     metric_2d->Fill( mindist,  metric_val );
+
+    int in = rec[0];
+   int m_x= mtd[in].x();
+   int m_y= mtd[in].y();
+   int x=circles[index][0];
+   int y=circles[index][1];
+    // if(mindist <100)
+      { arrowedLine(imbw,Point(m_x,m_y), Point(x,y),  (0,0,0)); }
+  
   }
+  imwrite("new.jpg",imbw);
+  //Edit end
+
+
+
 }
 
 
