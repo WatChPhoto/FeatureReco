@@ -233,7 +233,6 @@ hout1->SetAxisRange(0,501,"X");
 
 
 
-
 void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianTextData& mtd, const vector< IndexMatchDist >& data121,  Mat &imbw,  Mat &imcol){
   
   TH1D* metric_all  = new TH1D("Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
@@ -270,6 +269,38 @@ void make_bolt_metric_histograms( const vector<Vec3f>& circles, const MedianText
 
 }
 
+//Make histogram of metric of inbetween points that aren't mapped to the circles from the text file
+void histogram_inbetween(const vector<Vec3f>& circles, const MedianTextData& mtd, const vector< IndexMatchDist >& data121, Mat imbw){
+  int x_min = 100000, x_max= -1;
+  int y_min = 100000, y_max= -1;
+  for(const MedianTextRecord val: mtd){
+    int x = val.x();
+    int y = val.y();
+    if(x<x_min){x_min=x;}
+    if(x>x_max){x_max=x;}
+    if(y<y_min){y_min=y;}
+    if(y>y_max){y_max=y;}
+  }
+  
+  TH1D* metric_inb  = new TH1D("Metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+  int i = 0;
+  for(const Vec3f circ: circles){
+    int x = circ[0];
+    int y = circ[1];
+    if(x>=x_min && x <=x_max && y>=y_min && y<=y_max){
+      bool belongs = false;
+      for(const IndexMatchDist val: data121){
+	int index = val.idx_circ;
+	if(index==i){belongs=true; break;}
+      }
+	if(!belongs){
+	 double metric_val = calculate_bolt_metric( circ, imbw );
+	 metric_inb->Fill(metric_val);
+	}
+    }
+    i++;
+  }
+}
 
 
 int main(int argc, char** argv )
@@ -419,6 +450,9 @@ int main(int argc, char** argv )
     //Make a histogram of closest distance from one of text records to our circles.
     make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
     make_bolt_metric_histograms( circles, mtd, bolt_matches, image, image_color );
+    
+    //Make a histogram for the metric of inbetween points
+    histogram_inbetween(circles, mtd, bolt_matches, image);
 
     //Drawing Michel's point in the picture.
     for ( const MedianTextRecord & rec : mtd ){
