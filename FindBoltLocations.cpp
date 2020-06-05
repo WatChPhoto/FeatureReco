@@ -431,8 +431,6 @@ int main(int argc, char** argv )
     outputname = build_output_filename( argv[1], "circles" );
     imwrite( outputname, image_color );
   
-
-  
     /// Read in bolt locations
     MedianTextReader *boltreader = MedianTextReader::Get();
     boltreader->set_input_file( string( argv[2] ) );
@@ -460,10 +458,42 @@ int main(int argc, char** argv )
       //used radius of 10 pixels and green color.
       circle( image_color, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
     }
+    //end of drawing michel's points.
+
+
+    /// Make image that just has circle centers from previous Hough Transform on it
+    Mat img_circles = Mat::zeros( image.size(), image.type() );
+    for( size_t i = 0; i < circles.size(); i++ ) {
+      img_circles.at<uchar>(cvRound(circles[i][1]), cvRound(circles[i][0])) = 255 ;
+    }
+
+    outputname = build_output_filename( argv[1], "candidatebolts" );
+    imwrite( outputname, img_circles );
+
+    
+    /// Look for circles of bolts
+    vector<Vec3f> circles_of_bolts;
+    dp =      1; //if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
+    minDist = 210; // min distance between circles
+    param1 = 1; // threshold placed on image
+    param2 = 5; // minimum accumulator value to call it a circle
+    minR   = 80; //= 3 # minimum radius in pixels
+    maxR   = 120; // = 10 # maximum radius in pixels
+    HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+    
+    for( size_t i = 0; i < circles_of_bolts.size(); i++ ) {
+      Point center(cvRound(circles_of_bolts[i][0]), cvRound(circles_of_bolts[i][1]));
+      int radius = cvRound(circles_of_bolts[i][2]);
+      // draw the circle center
+      //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
+      // draw the circle outline
+      circle( image_color, center, radius, Scalar(255,102,255), 1, 8, 0 );
+      std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
+    }
+    
     outputname = build_output_filename( argv[1], "michel" );
     imwrite( outputname, image_color );
-    //end of drawing michel's points.
-    
+
 
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
