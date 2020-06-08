@@ -1,11 +1,14 @@
 #include <iostream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
-
-
 #include <TFile.h>
 #include "Configuration.hpp"
 #include "featureFunctions.hpp"
+
+//Something I want to look into.
+//Blob                                                                                                                                      
+#include <opencv2/features2d.hpp>
+//   
 
 using std::string;
 using std::vector;
@@ -33,7 +36,7 @@ int main(int argc, char** argv )
     cvtColor( image_color, image, COLOR_RGBA2GRAY );
 
     // Open a root file to put histograms into
-    TFile * fout = new TFile("FindBoltLocation.root","recreate");
+    TFile * fout = new TFile("FindBoltLocation.root","RECREATE");
 
 
     string outputname;
@@ -116,6 +119,104 @@ int main(int argc, char** argv )
     apply_image_threshold( img_can, threshold );
     histogram_channel0( grad, "hafter_thres_cut");
    
+    
+
+    //Something I want to look into.
+    //Blob detection
+    Mat img_blob = img_flt.clone();
+      // Setup SimpleBlobDetector parameters.
+    SimpleBlobDetector::Params params;
+
+    //detect white
+    //params.filterByColor=true;  
+    params.blobColor=255;
+
+    // Change thresholds
+    params.minThreshold = config::Get_int("blob_minThreshold");
+    params.maxThreshold = config::Get_int("blob_maxThreshold");
+
+    // Filter by Area.
+     params.filterByArea = config::Get_int("blob_filterByArea");
+     params.minArea = config::Get_double("blob_minArea");
+     params.maxArea = config::Get_double("blob_maxArea");
+
+    // Filter by Circularity
+    params.filterByCircularity = config::Get_int("blob_filterByCircularity");
+    params.minCircularity = config::Get_double("blob_minCircularity");
+
+    //Filter by distance
+    params.minDistBetweenBlobs = config::Get_double("blob_minDistBetweenBlobs");
+    // Filter by Convexity
+    params.filterByConvexity = config::Get_int("blob_filterByConvexity");
+    params.minConvexity = config::Get_double("blob_minConvexity");
+
+    // Filter by Inertia
+    params.filterByInertia = config::Get_int("blob_filterByInertia");
+    params.minInertiaRatio = config::Get_double("blob_minInertiaRatio");
+ 
+    // Set up the detector with default parameters.                                                                                         
+    Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+
+    // Detect blobs.                                                                                                                        
+    std::vector<KeyPoint> keypoints;
+    detector->detect( img_blob, keypoints);
+    // Draw detected blobs as red circles.                                                                                                  
+    // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob                            
+    //Mat im_with_keypoints;
+    //drawKeypoints( img_blob, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+
+    // Show blobs                                                                                                                           
+    //imshow("keypoints", im_with_keypoints );                                                                                               
+    //imwrite("keypoints.jpg",im_with_keypoints);
+    
+
+    /// Make image that just has circle centers from previous Hough Transform on it
+    vector<Vec3f> blobs;
+    int i=0;
+    for(KeyPoint keypoint: keypoints){
+      //Point center1 = keypoint.pt;
+      int x = keypoint.pt.x;
+      int y = keypoint.pt.y;
+      float r = ((keypoint.size)+0.0)/2;
+      Vec3f temp;
+      temp[0]=x;
+      temp[1]=y;
+      temp[2]=r;
+      blobs.push_back(temp);
+    
+      Point blob_center(x,y);
+      circle( img_blob, blob_center, r, Scalar(0,255,0), 1, 8, 0 );
+      ++i;
+    }
+    imwrite("blob.jpg", img_blob);
+    
+    Mat blob_circles = Mat::zeros( image.size(), image.type() );
+    for( size_t i = 0; i < blobs.size(); i++ ) {
+      blob_circles.at<uchar>(blobs[i][1], blobs[i][0]) = 255 ;
+    }
+    imwrite("blobcandidate.jpg", blob_circles);
+    // Blobend               
+    
+    /*Something for later    
+    //Contour detection
+    Mat img_1 = image.clone();
+    Mat dst = Mat::zeros(img_1.rows, img_1.cols, CV_8UC3);
+    vector<Vec4i> hierarchy;
+    vector<vector<Point> > contours;
+    findContours( img_1, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE );
+    int idx = 0;
+    // for( ; idx >= 0; idx = hierarchy[idx][0] )
+    //{
+        Scalar color( 255, 255, 255 );
+        drawContours( dst, contours, -2, color );
+	
+	//}
+
+    //findContours( img_1, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
+    //drawContours(img_1, contours, -1, Scalar(0,255,0));
+    imwrite("Contour.jpg", dst);
+    //
+    */
 
     /// Hough Transform
     vector<Vec3f> circles;
@@ -183,13 +284,18 @@ int main(int argc, char** argv )
     /// Look for circles of bolts
     vector<Vec3f> circles_of_bolts;
     dp =      1; //if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
-    minDist = 210; // min distance between circles
+    minDist = 216; //210; // min distance between circles
     param1 = 1; // threshold placed on image
-    param2 = 5; // minimum accumulator value to call it a circle
-    minR   = 80; //= 3 # minimum radius in pixels
-    maxR   = 120; // = 10 # maximum radius in pixels
-    HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
-    
+    param2 = 3; //5; // minimum accumulator value to call it a circle
+    minR   = 90; //80; //= 3 # minimum radius in pixels
+    maxR   = 116; //120; // = 10 # maximum radius in pixels
+    if(config::Get_int("do_blob")){
+      HoughCircles( blob_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+      }
+    if(config::Get_int("do_hough")){
+	HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+      }    
+
     for( size_t i = 0; i < circles_of_bolts.size(); i++ ) {
       Point center(cvRound(circles_of_bolts[i][0]), cvRound(circles_of_bolts[i][1]));
       int radius = cvRound(circles_of_bolts[i][2]);
@@ -208,8 +314,6 @@ int main(int argc, char** argv )
       std::cout<<"Error with config file key "<<e<<std::endl;
     }
     
-    
-
     fout->Write();
     fout->Close();
 
