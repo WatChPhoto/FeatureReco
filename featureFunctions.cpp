@@ -1,10 +1,8 @@
-
 #include "featureFunctions.hpp"
-#include <iostream>                                                                                                                          
-#include <TH1D.h>                                                                                                                            
-#include <TH1D.h>                                                                                                                            
-#include <TH2D.h>                                                                                                                            
-#include <opencv2/imgproc.hpp> 
+#include <iostream>
+//#include <TH1D.h>
+//#include <TH2D.h>
+#include <opencv2/imgproc.hpp>
 
 std::string build_output_filename( const std::string& in, const std::string& tag ){
   std::string outputname;
@@ -44,6 +42,7 @@ void apply_image_threshold( cv::Mat& img, int threshold ){
 
 /// find_closest_matches finds closest match to each entry in mtd to the closest entry in circles
 /// without using any circle twice.
+//Returns index of circle, mtd and mindist.
 std::vector< IndexMatchDist > find_closest_matches( const std::vector<cv::Vec3f>& circles, const MedianTextData & mtd ){
   std::vector< IndexMatchDist > data;
   std::vector< IndexMatchDist > data121;
@@ -104,8 +103,8 @@ std::vector< IndexMatchDist > find_closest_matches( const std::vector<cv::Vec3f>
   return data121;
 }
 
-void make_bolt_dist_histogram( const std::vector< IndexMatchDist > & matches){
-  TH1D* hout = new TH1D("bolt_distance","Distance to closest bolt ; distance (pixels); Count/bin",1001, 0.5, 500.5);
+//Makes the histogram of minimum distance from the matched bolt from text to found bolt
+void make_bolt_dist_histogram( const std::vector< IndexMatchDist > & matches, TH1D *&hout){
   for ( const IndexMatchDist& m : matches ){
     hout->Fill( m.dist );
   }
@@ -117,9 +116,9 @@ void make_bolt_dist_histogram( const std::vector< IndexMatchDist > & matches){
 /// pixel intensity outside bolt to 2*radius
 /// Returns -1 if no pixels match this criteria.
 double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
-
+  /*=====================================================================================================
   static int callcount = 0;
-
+  
   TH1D* hinbolt=nullptr; 
   TH1D* houtbolt=nullptr;
   if ( callcount == 0 ){
@@ -128,6 +127,7 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
     houtbolt = new TH1D("houtbolt","houtbolt",256, -0.5,255.5 ); 
     ++callcount;
   }
+  ======================================================================================================*/
   float circ_x = circ[0];
   float circ_y = circ[1];
   float circ_r = circ[2];
@@ -154,11 +154,11 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
       if ( cur_radius < circ_r ){
 	++ninside;
 	avg_inside += intensity.val[0]; 
-	if (hinbolt) hinbolt->Fill( intensity.val[0] );
+	//	if (hinbolt) hinbolt->Fill( intensity.val[0] );
       } else if ( cur_radius < n*circ_r) {
 	++noutside;
 	avg_outside += intensity.val[0];
-	if (houtbolt) houtbolt->Fill( intensity.val[0] );
+	//	if (houtbolt) houtbolt->Fill( intensity.val[0] );
 
       }
     }
@@ -176,9 +176,9 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
 }
 
 //edited
-void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, cv::Mat &img ){
-  TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
-  hout1->SetAxisRange(0,501,"X");
+void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, TH1D *&hist_dist ){
+  //TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
+  //hout1->SetAxisRange(0,501,"X");
 
  
   for (const MedianTextRecord & rec : mtd ){
@@ -190,20 +190,21 @@ void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, co
       if ( dist < mindist ) {mindist = dist; x=circ[0]; y = circ[1]; }  //I am assuming that we will find point closer than d=10000
     
     }
-    //arrowedLine(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int line_type=8, int shift=0, double tipLength=0.1)
-    //    if(mindist <100){ arrowedLine(img,Point(rec.x(),rec.y()), Point(x,y),  (0,0,0)); }
-    hout1->Fill( mindist );
+
+    hist_dist->Fill( mindist );
   }
 }
 
-void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw,  cv::Mat &imcol){
-  
+
+
+void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw,  cv::Mat &imcol, TH1D *&metric_all, TH1D *&metric_good, TH1D *&metric_bad, TH2D *&metric_2d){
+  /*  
   TH1D* metric_all  = new TH1D("Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
   TH1D* metric_good = new TH1D("Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
   TH1D* metric_bad  = new TH1D("Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
  
   TH2D* metric_2d   = new TH2D("Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 255.5 );
-
+  */
   for ( const IndexMatchDist & rec : data121 ){ 
     int index = rec.idx_circ;
     float mindist = rec.dist;
@@ -230,7 +231,7 @@ void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const M
 }
 
 //Make histogram of metric of inbetween points that aren't mapped to the circles from the text file
-void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121, cv::Mat imbw){
+void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121, cv::Mat imbw, TH1D *&metric_inb){
   int x_min = 100000, x_max= -1;
   int y_min = 100000, y_max= -1;
   for(const MedianTextRecord val: mtd){
@@ -241,8 +242,7 @@ void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianText
     if(y<y_min){y_min=y;}
     if(y>y_max){y_max=y;}
   }
-  
-  TH1D* metric_inb  = new TH1D("Metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+   
   int i = 0;
   for(const cv::Vec3f circ: circles){
     int x = circ[0];
@@ -259,5 +259,24 @@ void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianText
       }
     }
     i++;
+  }
+}
+
+void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color){
+  for( size_t i = 0; i < data.size(); i++ ) {
+    cv::Point center(cvRound(data[i][0]), cvRound(data[i][1]));
+    int radius = cvRound(data[i][2]);
+    // draw the circle center                                                                                                               
+    //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );                                                                           
+    // draw the circle outline                                                                                                              
+    cv::circle( image, center, radius, color, 1, 8, 0 );
+    std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<data[i][0]<<", "<<data[i][1]<<" )"<<std::endl;
+  }
+  std::cout<<"=============================================================================="<<std::endl;
+}
+
+void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image){
+  for( size_t i = 0; i < data.size(); i++ ) {
+    image.at<uchar>(data[i][1], data[i][0]) = 255 ;
   }
 }

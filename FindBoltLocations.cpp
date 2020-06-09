@@ -4,16 +4,20 @@
 #include <TFile.h>
 #include "Configuration.hpp"
 #include "featureFunctions.hpp"
-
-//Something I want to look into.
-//Blob                                                                                                                                      
-#include <opencv2/features2d.hpp>
-//   
+#include <opencv2/features2d.hpp>     //Blob
 
 using std::string;
 using std::vector;
  
 using namespace cv;
+
+void draw_text_circles(Mat &img, const MedianTextData& mtd){
+for ( const MedianTextRecord & rec : mtd ){
+      Point center_michel(rec.x(), rec.y());   
+      //used radius of 10 pixels and green color.
+      circle( img, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
+    }
+}
 
 int main(int argc, char** argv )
 {
@@ -22,7 +26,6 @@ int main(int argc, char** argv )
         printf("usage: FindBoltLocations <Input_image_with_path> <median-bolt-loc-filename>\n");
         return -1;
     }
-
 
     Mat image_color = imread( argv[1],  IMREAD_COLOR ); //IMREAD_GRAYSCALE,
     if ( !image_color.data )
@@ -37,7 +40,6 @@ int main(int argc, char** argv )
 
     // Open a root file to put histograms into
     TFile * fout = new TFile("FindBoltLocation.root","RECREATE");
-
 
     string outputname;
     
@@ -66,7 +68,6 @@ int main(int argc, char** argv )
       outputname = build_output_filename( argv[1], "bifilter" );
       imwrite( outputname, img_flt );
     }
-
 
     /// Do Sobel edge detection
     bool do_sobel = (bool)config::Get_int("do_sobel");
@@ -98,7 +99,6 @@ int main(int argc, char** argv )
       imwrite( outputname, grad );
     }
 
-
     //Canny edge detector.                                                                                                                   
     bool do_canny = (bool)config::Get_int("do_canny");                                              
     int thresh_low = config::Get_int("thresh_low"); //The gradient value below thresh_low will be discarded.                                  
@@ -112,18 +112,15 @@ int main(int argc, char** argv )
       imwrite(outputname,img_can);
 
     }
-
     
     histogram_channel0( img_can, "hbefore_thres_cut" );
     int threshold = config::Get_int("threshold");
     apply_image_threshold( img_can, threshold );
     histogram_channel0( grad, "hafter_thres_cut");
    
-    
-
-    //Something I want to look into.
     //Blob detection
-    Mat img_blob = img_flt.clone();
+    Mat img_blob = image.clone();
+    Mat img_blob_map = image_color.clone();
       // Setup SimpleBlobDetector parameters.
     SimpleBlobDetector::Params params;
 
@@ -160,19 +157,18 @@ int main(int argc, char** argv )
     // Detect blobs.                                                                                                                        
     std::vector<KeyPoint> keypoints;
     detector->detect( img_blob, keypoints);
+
+    /*
     // Draw detected blobs as red circles.                                                                                                  
     // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob                            
-    //Mat im_with_keypoints;
-    //drawKeypoints( img_blob, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    Mat im_with_keypoints;
+    drawKeypoints( img_blob, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
 
-    // Show blobs                                                                                                                           
-    //imshow("keypoints", im_with_keypoints );                                                                                               
-    //imwrite("keypoints.jpg",im_with_keypoints);
+    imwrite("keypoints.jpg",im_with_keypoints);
+    */
     
-
-    /// Make image that just has circle centers from previous Hough Transform on it
+    //blob vector will contain x,y,r
     vector<Vec3f> blobs;
-    int i=0;
     for(KeyPoint keypoint: keypoints){
       //Point center1 = keypoint.pt;
       int x = keypoint.pt.x;
@@ -183,41 +179,20 @@ int main(int argc, char** argv )
       temp[1]=y;
       temp[2]=r;
       blobs.push_back(temp);
-    
-      Point blob_center(x,y);
-      circle( img_blob, blob_center, r, Scalar(0,255,0), 1, 8, 0 );
-      ++i;
-    }
-    imwrite("blob.jpg", img_blob);
-    
+      }
+      
+    //Draws circle from data to the input image
+    draw_circle_from_data(blobs, img_blob_map, Scalar(0,0,255));
+    outputname = build_output_filename( argv[1], "blob" );
+    imwrite( outputname, img_blob_map );        
+
+    // Make image that just has circle centers from blob detection
     Mat blob_circles = Mat::zeros( image.size(), image.type() );
-    for( size_t i = 0; i < blobs.size(); i++ ) {
-      blob_circles.at<uchar>(blobs[i][1], blobs[i][0]) = 255 ;
-    }
-    imwrite("blobcandidate.jpg", blob_circles);
+    draw_found_center(blobs, blob_circles);
+    outputname = build_output_filename( argv[1], "blobCandidate" );
+    imwrite(outputname, blob_circles);
     // Blobend               
     
-    /*Something for later    
-    //Contour detection
-    Mat img_1 = image.clone();
-    Mat dst = Mat::zeros(img_1.rows, img_1.cols, CV_8UC3);
-    vector<Vec4i> hierarchy;
-    vector<vector<Point> > contours;
-    findContours( img_1, contours, hierarchy, RETR_CCOMP, CHAIN_APPROX_NONE );
-    int idx = 0;
-    // for( ; idx >= 0; idx = hierarchy[idx][0] )
-    //{
-        Scalar color( 255, 255, 255 );
-        drawContours( dst, contours, -2, color );
-	
-	//}
-
-    //findContours( img_1, contours, RETR_LIST, CHAIN_APPROX_SIMPLE);
-    //drawContours(img_1, contours, -1, Scalar(0,255,0));
-    imwrite("Contour.jpg", dst);
-    //
-    */
-
     /// Hough Transform
     vector<Vec3f> circles;
     int dp = config::Get_int("hough_dp"); // Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. 
@@ -228,16 +203,8 @@ int main(int argc, char** argv )
     int maxR   = config::Get_int("hough_maxR"); // = 10 # maximum radius in pixels
     HoughCircles( img_can, circles, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
   
-    for( size_t i = 0; i < circles.size(); i++ ) {
-      Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-      int radius = cvRound(circles[i][2]);
-      // draw the circle center
-      //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
-      // draw the circle outline
-      circle( image_color, center, radius, Scalar(0,0,255), 1, 8, 0 );
-      std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
-    }
-    
+    draw_circle_from_data(circles, image_color, Scalar(0,0,255));
+
     outputname = build_output_filename( argv[1], "circles" );
     imwrite( outputname, image_color );
   
@@ -248,67 +215,97 @@ int main(int argc, char** argv )
     for ( const MedianTextRecord & rec : mtd ){
       std::cout<< rec;
     }
+
+    //Blob analysis
+    TH1D* blob_metric_all  = new TH1D("Blob_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH1D* blob_metric_good = new TH1D("Blob_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH1D* blob_metric_bad  = new TH1D("Blob_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+
+    TH2D* blob_metric_2d   = new TH2D("Blob_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 20 );
+    TH1D *blob_dist = new TH1D("bolt_distance from blob","Distance to closest bolt using blob; distance (pixels); count/bin", 1001, 0.5, 500.5);
+    TH1D* text_to_blob_dist = new TH1D("blob_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
+    TH1D* blob_metric_inb  = new TH1D("blob_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+
     
+    //Find matches bewteen blobs found and bolts labelled in the text file
+    vector< IndexMatchDist > blob_matches = find_closest_matches( blobs, mtd );    
+
+    //Histogram minimum distance to the bolt from the boob
+    make_bolt_dist_histogram( blob_matches, blob_dist );
+    
+    //Make bolt distance histogram with respect to text
+    make_bolt_dist_histogram_wrt_txt( blobs, mtd, text_to_blob_dist );
+ 
+    //Make histograms of all metric, good metric and bad metric. 
+    make_bolt_metric_histograms( blobs, mtd, blob_matches, image, img_blob_map, blob_metric_all, blob_metric_good, blob_metric_bad, blob_metric_2d );
+    //Make a histogram for the metric of inbetween points
+    histogram_inbetween(blobs, mtd, blob_matches, image, blob_metric_inb);
+    
+    //Hough analysis
+    TH1D* hough_metric_all  = new TH1D("Hough_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH1D* hough_metric_good = new TH1D("Hough_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH1D* hough_metric_bad  = new TH1D("Hough_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH2D* hough_metric_2d   = new TH2D("Hough_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 20 );
+    TH1D* hough_dist = new TH1D("bolt_distance","Distance to closest bolt Using Hough; distance (pixels); Count/bin",1001, 0.5, 500.5);
+    TH1D* text_to_hough_dist = new TH1D("hough_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
+    TH1D* hough_metric_inb  = new TH1D("hough_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+
     /// Find matches between circles found and bolts labelled in text file
     vector< IndexMatchDist > bolt_matches = find_closest_matches( circles, mtd );    
 
-    /// Make a histogram of closest distance between one of our circles and one of the text records
-    make_bolt_dist_histogram( bolt_matches );
-    
+    /// Make a histogram of closest distance between one of our circles and one of the text records    
+    make_bolt_dist_histogram( bolt_matches, hough_dist );
+
     //Make a histogram of closest distance from one of text records to our circles.
-    make_bolt_dist_histogram_wrt_txt( circles, mtd, image_color );
-    make_bolt_metric_histograms( circles, mtd, bolt_matches, image, image_color );
+    make_bolt_dist_histogram_wrt_txt( circles, mtd, text_to_hough_dist );
+
+    //Make histograms of all metric, good metric and bad metric. 
+    make_bolt_metric_histograms( circles, mtd, bolt_matches, image, image_color, hough_metric_all, hough_metric_good, hough_metric_bad, hough_metric_2d );
     
     //Make a histogram for the metric of inbetween points
-    histogram_inbetween(circles, mtd, bolt_matches, image);
+    histogram_inbetween(circles, mtd, bolt_matches, image, hough_metric_inb);
 
-    //Drawing Michel's point in the picture.
-    for ( const MedianTextRecord & rec : mtd ){
-      Point center_michel(rec.x(), rec.y());   
-      //used radius of 10 pixels and green color.
-      circle( image_color, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
-    }
-    //end of drawing michel's points.
-
+   
+    /*work on this
+    //Make a histogram of closest distance from one of text record to found blob
+    make_bolt_dist_histogram_wrt_text(blobs,mdt,img_blob);
+    make_bolt_dist_histograms(blobs,mdt,blob_matches,img_blob,coloredimg);
+    */
 
     /// Make image that just has circle centers from previous Hough Transform on it
     Mat img_circles = Mat::zeros( image.size(), image.type() );
-    for( size_t i = 0; i < circles.size(); i++ ) {
-      img_circles.at<uchar>(cvRound(circles[i][1]), cvRound(circles[i][0])) = 255 ;
-    }
-
-    outputname = build_output_filename( argv[1], "candidatebolts" );
-    imwrite( outputname, img_circles );
-
+    draw_found_center(circles, img_circles);
     
+    outputname = build_output_filename( argv[1], "houghCandidate" );
+    imwrite( outputname, img_circles );
+ 
     /// Look for circles of bolts
     vector<Vec3f> circles_of_bolts;
-    dp =      1; //if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
-    minDist = 216; //210; // min distance between circles
-    param1 = 1; // threshold placed on image
-    param2 = 3; //5; // minimum accumulator value to call it a circle
-    minR   = 90; //80; //= 3 # minimum radius in pixels
-    maxR   = 116; //120; // = 10 # maximum radius in pixels
-    if(config::Get_int("do_blob")){
-      HoughCircles( blob_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
-      }
-    if(config::Get_int("do_hough")){
-	HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
-      }    
-
-    for( size_t i = 0; i < circles_of_bolts.size(); i++ ) {
-      Point center(cvRound(circles_of_bolts[i][0]), cvRound(circles_of_bolts[i][1]));
-      int radius = cvRound(circles_of_bolts[i][2]);
-      // draw the circle center
-      //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );
-      // draw the circle outline
-      circle( image_color, center, radius, Scalar(255,102,255), 1, 8, 0 );
-      std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<circles[i][0]<<", "<<circles[i][1]<<" )"<<std::endl;
-    }
+    //Look for circles of bolts from blob
+    vector<Vec3f> circles_of_blob;
+    dp = config::Get_int("sec_hough_dp"); //if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
+    minDist = config::Get_int("sec_hough_minDist");  // min distance between circles
+    param1 = config::Get_int("sec_hough_param1");   // threshold placed on image
+    param2 = config::Get_int("sec_hough_param2");  // minimum accumulator value to call it a circle
+    minR   = config::Get_int("sec_hough_minR");   //= 3 # minimum radius in pixels
+    maxR   = config::Get_int("sec_hough_maxR");  // = 10 # maximum radius in pixels
     
-    outputname = build_output_filename( argv[1], "michel" );
-    imwrite( outputname, image_color );
+    HoughCircles( blob_circles, circles_of_blob, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+    HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
 
+    //Overlays detected circles from second hough transfrom
+    draw_circle_from_data(circles_of_bolts, image_color, Scalar(255,102,255));
+    draw_circle_from_data(circles_of_blob, img_blob_map, Scalar(255,102,255));
+    
+    //Draw text file circles
+    draw_text_circles(image_color, mtd);
+    draw_text_circles(img_blob_map, mtd);
+    
+    //save images
+    outputname = build_output_filename( argv[1], "hough_text" );
+    imwrite( outputname, image_color );
+    outputname = build_output_filename( argv[1], "blob_text" );
+    imwrite( outputname, img_blob_map );
 
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
