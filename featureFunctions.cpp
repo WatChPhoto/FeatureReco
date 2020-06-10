@@ -1,8 +1,7 @@
 #include "featureFunctions.hpp"
 #include <iostream>
-//#include <TH1D.h>
-//#include <TH2D.h>
 #include <opencv2/imgproc.hpp>
+#include "Configuration.hpp"
 
 std::string build_output_filename( const std::string& in, const std::string& tag ){
   std::string outputname;
@@ -132,10 +131,12 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
   float circ_y = circ[1];
   float circ_r = circ[2];
 
-  unsigned ninside = 0;
-  unsigned noutside =0;
-  double avg_inside =0.;
+  unsigned ninside = 0.;
+  unsigned noutside= 0.;
+  double avg_inside= 0.;
   double avg_outside=0.;
+  double sqr_inside= 0.;
+  double sqr_outside=0.;
 
   int nRows = img.rows;
   int nCols = img.cols;
@@ -153,24 +154,40 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
       double cur_radius = sqrt( (x-circ_x)*(x-circ_x) + (y-circ_y)*(y-circ_y) );
       if ( cur_radius < circ_r ){
 	++ninside;
-	avg_inside += intensity.val[0]; 
+	avg_inside += intensity.val[0];
+	sqr_inside += std::pow(intensity.val[0],2);
 	//	if (hinbolt) hinbolt->Fill( intensity.val[0] );
       } else if ( cur_radius < n*circ_r) {
 	++noutside;
 	avg_outside += intensity.val[0];
+	sqr_outside += std::pow(intensity.val[0],2);
 	//	if (houtbolt) houtbolt->Fill( intensity.val[0] );
 
       }
     }
   }
+  
+ 
+ 
 
   if ( ninside >0 && noutside >0 ){
+    try{
     //    return avg_outside/(pow(circ_r+3,2)-pow(circ_r,2));
     //return (avg_inside/ninside)  / (avg_outside/noutside) ;
+    if(config::Get_int("do_avg")){
     return (avg_inside/ninside) / (avg_outside/noutside) ;
-  }
+    }
 
-    
+    if(config::Get_int("do_rms")){
+      return (std::sqrt(sqr_inside)/ninside)/(std::sqrt(sqr_outside)/noutside);
+    }  
+}
+ catch ( std::string e ){
+    std::cout<<"Error with config file key "<<e<<std::endl;
+  }  
+  }
+  
+
   return -1.;
 
 }
@@ -278,5 +295,13 @@ void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, 
 void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image){
   for( size_t i = 0; i < data.size(); i++ ) {
     image.at<uchar>(data[i][1], data[i][0]) = 255 ;
+  }
+}
+
+void draw_text_circles(cv::Mat &img, const MedianTextData& mtd){
+  for ( const MedianTextRecord & rec : mtd ){
+    cv::Point center_text(rec.x(), rec.y());
+    //used radius of 10 pixels and green color.                               
+    circle( img, center_text, 10, cv::Scalar(0,255,0), 1, 8, 0 );
   }
 }

@@ -11,14 +11,6 @@ using std::vector;
  
 using namespace cv;
 
-void draw_text_circles(Mat &img, const MedianTextData& mtd){
-for ( const MedianTextRecord & rec : mtd ){
-      Point center_michel(rec.x(), rec.y());   
-      //used radius of 10 pixels and green color.
-      circle( img, center_michel, 10, Scalar(0,255,0), 1, 8, 0 );
-    }
-}
-
 int main(int argc, char** argv )
 {
     if ( argc != 3 )

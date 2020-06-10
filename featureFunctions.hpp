@@ -48,4 +48,6 @@ void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, 
 //Draws point from data containing x,y,r value at x,y  
 void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image);
 
+//Draw circle from text file
+void draw_text_circles(cv::Mat &img, const MedianTextData& mtd);
 #endif

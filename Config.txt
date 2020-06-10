@@ -56,3 +56,7 @@ sec_hough_param1 = 1 # threshold placed on image| Minimum brightness to use for 
 sec_hough_param2 = 3 #5  # minimum accumulator value to call it a circle
 sec_hough_minR = 90 #80 # minimum radius in pixels
 sec_hough_maxR = 116 #120 # maximum radius in pixels
+
+#Choose to make rsm histogram or mean histogram.
+do_avg = 0 #1 for true 0 for false
+do_rms = 1
