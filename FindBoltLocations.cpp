@@ -171,7 +171,7 @@ int main(int argc, char** argv )
       temp[1]=y;
       temp[2]=r;
       blobs.push_back(temp);
-      }
+    }
       
     //Draws circle from data to the input image
     draw_circle_from_data(blobs, img_blob_map, Scalar(0,0,255));
@@ -209,14 +209,14 @@ int main(int argc, char** argv )
     }
 
     //Blob analysis
-    TH1D* blob_metric_all  = new TH1D("Blob_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
-    TH1D* blob_metric_good = new TH1D("Blob_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
-    TH1D* blob_metric_bad  = new TH1D("Blob_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
+    TH1D* blob_metric_all  = new TH1D("Blob_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",200, 0.0, 10.0);
+    TH1D* blob_metric_good = new TH1D("Blob_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",200,  0.0, 10.0);
+    TH1D* blob_metric_bad  = new TH1D("Blob_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",200, 0.0, 10.0);
 
-    TH2D* blob_metric_2d   = new TH2D("Blob_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 20 );
-    TH1D *blob_dist = new TH1D("bolt_distance from blob","Distance to closest bolt using blob; distance (pixels); count/bin", 1001, 0.5, 500.5);
-    TH1D* text_to_blob_dist = new TH1D("blob_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
-    TH1D* blob_metric_inb  = new TH1D("blob_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+    TH2D* blob_metric_2d   = new TH2D("Blob_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 51, -0.5, 49.5, 100, 0., 10 );
+    TH1D *blob_dist = new TH1D("bolt_distance from blob","Distance to closest bolt using blob; distance (pixels); count/bin", 51, -0.5, 49.5);
+    TH1D* text_to_blob_dist = new TH1D("blob_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin", 51, -0.5, 49.5);
+    TH1D* blob_metric_inb  = new TH1D("blob_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",200, 0.0, 50.0 ); 
 
     
     //Find matches bewteen blobs found and bolts labelled in the text file
@@ -234,13 +234,13 @@ int main(int argc, char** argv )
     histogram_inbetween(blobs, mtd, blob_matches, image, blob_metric_inb);
     
     //Hough analysis
-    TH1D* hough_metric_all  = new TH1D("Hough_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
-    TH1D* hough_metric_good = new TH1D("Hough_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
-    TH1D* hough_metric_bad  = new TH1D("Hough_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
-    TH2D* hough_metric_2d   = new TH2D("Hough_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 100, -0.5, 99.5, 101, -1.5, 20 );
-    TH1D* hough_dist = new TH1D("bolt_distance","Distance to closest bolt Using Hough; distance (pixels); Count/bin",1001, 0.5, 500.5);
-    TH1D* text_to_hough_dist = new TH1D("hough_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
-    TH1D* hough_metric_inb  = new TH1D("hough_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5); 
+    TH1D* hough_metric_all  = new TH1D("Hough_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",200, 0., 10.);
+    TH1D* hough_metric_good = new TH1D("Hough_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",200, 0., 10.);
+    TH1D* hough_metric_bad  = new TH1D("Hough_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",200, 0., 10.);
+    TH2D* hough_metric_2d   = new TH2D("Hough_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 51, -0.5, 49.5, 100, 0, 10 );
+    TH1D* hough_dist = new TH1D("bolt_distance","Distance to closest bolt Using Hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
+    TH1D* text_to_hough_dist = new TH1D("hough_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin", 51, -0.5, 49.5);
+    TH1D* hough_metric_inb  = new TH1D("hough_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",200, 0., 10.); 
 
     /// Find matches between circles found and bolts labelled in text file
     vector< IndexMatchDist > bolt_matches = find_closest_matches( circles, mtd );    
@@ -298,6 +298,39 @@ int main(int argc, char** argv )
     imwrite( outputname, image_color );
     outputname = build_output_filename( argv[1], "blob_text" );
     imwrite( outputname, img_blob_map );
+
+
+    /*
+      Take circles_of_blob to select which bolts are good blobs
+      inputs: 
+        vector<Vec3f> blobs;  // (x,y,r)
+	vector<Vec3f> circles_of_blob;  // (x,y,r)
+	
+      output:
+        vector<Vec3f> final_bolts; // bolt locations selected
+     */
+    vector<Vec3f> final_bolts; // bolt locations selected
+    TH1D* blob_dist2 = new TH1D("bolt_distance2","Distance to closest bolt using blob + second hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
+    
+    // loop over circles_of_blob
+    for ( const Vec3f & pmtloc : circles_of_blob ) {
+      // loop over bolts to see if it is on the pmt circle
+      //unsigned nbolts = 0;
+      vector<Vec3f> bolts_on_this_pmt;
+      for ( const Vec3f & boltloc : blobs ) {
+	// calculate distance from the PMT circle to the bolt location
+	// only add ones with distance less than (2?) pixels to add to bolts_on_this_pmt
+	// count/and print them after
+
+      }
+
+      // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
+      // fill blob_dist2 histogram
+
+      // print out matches
+    }
+
+
 
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
