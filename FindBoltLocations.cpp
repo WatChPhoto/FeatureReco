@@ -25,6 +25,8 @@ int main(int argc, char** argv )
         printf("No image data \n");
         return -1;
     }
+    Mat image_final = image_color.clone();
+
 
     /// build output image
     Mat image;
@@ -310,11 +312,14 @@ int main(int argc, char** argv )
         vector<Vec3f> final_bolts; // bolt locations selected
      */
     vector<Vec3f> final_bolts; // bolt locations selected
+    vector<Vec3f> final_PMTs; // PMT circles selected
+    vector<float> final_dists;
     TH1D* blob_dist2 = new TH1D("bolt_distance2","Distance to closest bolt using blob + second hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
     
-    // loop over circles_of_blob
+    // loop over circles_of_blob 
+    // which is the circles of multiple bolts (multiple blobs making circle around PMT)
     for ( const Vec3f & pmtloc : blob_circles_of_bolts ) {
-      // loop over bolts to see if it is on the pmt circle
+      // loop over bolts (blobs)0 to see if it is on the pmt circle
       //unsigned nbolts = 0;
       vector<Vec3f> bolts_on_this_pmt;
       for ( const Vec3f & boltloc : blobs ) {
@@ -327,35 +332,44 @@ int main(int argc, char** argv )
         int boltx = cvRound(boltloc[0]);
         int bolty = cvRound(boltloc[1]);
         float dist = std::sqrt(std::pow((pmtx-boltx),2)+std::pow((pmty-bolty),2));
-        if(dist>(pmtr-2) && dist<(pmtr+2)){
+        //if(dist>(pmtr-2) && dist<(pmtr+2)){
+	if ( fabs( pmtr - dist ) < 3 ) {
           Vec3f temp;
           temp[0]= boltx;
           temp[1]= bolty;
-          temp[2]= abs(dist-pmtr);
+          temp[2]= boltloc[2];
+	  final_dists.push_back( abs(dist-pmtr) );
           bolts_on_this_pmt.push_back(temp);
-
-      }
-      }
-
-      // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
-	if(bolts_on_this_pmt.size()>5){
-	   final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
+	  
 	}
-      // fill blob_dist2 histogram
-	
-	  // print out matches
-	//	std::cout<<"x "<<final_bolts[final_bolts.size()-1]
+      }
+      
+      // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
+      if( bolts_on_this_pmt.size() > 9 ) {
+	final_PMTs.push_back( pmtloc );
+	final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
+      }
     }
 
     //Fill bolb_dist2 histogram
-    for(Vec3f final: final_bolts){
-      blob_dist2->Fill(final[2]);
+    for(float final: final_dists){
+      blob_dist2->Fill(final);
     }
     
- std::cout<<"########################################"<<std::endl;
+    std::cout<<"########################################"<<std::endl;
     std::cout<<blob_circles_of_bolts.size()<<std::endl;
     std::cout<<blobs.size()<<std::endl;
     std::cout<<final_bolts.size()<<std::endl;
+
+
+    // Make image of final answer
+    // add the circles for the PMTs selected
+    draw_circle_from_data( final_PMTs, image_final, Scalar(255,102,255), 2);
+    draw_circle_from_data( final_bolts, image_final, Scalar( 0, 0, 255), 3);
+    draw_text_circles( image_final, mtd );
+
+    outputname = build_output_filename( argv[1], "final" );
+    imwrite( outputname, image_final );
 
 
     } catch ( std::string e ){
