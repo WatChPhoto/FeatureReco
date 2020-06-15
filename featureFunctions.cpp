@@ -247,6 +247,7 @@ void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const M
   //Edit end
 }
 
+
 //Make histogram of metric of inbetween points that aren't mapped to the circles from the text file
 void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121, cv::Mat imbw, TH1D *&metric_inb){
   int x_min = 100000, x_max= -1;
@@ -279,14 +280,14 @@ void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianText
   }
 }
 
-void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color){
+void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color, int line_width  ){
   for( size_t i = 0; i < data.size(); i++ ) {
     cv::Point center(cvRound(data[i][0]), cvRound(data[i][1]));
     int radius = cvRound(data[i][2]);
     // draw the circle center                                                                                                               
     //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );                                                                           
     // draw the circle outline                                                                                                              
-    cv::circle( image, center, radius, color, 1, 8, 0 );
+    cv::circle( image, center, radius, color, line_width, 8, 0 );
     std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<data[i][0]<<", "<<data[i][1]<<" )"<<std::endl;
   }
   std::cout<<"=============================================================================="<<std::endl;

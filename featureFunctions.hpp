@@ -43,7 +43,7 @@ void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const M
 void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121, cv::Mat imbw, TH1D *&metric_inb);
 
 //Draws circle from data containing x,y,r info
-void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color = (0,255,0));
+void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color = (0,255,0), int line_width=1);
 
 //Draws point from data containing x,y,r value at x,y  
 void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image);
