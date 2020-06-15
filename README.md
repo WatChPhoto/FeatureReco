@@ -31,19 +31,12 @@ Output file names are:
 *  FindBoltLocation.root      -- root histograms
 </pre>
 To do list:
-Updates to output michel.jpg
-* Make red and green circles 1 pixel wide                                             ---Completed
-* Add a blue line from the matches between red and green circles (for distance < some threshold)
-Updtes to histogram_ch0.root                                                          ---Completed. Added black line instead for visiblity reason.
-* Rename output root file to FindBoltLocations.root                                   ---Completed
-* make histogram of distance from each green circle (instead of from each red circle) ---Completed.
-* update range of histogram... distance can only be positive 
-Pick a run to use to do optimization on, and check optimization histogram is okay.
-Optimize mean of above histogram by changing filter parametres and hough parameters
-* write script to run many different parameter variations (eg. in bash, sed to edit Config.txt, awk to parse a string; or use python)
-* each run done in a seperate folder, and save config file to that folder
-* write a root macro to collect results from the parameter scans
-
+* Add a verbosity flag to Config.txt to turn on/off printing out debug info
+* Add flags to Config.txt to turn on/off saving images
+* Save bolts found to a textfile
+* Have second running mode where [bolt-location-textfile-with-path]
+  isn't given, and then try to identify bolt locations but no
+  diagnositcs of how well it did
 
 
 
