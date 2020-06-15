@@ -197,7 +197,7 @@ int main(int argc, char** argv )
   
     draw_circle_from_data(circles, image_color, Scalar(0,0,255));
 
-    outputname = build_output_filename( argv[1], "circles" );
+    outputname = build_output_filename( argv[1], "hough" );
     imwrite( outputname, image_color );
   
     /// Read in bolt locations
@@ -238,7 +238,7 @@ int main(int argc, char** argv )
     TH1D* hough_metric_good = new TH1D("Hough_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",200, 0., 10.);
     TH1D* hough_metric_bad  = new TH1D("Hough_Metric_bad" , "Bolt metric for un-matched circles  ;Inside to outside Intensity ratio; Count",200, 0., 10.);
     TH2D* hough_metric_2d   = new TH2D("Hough_Metric_2d", " Bolt metric vs distance to bolt;  Distance to bolt (pixels); Bolt Metric", 51, -0.5, 49.5, 100, 0, 10 );
-    TH1D* hough_dist = new TH1D("bolt_distance","Distance to closest bolt Using Hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
+    TH1D* hough_dist = new TH1D("hough_bolt_distance","Distance to closest bolt Using Hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
     TH1D* text_to_hough_dist = new TH1D("hough_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin", 51, -0.5, 49.5);
     TH1D* hough_metric_inb  = new TH1D("hough_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",200, 0., 10.); 
 
@@ -272,9 +272,9 @@ int main(int argc, char** argv )
     imwrite( outputname, img_circles );
  
     /// Look for circles of bolts
-    vector<Vec3f> circles_of_bolts;
+    vector<Vec3f> hough_circles_of_bolts;
     //Look for circles of bolts from blob
-    vector<Vec3f> circles_of_blob;
+    vector<Vec3f> blob_circles_of_bolts;
     dp = config::Get_int("sec_hough_dp"); //if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
     minDist = config::Get_int("sec_hough_minDist");  // min distance between circles
     param1 = config::Get_int("sec_hough_param1");   // threshold placed on image
@@ -282,12 +282,12 @@ int main(int argc, char** argv )
     minR   = config::Get_int("sec_hough_minR");   //= 3 # minimum radius in pixels
     maxR   = config::Get_int("sec_hough_maxR");  // = 10 # maximum radius in pixels
     
-    HoughCircles( blob_circles, circles_of_blob, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
-    HoughCircles( img_circles, circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+    HoughCircles( blob_circles, blob_circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
+    HoughCircles( img_circles, hough_circles_of_bolts, HOUGH_GRADIENT, dp, minDist, param1, param2, minR, maxR );
 
     //Overlays detected circles from second hough transfrom
-    draw_circle_from_data(circles_of_bolts, image_color, Scalar(255,102,255));
-    draw_circle_from_data(circles_of_blob, img_blob_map, Scalar(255,102,255));
+    draw_circle_from_data(hough_circles_of_bolts, image_color, Scalar(255,102,255));
+    draw_circle_from_data(blob_circles_of_bolts, img_blob_map, Scalar(255,102,255));
     
     //Draw text file circles
     draw_text_circles(image_color, mtd);
@@ -313,7 +313,7 @@ int main(int argc, char** argv )
     TH1D* blob_dist2 = new TH1D("bolt_distance2","Distance to closest bolt using blob + second hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
     
     // loop over circles_of_blob
-    for ( const Vec3f & pmtloc : circles_of_blob ) {
+    for ( const Vec3f & pmtloc : blob_circles_of_bolts ) {
       // loop over bolts to see if it is on the pmt circle
       //unsigned nbolts = 0;
       vector<Vec3f> bolts_on_this_pmt;
@@ -321,15 +321,41 @@ int main(int argc, char** argv )
 	// calculate distance from the PMT circle to the bolt location
 	// only add ones with distance less than (2?) pixels to add to bolts_on_this_pmt
 	// count/and print them after
+	int pmtx = cvRound(pmtloc[0]);
+        int pmty = cvRound(pmtloc[1]);
+	float pmtr= cvRound(pmtloc[2]);
+        int boltx = cvRound(boltloc[0]);
+        int bolty = cvRound(boltloc[1]);
+        float dist = std::sqrt(std::pow((pmtx-boltx),2)+std::pow((pmty-bolty),2));
+        if(dist>(pmtr-2) && dist<(pmtr+2)){
+          Vec3f temp;
+          temp[0]= boltx;
+          temp[1]= bolty;
+          temp[2]= abs(dist-pmtr);
+          bolts_on_this_pmt.push_back(temp);
 
+      }
       }
 
       // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
+	if(bolts_on_this_pmt.size()>5){
+	   final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
+	}
       // fill blob_dist2 histogram
-
-      // print out matches
+	
+	  // print out matches
+	//	std::cout<<"x "<<final_bolts[final_bolts.size()-1]
     }
 
+    //Fill bolb_dist2 histogram
+    for(Vec3f final: final_bolts){
+      blob_dist2->Fill(final[2]);
+    }
+    
+ std::cout<<"########################################"<<std::endl;
+    std::cout<<blob_circles_of_bolts.size()<<std::endl;
+    std::cout<<blobs.size()<<std::endl;
+    std::cout<<final_bolts.size()<<std::endl;
 
 
     } catch ( std::string e ){
