@@ -11,13 +11,25 @@ using std::vector;
  
 using namespace cv;
 
+MedianTextData assign(int argc, string argv){
+  if(argc==2){MedianTextData a; return a;}
+  if(argc==3){
+    MedianTextReader *boltreader = MedianTextReader::Get();
+    boltreader->set_input_file( string( argv ) );
+    return boltreader->get_data();
+  }
+}
+
 int main(int argc, char** argv )
 {
-    if ( argc != 3 )
+    
+if ( argc != 2&&argc!=3 )
     {
-        printf("usage: FindBoltLocations <Input_image_with_path> <median-bolt-loc-filename>\n");
+        printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
         return -1;
     }
+//mode 0 means 2 argument mode and mode 1 means 3 arg mode.
+ bool mode = argc-2;
 
     Mat image_color = imread( argv[1],  IMREAD_COLOR ); //IMREAD_GRAYSCALE,
     if ( !image_color.data )
@@ -203,13 +215,22 @@ int main(int argc, char** argv )
     imwrite( outputname, image_color );
   
     /// Read in bolt locations
-    MedianTextReader *boltreader = MedianTextReader::Get();
-    boltreader->set_input_file( string( argv[2] ) );
-    const MedianTextData& mtd = boltreader->get_data();
+
+    /* const extern int i; // declare in *.h file
+
+    const int i = [](){ // init
+      return 10;
+    }();
+    */
+    
+
+    const MedianTextData& mtd = assign(argc, string(argv[argc-1]));
     for ( const MedianTextRecord & rec : mtd ){
       std::cout<< rec;
     }
-
+    
+//Only performs blob, hough analysis and read from text if there are three argument.    
+if(mode){
     //Blob analysis
     TH1D* blob_metric_all  = new TH1D("Blob_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",200, 0.0, 10.0);
     TH1D* blob_metric_good = new TH1D("Blob_Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",200,  0.0, 10.0);
@@ -219,7 +240,7 @@ int main(int argc, char** argv )
     TH1D *blob_dist = new TH1D("bolt_distance from blob","Distance to closest bolt using blob; distance (pixels); count/bin", 51, -0.5, 49.5);
     TH1D* text_to_blob_dist = new TH1D("blob_bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin", 51, -0.5, 49.5);
     TH1D* blob_metric_inb  = new TH1D("blob_metric_inbetween" , "Bolt metric for inbetween circles ;Inside to outside Intensity ratio; Count",200, 0.0, 50.0 ); 
-
+    
     
     //Find matches bewteen blobs found and bolts labelled in the text file
     vector< IndexMatchDist > blob_matches = find_closest_matches( blobs, mtd );    
@@ -258,7 +279,7 @@ int main(int argc, char** argv )
     
     //Make a histogram for the metric of inbetween points
     histogram_inbetween(circles, mtd, bolt_matches, image, hough_metric_inb);
-
+    }
    
     /*work on this
     //Make a histogram of closest distance from one of text record to found blob
@@ -292,9 +313,11 @@ int main(int argc, char** argv )
     draw_circle_from_data(blob_circles_of_bolts, img_blob_map, Scalar(255,102,255));
     
     //Draw text file circles
+    //Only if there are three arguments
+    if(mode){
     draw_text_circles(image_color, mtd);
     draw_text_circles(img_blob_map, mtd);
-    
+    }
     //save images
     outputname = build_output_filename( argv[1], "hough_text" );
     imwrite( outputname, image_color );
@@ -338,7 +361,7 @@ int main(int argc, char** argv )
           temp[0]= boltx;
           temp[1]= bolty;
           temp[2]= boltloc[2];
-	  final_dists.push_back( abs(dist-pmtr) );
+	  final_dists.push_back( fabs(dist-pmtr) );
           bolts_on_this_pmt.push_back(temp);
 	  
 	}
@@ -366,12 +389,13 @@ int main(int argc, char** argv )
     // add the circles for the PMTs selected
     draw_circle_from_data( final_PMTs, image_final, Scalar(255,102,255), 2);
     draw_circle_from_data( final_bolts, image_final, Scalar( 0, 0, 255), 3);
+    if(mode){
     draw_text_circles( image_final, mtd );
-
+    }
     outputname = build_output_filename( argv[1], "final" );
     imwrite( outputname, image_final );
 
-
+    
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
     }
