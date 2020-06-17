@@ -48,7 +48,7 @@ std::vector< IndexMatchDist > find_closest_matches( const std::vector<cv::Vec3f>
   int i=0;
 
   for (const MedianTextRecord & rec : mtd ){
-    float  mindist = 10000;
+    float  mindist =10000;
     int index = 0, j = 0;
     for ( const cv::Vec3f & circ : circles ){
       float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
@@ -165,11 +165,8 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
 
       }
     }
-  }
-  
+  } 
  
- 
-
   if ( ninside >0 && noutside >0 ){
     try{
     //    return avg_outside/(pow(circ_r+3,2)-pow(circ_r,2));
@@ -187,9 +184,7 @@ double calculate_bolt_metric( const cv::Vec3f& circ, const cv::Mat& img ) {
   }  
   }
   
-
   return -1.;
-
 }
 
 //edited
@@ -197,7 +192,6 @@ void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, co
   //TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
   //hout1->SetAxisRange(0,501,"X");
 
- 
   for (const MedianTextRecord & rec : mtd ){
     float  mindist = 10000;
     unsigned x,y;
@@ -214,7 +208,7 @@ void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, co
 
 
 
-void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw,  cv::Mat &imcol, TH1D *&metric_all, TH1D *&metric_good, TH1D *&metric_bad, TH2D *&metric_2d){
+void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw, TH1D *&metric_all, TH1D *&metric_good, TH1D *&metric_bad, TH2D *&metric_2d){
   /*  
   TH1D* metric_all  = new TH1D("Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
   TH1D* metric_good = new TH1D("Metric_good", "Bolt metric for matched circles ;Inside to outside Intensity ratio; Count",502, -1.5, 255.5);
@@ -233,18 +227,24 @@ void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const M
       metric_bad->Fill( metric_val );
     }
     metric_2d->Fill( mindist,  metric_val );
+  }
+  //imwrite("new.jpg",imbw);
+  //Edit end
+}
 
+//Draws line using given data121
+//Data 121 maps text data to found circles one-to-one.
+void draw_line(const std::vector<cv::Vec3f>& circles, const std::vector< IndexMatchDist >& data121, const MedianTextData& mtd, cv::Mat &imcol ){
+  for ( const IndexMatchDist & rec : data121 ){
+    int index = rec.idx_circ;
     int in = rec.idx_txt;
     int m_x= mtd[in].x();
     int m_y= mtd[in].y();
     int x=circles[index][0];
     int y=circles[index][1];
-    // if(mindist <100)
-    { arrowedLine(imcol, cv::Point(m_x,m_y), cv::Point(x,y),  (0,0,0)); }
-  
-  }
-  //imwrite("new.jpg",imbw);
-  //Edit end
+    //line(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int lineType=8, int shift=0)
+    line(imcol, cv::Point(m_x,m_y), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
+}
 }
 
 

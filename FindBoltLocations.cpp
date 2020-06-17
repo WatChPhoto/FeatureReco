@@ -270,7 +270,11 @@ if(mode){
     make_bolt_dist_histogram_wrt_txt( blobs, mtd, text_to_blob_dist );
  
     //Make histograms of all metric, good metric and bad metric. 
-    make_bolt_metric_histograms( blobs, mtd, blob_matches, image, img_blob_map, blob_metric_all, blob_metric_good, blob_metric_bad, blob_metric_2d );
+    make_bolt_metric_histograms( blobs, blob_matches, image, blob_metric_all, blob_metric_good, blob_metric_bad, blob_metric_2d );
+   
+    //Draws line between matches in a given image
+    draw_line(blobs, blob_matches, mtd, img_blob_map );
+
     //Make a histogram for the metric of inbetween points
     histogram_inbetween(blobs, mtd, blob_matches, image, blob_metric_inb);
     
@@ -293,8 +297,11 @@ if(mode){
     make_bolt_dist_histogram_wrt_txt( circles, mtd, text_to_hough_dist );
 
     //Make histograms of all metric, good metric and bad metric. 
-    make_bolt_metric_histograms( circles, mtd, bolt_matches, image, image_color, hough_metric_all, hough_metric_good, hough_metric_bad, hough_metric_2d );
+    make_bolt_metric_histograms( circles, bolt_matches, image, hough_metric_all, hough_metric_good, hough_metric_bad, hough_metric_2d );
     
+    //Draws line between matches in a given image
+    draw_line(circles, bolt_matches, mtd, image_color );
+
     //Make a histogram for the metric of inbetween points
     histogram_inbetween(circles, mtd, bolt_matches, image, hough_metric_inb);
     }
@@ -393,7 +400,7 @@ if(mode){
 	final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
       }
     }
-
+   
     //Fill bolb_dist2 histogram
     for(float final: final_dists){
       blob_dist2->Fill(final);
@@ -403,8 +410,19 @@ if(mode){
     // add the circles for the PMTs selected
     draw_circle_from_data( final_PMTs, image_final, Scalar(255,102,255), 2);
     draw_circle_from_data( final_bolts, image_final, Scalar( 0, 0, 255), 3);
+   
     if(mode){
-    draw_text_circles( image_final, mtd );
+      draw_text_circles( image_final, mtd );
+      //Find bolt match
+      vector< IndexMatchDist > final_matches = find_closest_matches( final_bolts, mtd );
+      //Draw line
+      draw_line(final_bolts, final_matches, mtd, image_final );
+      //Distance histogram
+      TH1D *final_dist = new TH1D("bolt_distance final","Distance to closest bolt; distance (pixels); count/bin", 51, -0.5, 49.5);
+      make_bolt_dist_histogram(final_matches, final_dist);
+      //testing purpose
+      std::cout<<"#########################################"<<std::endl;
+      std::cout<<"final size "<<final_bolts.size()<<" match size "<<final_matches.size()<<" Mtd size "<<mtd.size()<<std::endl;
     }
     
     if(option[0]){
