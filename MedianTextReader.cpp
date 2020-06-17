@@ -6,9 +6,25 @@ MedianTextRecord::MedianTextRecord( unsigned num, unsigned pmt, unsigned bolt, u
 
 MedianTextRecord::MedianTextRecord() : fNum( 0 ), fPMT( 0 ), fBolt( 0 ), fX( 0) , fY( 0 ), fID("" ) { }
 
-bool MedianTextRecord::is_bolt(){  
-if(fPMT<19999 && fBolt<25) {return true;}   //finds if the data is really a bolt.
- return false;
+bool MedianTextRecord::is_bolt(){
+  
+  /*
+    ## Numbering Convention
+    
+  20001: UK B1
+  00: Center of diffuser ball
+  
+  30001: Korean B1
+  00-07: Bolts clockwise from top-left
+
+  <19999: PMTs
+   00: Center of dynode (or light reflection for labels PD1/2)
+   01-24: Bolts clockwise from top center (+z)
+   25: Centroid of light reflection nearest dynode center
+   26+: First dark ring around dynode center
+  */
+  if ( fPMT<19999 && fBolt > 0 && fBolt < 25) { return true; }   //finds if the data is really a bolt.
+  return false;
 }
 
 std::istream& operator>>( std::istream& in, MedianTextRecord & rec ){

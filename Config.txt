@@ -3,7 +3,7 @@
             #whitespace insensative.
 #format is [variable] = [value]
 #filters, circled, Candidate, text, final
-save_option = 11111
+save_option = 00001
 
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
