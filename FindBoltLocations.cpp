@@ -11,6 +11,8 @@ using std::vector;
  
 using namespace cv;
 
+//Returns the data from text file
+//Returns empty vector if text file is not supplied.
 MedianTextData assign(int argc, string argv){
   if(argc==2){MedianTextData a; return a;}
   if(argc==3){
@@ -20,10 +22,27 @@ MedianTextData assign(int argc, string argv){
   }
 }
 
+//flags to turn on/off saving images
+vector<bool> setup(){
+  vector <bool> options;
+  try {
+    int option = config::Get_int("save_option");
+    
+    for(int i=0; i<5;i++){
+      options.push_back(bool(option%2));
+      option /= 10;
+    }
+
+  } catch ( std::string e ){
+      std::cout<<"Error with config file key "<<e<<std::endl;
+    }
+  return options;  
+}
+
 int main(int argc, char** argv )
 {
     
-if ( argc != 2&&argc!=3 )
+if ( argc != 2 && argc!=3 )
     {
         printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
         return -1;
@@ -37,8 +56,10 @@ if ( argc != 2&&argc!=3 )
         printf("No image data \n");
         return -1;
     }
+    //option has final, text, candidate, circled, filters
+    const vector<bool>& option =  setup();
+    
     Mat image_final = image_color.clone();
-
 
     /// build output image
     Mat image;
@@ -52,14 +73,17 @@ if ( argc != 2&&argc!=3 )
     // Gaussian blur
     Mat img_blur = image.clone();
     try {
+      //bool debug = config::Get_int("debug");
     bool do_gaus_blur = (bool)config::Get_int("do_gaus_blur");
 
     if (do_gaus_blur){
       int blurpixels = config::Get_int("blurpixels");            // size of kernel in pixels (must be odd)
       double blursigma = config::Get_double("blursigma");        // sigma of gaussian in pixels
       GaussianBlur( image, img_blur, Size( blurpixels, blurpixels ), blursigma );
+      if(option[4]){
       outputname = build_output_filename( argv[1], "gausblur" );
       imwrite( outputname, img_blur );
+      }
     }
 
     // Bilateral filter
@@ -70,9 +94,10 @@ if ( argc != 2&&argc!=3 )
       int sigColor = config::Get_int("sigColor"); // range of colours to call the same
       int sigSpace = config::Get_int("sigSpace"); // ???
       bilateralFilter ( image, img_flt, d, sigColor, sigSpace );
-
+      if(option[4]){
       outputname = build_output_filename( argv[1], "bifilter" );
       imwrite( outputname, img_flt );
+      }
     }
 
     /// Do Sobel edge detection
@@ -101,8 +126,10 @@ if ( argc != 2&&argc!=3 )
       /// Total Gradient (approximate)
       addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
+      if(option[4]){
       outputname = build_output_filename( argv[1], "sobel" );
       imwrite( outputname, grad );
+      }
     }
 
     //Canny edge detector.                                                                                                                   
@@ -113,10 +140,10 @@ if ( argc != 2&&argc!=3 )
     if ( do_canny ){
       Canny(grad, img_can, thresh_low, thresh_high );
 
+      if(option[option.size()-1]){
       outputname = build_output_filename( argv[1], "canny" );
-
       imwrite(outputname,img_can);
-
+      }
     }
     
     histogram_channel0( img_can, "hbefore_thres_cut" );
@@ -163,15 +190,6 @@ if ( argc != 2&&argc!=3 )
     // Detect blobs.                                                                                                                        
     std::vector<KeyPoint> keypoints;
     detector->detect( img_blob, keypoints);
-
-    /*
-    // Draw detected blobs as red circles.                                                                                                  
-    // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures the size of the circle corresponds to the size of blob                            
-    Mat im_with_keypoints;
-    drawKeypoints( img_blob, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
-
-    imwrite("keypoints.jpg",im_with_keypoints);
-    */
     
     //blob vector will contain x,y,r
     vector<Vec3f> blobs;
@@ -189,14 +207,18 @@ if ( argc != 2&&argc!=3 )
       
     //Draws circle from data to the input image
     draw_circle_from_data(blobs, img_blob_map, Scalar(0,0,255));
+    if(option[3]){
     outputname = build_output_filename( argv[1], "blob" );
     imwrite( outputname, img_blob_map );        
-
+    }
     // Make image that just has circle centers from blob detection
     Mat blob_circles = Mat::zeros( image.size(), image.type() );
     draw_found_center(blobs, blob_circles);
+    
+    if(option[2]){
     outputname = build_output_filename( argv[1], "blobCandidate" );
     imwrite(outputname, blob_circles);
+    }
     // Blobend               
     
     /// Hough Transform
@@ -211,25 +233,21 @@ if ( argc != 2&&argc!=3 )
   
     draw_circle_from_data(circles, image_color, Scalar(0,0,255));
 
+    if(option[3]){
     outputname = build_output_filename( argv[1], "hough" );
     imwrite( outputname, image_color );
-  
+    }
     /// Read in bolt locations
-
-    /* const extern int i; // declare in *.h file
-
-    const int i = [](){ // init
-      return 10;
-    }();
-    */
-    
-
+    //Returns empty vector if text file is not supplied.
     const MedianTextData& mtd = assign(argc, string(argv[argc-1]));
+    //Debug information PMt
+    //if(debug){
     for ( const MedianTextRecord & rec : mtd ){
       std::cout<< rec;
     }
+    //}
     
-//Only performs blob, hough analysis and read from text if there are three argument.    
+//Only performs blob and hough analysis if there are three argument.    
 if(mode){
     //Blob analysis
     TH1D* blob_metric_all  = new TH1D("Blob_Metric_all" , "Bolt metric for all circles ;Inside to outside Intensity ratio; Count",200, 0.0, 10.0);
@@ -291,9 +309,10 @@ if(mode){
     Mat img_circles = Mat::zeros( image.size(), image.type() );
     draw_found_center(circles, img_circles);
     
+    if(option[2]){
     outputname = build_output_filename( argv[1], "houghCandidate" );
     imwrite( outputname, img_circles );
- 
+    }
     /// Look for circles of bolts
     vector<Vec3f> hough_circles_of_bolts;
     //Look for circles of bolts from blob
@@ -319,11 +338,12 @@ if(mode){
     draw_text_circles(img_blob_map, mtd);
     }
     //save images
+    if(option[1]){
     outputname = build_output_filename( argv[1], "hough_text" );
     imwrite( outputname, image_color );
     outputname = build_output_filename( argv[1], "blob_text" );
     imwrite( outputname, img_blob_map );
-
+    }
 
     /*
       Take circles_of_blob to select which bolts are good blobs
@@ -379,12 +399,6 @@ if(mode){
       blob_dist2->Fill(final);
     }
     
-    std::cout<<"########################################"<<std::endl;
-    std::cout<<blob_circles_of_bolts.size()<<std::endl;
-    std::cout<<blobs.size()<<std::endl;
-    std::cout<<final_bolts.size()<<std::endl;
-
-
     // Make image of final answer
     // add the circles for the PMTs selected
     draw_circle_from_data( final_PMTs, image_final, Scalar(255,102,255), 2);
@@ -392,9 +406,11 @@ if(mode){
     if(mode){
     draw_text_circles( image_final, mtd );
     }
+    
+    if(option[0]){
     outputname = build_output_filename( argv[1], "final" );
     imwrite( outputname, image_final );
-
+    }
     
     } catch ( std::string e ){
       std::cout<<"Error with config file key "<<e<<std::endl;
