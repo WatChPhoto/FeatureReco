@@ -4,14 +4,15 @@ Code to do feature recognition to locate bolts and PMT centers.  Implemented usi
 
 You will need a copy of opencv libraries installed.  To build the code:
 
-cd FeatureReco
-cmake .
-make
+> cd FeatureReco
+> cmake .
+> make
 
 
 # Undistortion program
 
 Simple program to take input JPG, apply undistortion, and write out undistoted image.
+
 
 ./UndistortImage /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG [output-file]
 
@@ -32,15 +33,13 @@ Output file names are:
 </pre>
 To do list:
 * Add a verbosity flag to Config.txt to turn on/off printing out debug info
-* Add flags to Config.txt to turn on/off saving images
-* Save bolts found to a textfile
-* Have second running mode where [bolt-location-textfile-with-path]
-  isn't given, and then try to identify bolt locations but no
-  diagnositcs of how well it did
-
-
-
-
+* Save bolts found to a textfile, as well as PMTs (pmt_id?,
+  pmt_center_x, pmt_center_y, pmt_radius, bolt_number, bolt_x, bolt_y)
+* Add histograms of geometric quantities from the bolts that are on
+  the final circles: (angle around circle, distance from center of
+  circle, distance to closest other bolt) for both the ones we find, and those from text file.
+* Consider ellipse hough instead of circle to find the PMT rings of bolts?
+[Paper for hough ellipse][http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf]
 
 
 

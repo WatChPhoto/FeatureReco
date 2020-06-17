@@ -361,6 +361,17 @@ if(mode){
       output:
         vector<Vec3f> final_bolts; // bolt locations selected
      */
+    // only accept PMTs that are more than some number of pixels away from edge of image
+    const unsigned trim_pixels = 600;
+    int ywidth = image.rows;
+    int xwidth = image.cols;
+    int xmin = trim_pixels;
+    int xmax = xwidth-trim_pixels;
+    int ymin = trim_pixels;
+    int ymax = ywidth-trim_pixels;
+    
+
+
     vector<Vec3f> final_bolts; // bolt locations selected
     vector<Vec3f> final_PMTs; // PMT circles selected
     vector<float> final_dists;
@@ -371,19 +382,22 @@ if(mode){
     for ( const Vec3f & pmtloc : blob_circles_of_bolts ) {
       // loop over bolts (blobs)0 to see if it is on the pmt circle
       //unsigned nbolts = 0;
+      int pmtx = cvRound(pmtloc[0]);
+      int pmty = cvRound(pmtloc[1]);
+      if ( pmtx < xmin || pmtx > xmax || pmty < ymin || pmty > ymax ) continue;
+
       vector<Vec3f> bolts_on_this_pmt;
       for ( const Vec3f & boltloc : blobs ) {
 	// calculate distance from the PMT circle to the bolt location
 	// only add ones with distance less than (2?) pixels to add to bolts_on_this_pmt
 	// count/and print them after
-	int pmtx = cvRound(pmtloc[0]);
-        int pmty = cvRound(pmtloc[1]);
+       
 	float pmtr= cvRound(pmtloc[2]);
         int boltx = cvRound(boltloc[0]);
         int bolty = cvRound(boltloc[1]);
         float dist = std::sqrt(std::pow((pmtx-boltx),2)+std::pow((pmty-bolty),2));
         //if(dist>(pmtr-2) && dist<(pmtr+2)){
-	if ( fabs( pmtr - dist ) < 3 ) {
+	if ( fabs( pmtr - dist ) < 6 ) {
           Vec3f temp;
           temp[0]= boltx;
           temp[1]= bolty;
@@ -405,6 +419,8 @@ if(mode){
     for(float final: final_dists){
       blob_dist2->Fill(final);
     }
+    
+
     
     // Make image of final answer
     // add the circles for the PMTs selected
