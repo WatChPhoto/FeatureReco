@@ -2,6 +2,9 @@
                       #               isn't case sensative.
             #whitespace insensative.
 #format is [variable] = [value]
+#filters, circled, Candidate, text, final
+save_option = 11111
+
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
 blurpixels = 23 #11 #size of kernal in pixels (must be odd) |5X5 for canny

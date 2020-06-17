@@ -37,7 +37,9 @@ void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, co
 
 
 //Makes the histogram for bolt metric found vs distance.
-void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw,  cv::Mat &imcol, TH1D *&metric_all, TH1D *&metric_good, TH1D *&metric_bad, TH2D *&metric_2d);
+void make_bolt_metric_histograms( const std::vector<cv::Vec3f>& circles, const std::vector< IndexMatchDist >& data121,  cv::Mat &imbw, TH1D *&metric_all, TH1D *&metric_good, TH1D *&metric_bad, TH2D *&metric_2d);
+
+void draw_line(const std::vector<cv::Vec3f>& circles, const std::vector< IndexMatchDist >& data121, const MedianTextData& mtd, cv::Mat &imcol );
 
 //Bolt metric for the inbetween points that are not mapped.
 void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, const std::vector< IndexMatchDist >& data121, cv::Mat imbw, TH1D *&metric_inb);
