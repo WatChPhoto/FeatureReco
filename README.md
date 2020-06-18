@@ -33,14 +33,10 @@ Output file names are:
 </pre>
 To do list:
 * Add a verbosity flag to Config.txt to turn on/off printing out debug info
-* Save bolts found to a textfile, as well as PMTs (pmt_id?,
-  pmt_center_x, pmt_center_y, pmt_radius, bolt_number, bolt_x, bolt_y)
-* Add histograms of geometric quantities from the bolts that are on
-  the final circles: (angle around circle, distance from center of
-  circle, distance to closest other bolt) for both the ones we find, and those from text file.
+* Find pmt_id?
 * Consider ellipse hough instead of circle to find the PMT rings of bolts?
 [Paper for hough ellipse][http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf]
-
+* Cleanup / modularize code more?
 
 
 
