@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <TFile.h>
@@ -7,13 +8,86 @@
 #include <opencv2/features2d.hpp>     //Blob
 
 #include<cmath>
-#define PI 3.141592653589793238
-#define RADTODEG(R)((180.0 * R) / PI)
+
+const double PI = std::acos(-1);
+
+inline double RADTODEG( double R ){ return (180.0 * R) / PI; }
 
 using std::string;
 using std::vector;
  
 using namespace cv;
+
+
+
+
+struct PMTIdentified {
+  int           pmtid; // -1 if not identified
+  Vec3f         circ; // [0]=xc, [1]=yc, [2]=radius
+  vector<Vec3f> bolts; // bolts going with this PMT
+  vector<float> dists; // distance of bolt from PMT circle 
+  vector<float> angles; // angle of each bolt
+  vector<float> dangs;  // difference in angle from boltid's angle
+  vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
+
+  PMTIdentified() : pmtid(-1) { }
+  PMTIdentified( const Vec3f& pmtloc, const vector< Vec3f >& boltlocs, const vector< float > final_dists ) : 
+    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
+    calculate_angles();
+    calculate_boltid();
+  }
+
+
+private:
+
+  void calculate_angles();
+  void calculate_boltid();
+};
+
+std::ostream& operator<<( std::ostream& os, const PMTIdentified& p ){
+  for ( int ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
+    os<<p.pmtid<<" ";
+    os<<p.circ[0]<<" "<<p.circ[1]<<" "<<p.circ[2]<<" ";
+    os<<p.boltid[ibolt]<<" ";
+    Vec3f b = p.bolts[ibolt];
+    os<<b[0]<<" "<<b[1]<<std::endl;    
+  }
+  return os;
+}
+
+
+void PMTIdentified::calculate_angles(){
+  float a = circ[0];  //x and y at centre
+  float b = circ[1];
+    
+  for( Vec3f bolt : bolts ) {
+    float x = bolt[0];
+    float y = bolt[1];
+    float theta = atan2f((y-b),(x-a));  
+    theta = RADTODEG(theta);
+    theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
+    //Finding angle wrt to Y-axis ^ (nothing to do with axis direction in OpenCv
+    theta = (theta<270)?(theta+90):(theta-270);
+    angles.push_back( theta );
+  }
+}
+
+void PMTIdentified::calculate_boltid(){
+  float angle_between_bolts = 360.0 / 24; // 24 bolts
+  float dang = angle_between_bolts/2;
+
+  for ( float angle : angles ){
+    int boltnum = int( (angle+dang) / angle_between_bolts ) + 1;
+    if (boltnum==25) boltnum=1;
+    boltid.push_back( boltnum );
+    // calculate difference in angle from boltid angle
+    float boltidang = (boltnum-1) * angle_between_bolts;
+    float da = angle - boltidang;
+    if ( da > 360.0-dang ) da -= 360.0;
+    dangs.push_back( da );
+  }
+}
+
 
 //Returns the data from text file
 //Returns empty vector if text file is not supplied.
@@ -42,6 +116,9 @@ vector<bool> setup(){
     }
   return options;  
 }
+
+
+
 
 vector<float> get_angles(vector<Vec3f>final_PMTs, vector<Vec3f>serial_final_bolts){
   vector<float> angle;
@@ -408,10 +485,11 @@ if(mode){
     
 
 
-    vector<Vec3f> final_bolts; // bolt locations selected
-    vector<Vec3f> serial_final_bolts;
-    vector<Vec3f> final_PMTs; // PMT circles selected
+    //vector<Vec3f> final_bolts; // bolt locations selected
+    //vector<Vec3f> serial_final_bolts;
+    //vector<Vec3f> final_PMTs; // PMT circles selected
     vector<float> final_dists;
+    vector< PMTIdentified > final_pmts;  // holds final answer 
     TH1D* blob_dist2 = new TH1D("bolt_distance2","Distance to closest bolt using blob + second hough; distance (pixels); Count/bin", 51, -0.5, 49.5);
     
     // loop over circles_of_blob 
@@ -447,31 +525,38 @@ if(mode){
       
       // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
       if( bolts_on_this_pmt.size() > 9 ) {
-	final_PMTs.push_back( pmtloc );
-	final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
+	//final_PMTs.push_back( pmtloc );
+	//final_bolts.insert(final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
 
-	//Its a way to know which bolts belong to particular PMT.               
-        serial_final_bolts.insert(serial_final_bolts.end(), bolts_on_this_pmt.begin(), bolts_on_this_pmt.end());
-	Vec3f temp;
-        temp[0]= -1;
-        temp[1]= -1;
-        temp[2]= -1;
-        serial_final_bolts.push_back( temp );
+	final_pmts.push_back( PMTIdentified( pmtloc, bolts_on_this_pmt, final_dists ) );
+
       }
     }
    
     //Fill bolb_dist2 histogram
-    for(float final: final_dists){
-      blob_dist2->Fill(final);
+    for(const PMTIdentified& pmt : final_pmts ){
+      for( const float dist: pmt.dists ){
+	blob_dist2->Fill( dist );
+      }
     }
     
    
     // Make image of final answer
     // add the circles for the PMTs selected
-    draw_circle_from_data( final_PMTs, image_final, Scalar(255,102,255), 2);
-    draw_circle_from_data( final_bolts, image_final, Scalar( 0, 0, 255), 3);
-   
+    for ( const PMTIdentified& pmt: final_pmts ){
+      vector<Vec3f> circs{ pmt.circ };
+      draw_circle_from_data( circs, image_final, Scalar(255,102,255), 2);
+      draw_circle_from_data( pmt.bolts, image_final, Scalar( 0, 0, 255), 3);
+    }
+
     if(mode){
+      vector<Vec3f> final_bolts;
+      for(const PMTIdentified& pmt : final_pmts ){
+	for( const Vec3f& curbolt: pmt.bolts ){
+	  final_bolts.push_back( curbolt );
+	}
+      }
+
       draw_text_circles( image_final, mtd );
       //Find bolt match
       vector< IndexMatchDist > final_matches = find_closest_matches( final_bolts, mtd );
@@ -492,24 +577,41 @@ if(mode){
       //template will be {angles of one pmt bolt,-5, angles of next pmt bolts}
       //it's a way to identify which angle belong to which bolt and which pmt.
       //since final_PMTs and seral_final_bolts are in sync this approach work.
-      const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
-    
-      for(float ang: angles){
-	std::cout<<"angle = "<< ang<<std::endl;
+      //const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
+      string outfilename = build_output_textfilename( argv[1], "bolts" );
+
+      std::ofstream fang_out( outfilename ) ;
+      
+
+      TH1D* hangbolt = new TH1D("hangbolt","Angles of bolts",360,0.,360.);
+      TH1D* hdangbolt = new TH1D("hdangbolt","Angle of bolt from expected",60,-15.,15.);
+      for(const PMTIdentified& pmt : final_pmts ){
+	std::cout<<pmt;
+	fang_out<<pmt;
+	for( const float& ang: pmt.angles ){
+	  hangbolt->Fill( ang );
+	}
+	for( const float& dang: pmt.dangs ){
+	  hdangbolt->Fill( dang );
+	}
       }
 
+      fang_out.close();
+  
       //testing purpose
     if(option[0]){
-      circle(image_final, Point(final_PMTs[1][0],final_PMTs[1][1]), 5, Scalar(0,255,255), 3);
-      circle(image_final, Point(serial_final_bolts[36][0], serial_final_bolts[36][1]), 5, Scalar(0,255,255), 3);
-    outputname = build_output_filename( argv[1], "final" );
-    imwrite( outputname, image_final );
+
+      //circle(image_final, Point(final_PMTs[1][0],final_PMTs[1][1]), 5, Scalar(0,255,255), 3);
+      //circle(image_final, Point(serial_final_bolts[36][0], serial_final_bolts[36][1]), 5, Scalar(0,255,255), 3);
+
+      outputname = build_output_filename( argv[1], "final" );
+      imwrite( outputname, image_final );
     }     
 
 
- std::cout<<"#########################################"<<std::endl;
-      std::cout<<"final size "<<final_bolts.size()<<" match size "<<final_matches.size()<<" Mtd size "<<mtd.size()<<std::endl;
-      std::cout<<"Pmt0 x "<<final_PMTs[0][0]<<" y "<<final_PMTs[0][1]<<" blob x "<<serial_final_bolts[0][0]<<" y "<<serial_final_bolts[0][1]<<std::endl;
+    std::cout<<"#########################################"<<std::endl;
+    std::cout<<"final size "<<final_bolts.size()<<" match size "<<final_matches.size()<<" Mtd size "<<mtd.size()<<std::endl;
+    //std::cout<<"Pmt0 x "<<final_PMTs[0][0]<<" y "<<final_PMTs[0][1]<<" blob x "<<serial_final_bolts[0][0]<<" y "<<serial_final_bolts[0][1]<<std::endl;
     }
     std::cout<<atan(1)<<atan(-1)<<std::endl;
     } catch ( std::string e ){

@@ -10,6 +10,15 @@ std::string build_output_filename( const std::string& in, const std::string& tag
   return outputname;
 }
 
+
+std::string build_output_textfilename( const std::string& in, const std::string& tag ){
+  std::string outputname;
+  size_t idx1 = in.find_last_of("/");
+  size_t idx2 = in.find_last_of(".");
+  outputname = std::string( tag ) + in.substr(idx1+1, idx2-idx1-1 ) + ".txt";
+  return outputname;
+}
+
 void histogram_channel0( const cv::Mat& img,  std::string hname ){
 
   TH1D* hout = new TH1D(hname.c_str(),"Intensity ; Intensity; Count/bin",256, -0.5, 255.5);

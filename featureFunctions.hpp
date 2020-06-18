@@ -9,6 +9,7 @@
 
 //Outputs the filename
 std::string build_output_filename( const std::string& in, const std::string& tag );
+std::string build_output_textfilename( const std::string& in, const std::string& tag );
 
 //Histogram of the intensity.
 void histogram_channel0( const cv::Mat& img,  std::string hname="hist" );
