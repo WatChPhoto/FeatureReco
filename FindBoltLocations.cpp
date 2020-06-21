@@ -7,6 +7,7 @@
 #include "featureFunctions.hpp"
 #include <opencv2/features2d.hpp>     //Blob
 
+#include "bwlabel.hpp"
 #include<cmath>
 
 const double PI = std::acos(-1);
@@ -17,9 +18,6 @@ using std::string;
 using std::vector;
  
 using namespace cv;
-
-
-
 
 struct PMTIdentified {
   int           pmtid; // -1 if not identified
@@ -116,8 +114,6 @@ vector<bool> setup(){
     }
   return options;  
 }
-
-
 
 
 vector<float> get_angles(vector<Vec3f>final_PMTs, vector<Vec3f>serial_final_bolts){
@@ -484,7 +480,6 @@ if(mode){
     int ymax = ywidth-trim_pixels;
     
 
-
     //vector<Vec3f> final_bolts; // bolt locations selected
     //vector<Vec3f> serial_final_bolts;
     //vector<Vec3f> final_PMTs; // PMT circles selected
@@ -607,6 +602,70 @@ if(mode){
       outputname = build_output_filename( argv[1], "final" );
       imwrite( outputname, image_final );
     }     
+
+    ///trial
+    Mat contour1 = image.clone();
+    Mat contour3 = image.clone();
+    Mat contour2 = contour1.clone();
+    cv::threshold( contour1, contour1, 230, 255,THRESH_BINARY );
+    BwLabel b;
+    vector<vector<int>> ma = b.find_label(contour1);
+    Mat img3 = Mat::zeros(contour1.rows, contour1.cols, CV_8UC3);
+
+ std::cout<<"size of label "<<ma.size()<<" cols "<<ma[0].size()<<std::endl;
+    for(int i=0; i<ma.size(); i++){
+      for(int j=0; j<ma[i].size(); j++){
+	if(ma[i][j]>0){
+	img3.at<Vec3b>(i,j)[0]= 30*ma[i][j];
+	img3.at<Vec3b>(i,j)[1]= 10*ma[i][j];
+	img3.at<Vec3b>(i,j)[2]= 20*ma[i][j];
+	}
+	//cout:: 
+
+     }
+    }
+    vector<Vec2f> lines;
+        HoughLines(contour1, lines, 1, CV_PI/180, 60, 0, 0,CV_PI/2.2,CV_PI/1.8 );
+	//vector<Vec4i> linesP;
+    //HoughLinesP(contour1, linesP, 1,CV_PI/180, 5, 30, 30);
+    //Draw lines
+    /*for(size_t i=0; i<linesP.size();i++){
+      Vec4i l = linesP[i];
+      line(contour1, Point(l[0],l[1]), Point(l[2],l[3]),Scalar(255,255,255),1,LINE_AA);
+      }*/
+
+   //vector<Point2f> pointss;
+    /*   
+    int nRows = contour1.rows;
+    int nCols = contour1.cols;
+   
+    for ( int x = 0; x<nCols; ++x){
+      for ( int y = 0; y<nRows; ++y){
+	int intensity = contour3.at<int>(y, x);
+	if(intensity > 250){ pointss.push_back(Point2f(x,y)); }
+      }
+    }
+    
+    //   HoughLinesPointSet(pointss, lines, 20, 1, 0, 360,1,0, CV_PI/2.0, CV_PI/180.0);*/
+      // Draw the lines
+    for( size_t i = 0; i < lines.size(); i++ )
+      {
+        float rho = lines[i][0], theta = lines[i][1];
+        Point pt1, pt2;
+        double a = cos(theta), b = sin(theta);
+        double x0 = a*rho, y0 = b*rho;
+        pt1.x = cvRound(x0 + 1000*(-b));
+        pt1.y = cvRound(y0 + 1000*(a));
+        pt2.x = cvRound(x0 - 1000*(-b));
+        pt2.y = cvRound(y0 - 1000*(a));
+        line( contour1, pt1, pt2, Scalar(255,255,255), 1, LINE_AA);
+	}
+
+    imwrite("lsdkfj.jpg",img3);
+ 
+    imwrite("threshold.jpg", contour1);
+    imwrite("lines.jpg", contour2);
+    //trialend
 
 
     std::cout<<"#########################################"<<std::endl;
