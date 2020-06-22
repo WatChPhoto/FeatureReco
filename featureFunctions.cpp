@@ -315,3 +315,25 @@ void draw_text_circles(cv::Mat &img, const MedianTextData& mtd){
     circle( img, center_text, 10, cv::Scalar(0,255,0), 1, 8, 0 );
   }
 }
+
+//Returns the data from text file
+//Returns empty vector if text file is not supplied.
+MedianTextData assign_data_from_text(int argc, std::string argv){
+  if(argc==2){MedianTextData a; return a;}
+  if(argc==3){
+    MedianTextReader *boltreader = MedianTextReader::Get();
+    boltreader->set_input_file( std::string( argv ) );
+    return boltreader->get_data();
+  }
+}
+
+//flags to turn on/off saving images
+std::vector<bool> setup_verbosity(int option){
+  std::vector <bool> options;
+  for(int i=0; i<5;i++){
+    options.push_back(bool(option%2));
+    option /= 10;
+  }
+
+  return options;
+}

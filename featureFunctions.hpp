@@ -53,4 +53,11 @@ void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image);
 
 //Draw circle from text file
 void draw_text_circles(cv::Mat &img, const MedianTextData& mtd);
+
+//Returns the data from text file
+//Returns empty vector if text file is not supplied.
+MedianTextData assign_data_from_text(int argc, std::string argv);
+
+//flags to turn on/off saving images
+std::vector<bool> setup_verbosity(int option);
 #endif
