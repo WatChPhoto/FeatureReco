@@ -7,42 +7,15 @@
 #include "featureFunctions.hpp"
 #include <opencv2/features2d.hpp>     //Blob
 
+#include "bwlabel.hpp"
 #include<cmath>
-
-const double PI = std::acos(-1);
-
-inline double RADTODEG( double R ){ return (180.0 * R) / PI; }
+#include "ellipse_detection.hpp"
+#include "to_text_functions.hpp"
 
 using std::string;
 using std::vector;
  
 using namespace cv;
-
-
-
-
-struct PMTIdentified {
-  int           pmtid; // -1 if not identified
-  Vec3f         circ; // [0]=xc, [1]=yc, [2]=radius
-  vector<Vec3f> bolts; // bolts going with this PMT
-  vector<float> dists; // distance of bolt from PMT circle 
-  vector<float> angles; // angle of each bolt
-  vector<float> dangs;  // difference in angle from boltid's angle
-  vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
-
-  PMTIdentified() : pmtid(-1) { }
-  PMTIdentified( const Vec3f& pmtloc, const vector< Vec3f >& boltlocs, const vector< float > final_dists ) : 
-    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
-    calculate_angles();
-    calculate_boltid();
-  }
-
-
-private:
-
-  void calculate_angles();
-  void calculate_boltid();
-};
 
 std::ostream& operator<<( std::ostream& os, const PMTIdentified& p ){
   for ( int ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
@@ -55,109 +28,12 @@ std::ostream& operator<<( std::ostream& os, const PMTIdentified& p ){
   return os;
 }
 
-
-void PMTIdentified::calculate_angles(){
-  float a = circ[0];  //x and y at centre
-  float b = circ[1];
-    
-  for( Vec3f bolt : bolts ) {
-    float x = bolt[0];
-    float y = bolt[1];
-    float theta = atan2f((y-b),(x-a));  
-    theta = RADTODEG(theta);
-    theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
-    //Finding angle wrt to Y-axis ^ (nothing to do with axis direction in OpenCv
-    theta = (theta<270)?(theta+90):(theta-270);
-    angles.push_back( theta );
-  }
-}
-
-void PMTIdentified::calculate_boltid(){
-  float angle_between_bolts = 360.0 / 24; // 24 bolts
-  float dang = angle_between_bolts/2;
-
-  for ( float angle : angles ){
-    int boltnum = int( (angle+dang) / angle_between_bolts ) + 1;
-    if (boltnum==25) boltnum=1;
-    boltid.push_back( boltnum );
-    // calculate difference in angle from boltid angle
-    float boltidang = (boltnum-1) * angle_between_bolts;
-    float da = angle - boltidang;
-    if ( da > 360.0-dang ) da -= 360.0;
-    dangs.push_back( da );
-  }
-}
-
-
-//Returns the data from text file
-//Returns empty vector if text file is not supplied.
-MedianTextData assign(int argc, string argv){
-  if(argc==2){MedianTextData a; return a;}
-  if(argc==3){
-    MedianTextReader *boltreader = MedianTextReader::Get();
-    boltreader->set_input_file( string( argv ) );
-    return boltreader->get_data();
-  }
-}
-
-//flags to turn on/off saving images
-vector<bool> setup(){
-  vector <bool> options;
-  try {
-    int option = config::Get_int("save_option");
-    
-    for(int i=0; i<5;i++){
-      options.push_back(bool(option%2));
-      option /= 10;
-    }
-
-  } catch ( std::string e ){
-      std::cout<<"Error with config file key "<<e<<std::endl;
-    }
-  return options;  
-}
-
-
-
-
-vector<float> get_angles(vector<Vec3f>final_PMTs, vector<Vec3f>serial_final_bolts){
-  vector<float> angle;
-  int index=0;
-  for( Vec3f pmt: final_PMTs ){
-    float a = pmt[0];  //x and y at centre
-    float b = pmt[1];
-    
-    for(index; index<serial_final_bolts.size(); ++index){// Vec3f bolts: serial_final_bolts ){
-      float x = serial_final_bolts[index][0];
-      float y = serial_final_bolts[index][1];
-      //Finds out if this is break point. i.e. bolt belonging to different pmt.
-      /*=============testing======================
-	if(index>23&&index<48){
-	circle(image_final, Point(x,y), 5, Scalar(0,255,255), 3);
-	}
-	============================================*/
-      //Marks the starting index for next pmt as next index.
-      if(x==-1&&y==-1){++index; angle.push_back(-5); break;}
-      float theta = atan2f((y-b),(x-a));
-      
-      theta = RADTODEG(theta);
-      theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
-      //Finding angle wrt to Y-axis ^ (nothing to do with axis direction in OpenCv
-      theta = (theta<270)?(theta+90):(theta-270);
-      angle.push_back(theta);
-      
-    }
-  }
-  
-  return angle;
-}
-
 int main(int argc, char** argv )
 {
     
 if ( argc != 2 && argc!=3 )
     {
-        printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
+        printf("usage: FindBoltLocations <Input_image_with_path> opt:[<median-bolt-loc-filename>]\n");
         return -1;
     }
 //mode 0 means 2 argument mode and mode 1 means 3 arg mode.
@@ -169,23 +45,27 @@ if ( argc != 2 && argc!=3 )
         printf("No image data \n");
         return -1;
     }
+
+    // Open a root file to put histograms into
+    TFile * fout = new TFile("FindBoltLocation.root","RECREATE");
+
+  try {
     //option has final, text, candidate, circled, filters
-    const vector<bool>& option =  setup();
+    int save_option = config::Get_int("save_option");
+    const vector<bool>& option =  setup_verbosity(save_option);
     
     Mat image_final = image_color.clone();
+    Mat image_ellipse = image_color.clone();
 
     /// build output image
     Mat image;
     cvtColor( image_color, image, COLOR_RGBA2GRAY );
 
-    // Open a root file to put histograms into
-    TFile * fout = new TFile("FindBoltLocation.root","RECREATE");
-
     string outputname;
     
     // Gaussian blur
     Mat img_blur = image.clone();
-    try {
+    
       //bool debug = config::Get_int("debug");
     bool do_gaus_blur = (bool)config::Get_int("do_gaus_blur");
 
@@ -317,7 +197,12 @@ if ( argc != 2 && argc!=3 )
       temp[2]=r;
       blobs.push_back(temp);
     }
-      
+
+    //ellipse trial
+    detect_ellipse(blobs, image_ellipse, 150, 210 ,150, 210, 4);
+    imwrite("ellipses.jpg",image_ellipse);
+    //trialend
+
     //Draws circle from data to the input image
     draw_circle_from_data(blobs, img_blob_map, Scalar(0,0,255));
     if(option[3]){
@@ -352,7 +237,7 @@ if ( argc != 2 && argc!=3 )
     }
     /// Read in bolt locations
     //Returns empty vector if text file is not supplied.
-    const MedianTextData& mtd = assign(argc, string(argv[argc-1]));
+    const MedianTextData& mtd = assign_data_from_text(argc, string(argv[argc-1]));
     //Debug information PMt
     //if(debug){
     for ( const MedianTextRecord & rec : mtd ){
@@ -484,7 +369,6 @@ if(mode){
     int ymax = ywidth-trim_pixels;
     
 
-
     //vector<Vec3f> final_bolts; // bolt locations selected
     //vector<Vec3f> serial_final_bolts;
     //vector<Vec3f> final_PMTs; // PMT circles selected
@@ -608,10 +492,47 @@ if(mode){
       imwrite( outputname, image_final );
     }     
 
+    ///bwlabel trial
+    Mat contour1 = image.clone();
+    Mat contour3 = image.clone();
+    
+    cv::threshold( contour1, contour1, 230, 255,THRESH_BINARY );
+    BwLabel b;
+    vector<vector<int>> ma = b.find_label(contour1);
+    Mat img3 = Mat::zeros(contour1.rows, contour1.cols, CV_8UC3);
 
-    std::cout<<"#########################################"<<std::endl;
-    std::cout<<"final size "<<final_bolts.size()<<" match size "<<final_matches.size()<<" Mtd size "<<mtd.size()<<std::endl;
-    //std::cout<<"Pmt0 x "<<final_PMTs[0][0]<<" y "<<final_PMTs[0][1]<<" blob x "<<serial_final_bolts[0][0]<<" y "<<serial_final_bolts[0][1]<<std::endl;
+ std::cout<<"size of label "<<ma.size()<<" cols "<<ma[0].size()<<std::endl;
+    for(int i=0; i<ma.size(); i++){
+      for(int j=0; j<ma[i].size(); j++){
+	if(ma[i][j]>0){
+	img3.at<Vec3b>(i,j)[0]= 30*ma[i][j];
+	img3.at<Vec3b>(i,j)[1]= 10*ma[i][j];
+	img3.at<Vec3b>(i,j)[2]= 20*ma[i][j];
+	}
+	//cout:: 
+     }
+    }
+    vector<Vec2f> lines;
+        HoughLines(contour1, lines, 1, CV_PI/180, 60, 0, 0,CV_PI/2.2,CV_PI/1.8 );
+	//vector<Vec4i> linesP;
+        
+      // Draw the lines
+    for( size_t i = 0; i < lines.size(); i++ )
+      {
+        float rho = lines[i][0], theta = lines[i][1];
+        Point pt1, pt2;
+        double a = cos(theta), b = sin(theta);
+        double x0 = a*rho, y0 = b*rho;
+        pt1.x = cvRound(x0 + 1000*(-b));
+        pt1.y = cvRound(y0 + 1000*(a));
+        pt2.x = cvRound(x0 - 1000*(-b));
+        pt2.y = cvRound(y0 - 1000*(a));
+        line( contour1, pt1, pt2, Scalar(255,255,255), 1, LINE_AA);
+	}
+     
+    imwrite("threshold.jpg", contour1);
+    //trialend
+
     }
     std::cout<<atan(1)<<atan(-1)<<std::endl;
     } catch ( std::string e ){
