@@ -1,6 +1,4 @@
 #include<cmath>
-//#include<opencv2/core.hpp>
-//#include<opencv2/imgproc.hpp>
 #include<iostream>
 #include "ellipse_detection.hpp"
 double distance(cv::Point p1, cv::Point p2){
@@ -10,19 +8,13 @@ double distance(cv::Point p1, cv::Point p2){
   int y2 = p2.y;
 
   //Pythagorean theorem. a^2+b^2=c^2
-  return sqrt(std::pow(((x2-x1)+0.0),2)+std::pow(((y2-y1)+0.0),2));
+  return sqrt((double)std::pow((x2-x1),2)+std::pow((y2-y1),2));
 }
 
-class ParametricEllipse{
-public:
-  cv::Point2i centre;
-  int a;
-  int b;
-  int alpha;
-  
-ParametricEllipse(cv::Point2i centre, int a, int b, int alpha  ): centre(centre),a(a),b(b),alpha(alpha){}
 
-};
+  //constructor 
+ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha  ): centre(centre),a(a),b(b),alpha(alpha){}
+
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
   for(int i=0; i<bbins.size(); ++i){
@@ -42,36 +34,38 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
 	
 void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
   std::vector<ParametricEllipse> elData;
+  //Get first point
   for(int i=0;i<coordinates.size(); i++){
-    cv::Vec3f ordered_triple = coordinates[i];
-    int x1 = ordered_triple[0];
-    int y1 = ordered_triple[1];
-    //cv::Point centre=cv::Point(-1,-1);
-    //double alfa=0;
-    //double a=0;
-
+    int x1 = coordinates[i][0];//x for first point
+    int y1 = coordinates[i][1];//y for first point
+    //Get second point
     for(int j=0;j<coordinates.size();j++){
-      cv::Vec3f sec_ordered_triple = coordinates[j];
-      int x2 = sec_ordered_triple[0];
-      int y2 = sec_ordered_triple[1];
+      int x2 = coordinates[j][0]; //x coordinate of second point
+      int y2 = coordinates[j][1];  //y coordinate of second point
+      //distance between first point and second point.
       double dist = distance(cv::Point(x1,y1),cv::Point(x2,y2));
       
+      //if distance in range of length of major axis 
       if(dist>=2*min_major && dist<=2*max_major){
 	std::vector<cv::Point2i> bbins;	
-	cv::Point centre = cv::Point(((x1+x2)/2.0),((y1+y2)/2.0));
-	double a = (dist+0.0)/2.0; //length of semi major axis
+	cv::Point centre = cv::Point(((x1+x2)/2.0),((y1+y2)/2.0));//probable centre of ellipse
+	double a = dist/2.0; //length of semi major axis
 	double alfa = atan2((y2-y1),(x2-x1));
-
+	//third loop to look for point around centre of ellipse where the distance is in range of minor axis.
 	for(int k=0; k<coordinates.size(); k++){
-	  cv::Vec3f third_order_triple = coordinates[k];
-	  int rx = third_order_triple[0];
-	  int ry = third_order_triple[1];
-	  int d = distance(cv::Point(rx, ry),centre);
+	  int x = coordinates[k][0];
+	  int y = coordinates[k][1];
+	  int d = distance(cv::Point(x, y),centre);
+	  //if the distance from centre to point is in range of semi-minor axis
 	  if(d>=min_minor && d<=max_minor){
-	    double f = distance(cv::Point(rx,ry), cv::Point(x2,y2));
-	    double cost = ((std::pow(a,2)+std::pow(d,2)-std::pow(f,2))+0.0)/(2.0*a*d);//(0.00001+2.0*a*d);
-	    //length of minor axis
-	    int b = cvRound(sqrt(abs((std::pow((a+0.0),2)*std::pow((d+0.0),2)*(1.0-std::pow(cost,2))/(std::pow((a+0.0),2)-std::pow((d+0.0),2)*std::pow(cost,2))))));//(0.00001+ std::pow((a+0.0),2)-std::pow((d+0.0),2)*cost*2)))));
+	    //f=chord length from (x,y) to second point (x2,y2)
+	    double f = distance(cv::Point(x,y), cv::Point(x2,y2));
+	    //cos(t), t is the angle made by (x,y) with major axis.
+	    double cost = (double)((std::pow(a,2)+std::pow(d,2)-std::pow(f,2)))/(2.0*a*d);
+	    double sint = sqrt(1.0-std::pow(cost,2));
+	    //semi minor axis
+	    int b = abs(sint*a*d)/sqrt((std::pow(a,2)-std::pow(d,2)*std::pow(cost,2)));
+	    
 	    int index;
 	    std::cout<<" index "<<index<<std::endl;
 	    double essentricity = (a>b)?((b+0.0)/a):((a+0.0)/b);
@@ -79,10 +73,11 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
 	      bbins[index].y +=1;
 	    }
 	
-	    else if(essentricity>0.8){
+	    else if(b>=min_minor && b<=max_minor){
 	      bbins.push_back(cv::Point2i(b,1));
 	    }
-	    
+	  }
+	}   
 	      int max_index=-1;
 	      int max_freq;
 	      find_max(bbins, max_freq, max_index);
@@ -94,14 +89,9 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
 		}
 		//bbins.clear();
 	      }
-	  }
-	
-
-	} 
       }
-  
-      
     }
+  
    std::cout<<"im in draw exit"<<std::endl;	
   }
   for(ParametricEllipse ellipses: elData){

@@ -1,9 +1,17 @@
+/*=============================================================================
+  #                     Matlab's bwlabel code implemented in c++              #
+  #         Input binary image should be provided to the find_label function  #
+  #     The function return's multidimensional array assigning different group#
+  #     tag to different connected region. It could easily be changed into    #
+  #                           image file if suitable.                         #
+  ============================================================================*/
+
 #include "bwlabel.hpp"
 
 BwLabel::BwLabel(){;}
 BwLabel::~BwLabel(){;}
 
-//frechet_compare_mat is the input image.
+//Function to call
 std::vector<std::vector<int>> BwLabel::find_label(cv::Mat input_image)
 {
   //Stores the group number of the pixel
