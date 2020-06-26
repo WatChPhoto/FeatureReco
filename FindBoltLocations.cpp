@@ -8,6 +8,7 @@
 #include <opencv2/features2d.hpp>	//Blob
 
 #include "PMTIdentified.hpp"
+#include "bwlabel.hpp"
 
 #include<cmath>
 
@@ -91,6 +92,7 @@ main (int argc, char **argv)
     string outputname;
 
     // Gaussian blur
+
     Mat img_blur = image.clone ();
     try
     {
@@ -237,12 +239,12 @@ main (int argc, char **argv)
 	Mat blob_circles = Mat::zeros (image.size (), image.type ());
 	draw_found_center (blobs, blob_circles);
 
+
 	if (option[2]) {
 	  outputname = build_output_filename (argv[1], "blobCandidate");
 	  imwrite (outputname, blob_circles);
 	}
 	// Blobend         
-
 
 	/// Read in truth bolt locations
 	//Returns empty vector if text file is not supplied.
@@ -254,7 +256,6 @@ main (int argc, char **argv)
 	    std::cout << rec;
 	  }
 	}
-
 
 
 	///===========================================================
@@ -485,7 +486,46 @@ main (int argc, char **argv)
 	  imwrite (outputname, image_final);
 	}
 
+  ///bwlabel trial
+  Mat contour1 = image.clone();
+  Mat contour3 = image.clone();
     
+  cv::threshold( contour1, contour1, 230, 255,THRESH_BINARY );
+  BwLabel b;
+  vector<vector<int>> ma = b.find_label(contour1);
+  Mat img3 = Mat::zeros(contour1.rows, contour1.cols, CV_8UC3);
+
+  std::cout<<"size of label "<<ma.size()<<" cols "<<ma[0].size()<<std::endl;
+  for(int i=0; i<ma.size(); i++){
+      for(int j=0; j<ma[i].size(); j++){
+	        if(ma[i][j]>0){
+	            img3.at<Vec3b>(i,j)[0]= 30*ma[i][j];
+	            img3.at<Vec3b>(i,j)[1]= 10*ma[i][j];
+	            img3.at<Vec3b>(i,j)[2]= 20*ma[i][j];
+          }
+      }  
+  }
+  vector<Vec2f> lines;
+  HoughLines(contour1, lines, 1, CV_PI/180, 60, 0, 0,CV_PI/2.2,CV_PI/1.8 );
+	//vector<Vec4i> linesP;
+        
+  // Draw the lines
+  for( size_t i = 0; i < lines.size(); i++ )
+      {
+        float rho = lines[i][0], theta = lines[i][1];
+        Point pt1, pt2;
+        double a = cos(theta), b = sin(theta);
+        double x0 = a*rho, y0 = b*rho;
+        pt1.x = cvRound(x0 + 1000*(-b));
+        pt1.y = cvRound(y0 + 1000*(a));
+        pt2.x = cvRound(x0 - 1000*(-b));
+        pt2.y = cvRound(y0 - 1000*(a));
+        line( contour1, pt1, pt2, Scalar(255,255,255), 1, LINE_AA);
+	}
+     
+  imwrite("threshold.jpg", contour1);
+  //trialend
+      
     }
     catch (std::string e)
     {
