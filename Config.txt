@@ -1,7 +1,13 @@
 #comment with # are ignored.
                       #               isn't case sensative.
             #whitespace insensative.
+
 #format is [variable] = [value]
+
+
+#verbosity
+verbosity = 0 # 0 for not verbose, 1 for verbose
+
 #filters, circled, Candidate, text, final
 save_option = 00001
 
