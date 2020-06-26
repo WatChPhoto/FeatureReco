@@ -210,9 +210,9 @@ void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, 
     //circle( image_color, center, 3, Scalar(0,0,255), 1, 8, 0 );                                                                           
     // draw the circle outline                                                                                                              
     cv::circle( image, center, radius, color, line_width, 8, 0 );
-    std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<data[i][0]<<", "<<data[i][1]<<" )"<<std::endl;
+    //std::cout<<"Circle "<<i<<" radius = "<<radius<<" at ( "<<data[i][0]<<", "<<data[i][1]<<" )"<<std::endl;
   }
-  std::cout<<"=============================================================================="<<std::endl;
+  //  std::cout<<"=============================================================================="<<std::endl;
 }
 
 void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image){

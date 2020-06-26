@@ -11,6 +11,8 @@
 
 #include<cmath>
 
+#include "hough_ellipse.hpp"
+
 using std::string;
 using std::vector;
 
@@ -77,6 +79,7 @@ main (int argc, char **argv)
     const vector < bool > & option = setup_image_saveflags ();
 
     Mat image_final = image_color.clone ();
+    Mat image_ellipse = image_color.clone();
 
     /// build output image
     Mat image;
@@ -91,7 +94,7 @@ main (int argc, char **argv)
     Mat img_blur = image.clone ();
     try
     {
-	//bool debug = config::Get_int("debug");
+	bool verbose = config::Get_int("verbosity");
 	bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
 
 	if ( do_gaus_blur ) {
@@ -238,7 +241,100 @@ main (int argc, char **argv)
 	  outputname = build_output_filename (argv[1], "blobCandidate");
 	  imwrite (outputname, blob_circles);
 	}
-	// Blobend               
+	// Blobend         
+
+
+	/// Read in truth bolt locations
+	//Returns empty vector if text file is not supplied.
+	const MedianTextData & mtd = assign (argc, string (argv[argc - 1]));
+
+	//Debug information PMt
+	if(verbose){
+	  for (const MedianTextRecord & rec:mtd) {
+	    std::cout << rec;
+	  }
+	}
+
+
+
+	///===========================================================
+	/// Begin ellipse hough transfrom stuff
+	EllipseHough h;
+	std::vector< xypoint > data;
+	for ( unsigned i=0 ; i < blobs.size(); ++i ){
+	  data.push_back( xypoint( blobs[i][0], blobs[i][1] ) );
+	}
+	HoughEllipseResults hers = h.find_ellipses( data );
+	
+	std::cout<< hers <<std::endl;
+
+	/// draw all ellipses in her on image_ellipse and write
+	for ( const HoughEllipseResult& her : hers ){
+	  Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
+	  Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
+	  ellipse( image_ellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (0, 0, 255) );
+
+	  Scalar my_color( 0, 255, 0 );
+	  for ( const xypoint& xy : her.data ){
+	    circle( image_ellipse, Point( xy.x, xy.y ), 3, my_color, 1, 0 );
+	    //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
+	  }
+	}  
+
+	/// take hough resutls and fill vector of PMTIdentified info
+	std::vector< PMTIdentified > ellipse_pmts;
+	for ( const HoughEllipseResult& her : hers ){
+	  Vec3f pmtloc{ her.e.get_xy().x, her.e.get_xy().y, her.e.get_b() };
+	  std::vector< Vec3f > boltlocs;
+	  std::vector< float > dists;
+	  for ( const xypoint& xy : her.data ){
+	    boltlocs.push_back( Vec3f( xy.x, xy.y, 3 ) );
+	    dists.push_back( her.e.dmin( xy ) );
+	  }
+	  ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
+	}
+
+	//Fill ellipse_dist histogram
+	TH1D * ellipse_dist = new TH1D ("ellipse_dist",
+				     "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
+				     51, -0.5, 49.5);
+
+	for (const PMTIdentified & pmt : ellipse_pmts) {
+	    for (const float dist : pmt.dists) {
+	         ellipse_dist->Fill (dist);
+	    }
+	}
+
+	if (have_truth){
+	  //Find bolt matches between those we found and truth
+	  find_closest_matches( ellipse_pmts, mtd );
+
+	  //Draw line from truth to closest bolt found 
+	  draw_line (ellipse_pmts, mtd, image_ellipse);
+
+	  //Distance histogram
+	  TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
+					 "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
+					 51, -0.5, 49.5);
+	  for ( const PMTIdentified & pmt : ellipse_pmts ){
+	    for ( const float dist : pmt.dist_txt ) {
+	      if ( dist < bad_dmin ){
+		ellipse_truth_dist->Fill( dist );
+	      }
+	    }
+	  }
+
+	  draw_text_circles (image_ellipse, mtd);
+	}
+
+	outputname = build_output_filename (argv[1], "ellipse");
+	imwrite (outputname, image_ellipse );
+
+
+
+	/// End ellipse hough transform stuff
+	
+      
 
 	/// Hough Transform
 	vector < Vec3f > circles;
@@ -258,16 +354,6 @@ main (int argc, char **argv)
 	      outputname = build_output_filename (argv[1], "hough");
 	      imwrite (outputname, image_color);
 	}
-	/// Read in bolt locations
-	//Returns empty vector if text file is not supplied.
-	const MedianTextData & mtd = assign (argc, string (argv[argc - 1]));
-
-	//Debug information PMt
-	//if(debug){
-	for (const MedianTextRecord & rec:mtd) {
-	      std::cout << rec;
-	}
-	//}
 
 
 	/// Make image that just has circle centers from previous Hough Transform on it
@@ -290,8 +376,12 @@ main (int argc, char **argv)
 	minR = config::Get_int ("sec_hough_minR");	//= 3 # minimum radius in pixels
 	maxR = config::Get_int ("sec_hough_maxR");	// = 10 # maximum radius in pixels
 
+
 	HoughCircles (blob_circles, blob_circles_of_bolts, HOUGH_GRADIENT, dp,
 		      minDist, param1, param2, minR, maxR);
+
+
+
 	HoughCircles (img_circles, hough_circles_of_bolts, HOUGH_GRADIENT, dp,
 		      minDist, param1, param2, minR, maxR);
 
