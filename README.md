@@ -22,18 +22,24 @@ If output file is not specified, then it names output file undistorted<input-fil
 
 Locate bolts in image by applying filters and hough transform.
 
-./FindBoltLocations [input-image-file-name-with-path] [bolt-location-textfile-with-path]
+./FindBoltLocations [input-image-file-name-with-path] [opt=bolt-location-textfile-with-path]
+
+#Config.txt
+Configuration file to change parameters and set verbosity flag.
+
 <pre>
 Output file names are: 
 *  gausblur[input-file-name]  -- image with gaussian applied (if enabled) 
 *  bifilter[input-file-name]  -- image after bilateral filter applied (if enabled)
 *  sobel[input-file-name]     -- image after sobel filter applied (this is input to Hough)
+*  blob_candidate             -- b&w image with bolts found using blob detection represented as white and rest black.
+*  hough_candidate 	      -- b&w image with bolts found using hough transform represented as white and rest black.
 *  circles[input-file-name]   -- original image with circles found by hough added
+*  final 		      -- final image.
 *  FindBoltLocation.root      -- root histograms
 </pre>
+
 To do list:
-* Add a verbosity flag to Config.txt to turn on/off printing out debug info
-* Find pmt_id?
 * Consider ellipse hough instead of circle to find the PMT rings of bolts?
 [Paper for hough ellipse][http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf]
 * Cleanup / modularize code more?

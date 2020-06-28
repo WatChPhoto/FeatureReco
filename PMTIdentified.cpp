@@ -90,11 +90,10 @@ void PMTIdentified::calculate_angles(){
   for( Vec3f bolt : bolts ) {
     float x = bolt[0];
     float y = bolt[1];
-    float theta = atan2f((y-b),(x-a));  
+    float theta = atan2f((x-a),-(y-b)); //getting angle with ^ axis wrt image  
     theta = RADTODEG(theta);
     theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
-    //Finding angle wrt to Y-axis ^ (nothing to do with axis direction in OpenCv
-    theta = (theta<270)?(theta+90):(theta-270);
+    
     angles.push_back( theta );
   }
 }
