@@ -1,6 +1,7 @@
 #include "hough_ellipse.hpp"
 #include <sstream>
 #include <fstream>
+#include <cstring>
 #include "TDirectory.h"
 #include "TEllipse.h"
 #include "TMarker.h"
@@ -65,6 +66,68 @@ std::ostream& operator<<( std::ostream& os, const HoughEllipseResult& hr ){
 }
 
 
+
+int EllipseHough::get_bbin  ( double bb ) const {
+  float fbbwid = (fbbmax-fbbmin)/fNbb; 
+  int bbin = (bb-fbbmin)/fbbwid;
+  if (bbin<0 || bbin>= fNbb ) return -1;
+  return bbin;
+}
+
+int EllipseHough::get_ebin  ( double ee ) const {
+  float feewid = (feemax-feemin)/fNee; 
+  int eein = (ee-feemin)/feewid;
+  if (eein<0 || eein>= fNee ) return -1;
+  return eein;
+}
+
+int EllipseHough::get_phibin( double phi ) const {
+  float fphiwid = (fphimax-fphimin)/fNphi; 
+  int phibin = (phi-fphimin)/fphiwid;
+  if (phibin<0 || phibin>= fNee ) return -1;
+  return phibin;
+}
+
+int EllipseHough::get_xbin  ( double x ) const {
+  float fxbwid = (fxmax-fxmin)/fNx; 
+  int xbin = (x-fxmin)/fxbwid;
+  if (xbin<0 || xbin>= fNx ) return -1;
+  return xbin;
+}
+int EllipseHough::get_ybin  ( double y ) const{
+  float fybwid = (fymax-fymin)/fNy; 
+  int ybin = (y-fymin)/fybwid;
+  if (ybin<0 || ybin>= fNy ) return -1;
+  return ybin;
+}
+
+float EllipseHough::get_b_frombin( int bin ) const{
+  float fbbwid = (fbbmax-fbbmin)/fNbb; 
+  return fbbmin + (bin+0.5)*fbbwid;
+}
+
+float EllipseHough::get_e_frombin( int bin ) const{
+  float feewid = (feemax-feemin)/fNee; 
+  return feemin + (bin+0.5)*feewid;
+}
+
+float EllipseHough::get_phi_frombin( int bin ) const{
+  float fphiwid = (fphimax-fphimin)/fNphi; 
+  return fphimin + (bin+0.5)*fphiwid;
+}
+
+
+float EllipseHough::get_x_frombin( int bin ) const {
+  float fxbwid = (fxmax-fxmin)/fNx; 
+  return fxmin + (bin+0.5)*fxbwid;
+}
+
+float EllipseHough::get_y_frombin( int bin ) const {
+  float fybwid = (fymax-fymin)/fNy; 
+  return fymin + (bin+0.5)*fybwid;
+}
+
+
 EllipseHough::EllipseHough( unsigned nbins_bb     , float bbmin   , float bbmax     ,
 			    unsigned nbins_ee     , float eemin   , float eemax    ,
 			    unsigned nbins_phiphi , float phiphimin, float phiphimax,
@@ -84,54 +147,36 @@ EllipseHough::EllipseHough( unsigned nbins_bb     , float bbmin   , float bbmax 
   houghdir = gDirectory->mkdir( (std::string("ehough_")+std::to_string(instance_count)).c_str() );
   houghdir->cd();
 
-  // loop over bb bins to make directories
   float dbb = (bbmax-bbmin)/nbins_bb;
-  
-  for ( unsigned ibb=0; ibb<nbins_bb; ++ibb){
-    std::cout<<"EllipseHough::EllipseHough building directory "<<ibb<<" / "<<nbins_bb<<std::endl;
-    float vmuse =0., memuse=0.;
-    process_mem_usage( vmuse, memuse );
-    std::cout<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
+  float dee = (eemax-eemin)/nbins_ee;
+  float dphi = (phiphimax-phiphimin)/nbins_phiphi;
+
+  fTransformed = new unsigned short****[ fNbb ]  ;
+  fE = new ellipse_st**[ fNbb ];
+  for ( unsigned ibb=0; ibb<fNbb; ++ibb){
+    fTransformed[ ibb ] = new unsigned short***[ fNee ];
+    fE[ ibb ] = new ellipse_st*[ fNee ];
     float bbm = bbmin + dbb*ibb;
     float bbp = bbmin + dbb*(ibb+1);
     float bb = (bbm+bbp)/2;
 
-    std::string bdirname  = std::string("bb_")+std::to_string(bb);
-    std::string bdirtitle = std::string("bb = ")+std::to_string(bb);
-    TDirectory* bbdir = houghdir->mkdir( bdirname.c_str(), bdirtitle.c_str() );
-    bbdir->cd();
-    fDirectories.push_back( bbdir );
-    fTransformed.push_back( std::vector< TH2S* >() );
-    fE.push_back( std::vector< ellipse_st* >() );
-
-    // loop over ee and phiphi bins to make histograms
-    float dee = (eemax-eemin)/nbins_ee;
-    for ( unsigned iee=0; iee<nbins_ee; ++iee ){
+    for ( unsigned iee=0; iee<fNee; ++iee ){
+      fTransformed[ibb][iee] = new unsigned short**[fNphi];
+      fE[ibb][iee] = new ellipse_st[fNphi];
       float eem = eemin + dee*iee;
       float eep = eemin + dee*(iee+1);
       float ee  = (eem+eep)/2;
-      float dphi = (phiphimax-phiphimin)/nbins_phiphi;
-      for ( unsigned iphi=0; iphi<nbins_phiphi; ++iphi ){
+
+      for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
+	fTransformed[ibb][iee][iphi] = new unsigned short*[fNx];
 	float phim = phiphimin + dphi*iphi;
 	float phip = phiphimin + dphi*(iphi+1);
 	float phi  = (phim+phip)/2;
+	fE[ibb][iee][iphi].set_bephi( bb, ee, phi );
 
-	fE[ibb].push_back( new ellipse_st( bb, ee, phi, xypoint(0.,0.) ) );
-	
-	std::string hname = std::string( "ht") + std::to_string(instance_count) 
-	  + "_bbin"+std::to_string(ibb) + "_eebin"+std::to_string(iee)
-	  + "_phibin"+std::to_string(iphi);
-	std::string htitle = 
-	  std::string( "bb = ( ") + std::to_string( bbm ) + ", " + std::to_string( bbp ) + ") " +
-	  std::string( "e = ( ") + std::to_string( eem ) +  ", " + std::to_string( eep ) + ") " +
-	  std::string( "phi = ( ") + std::to_string( phim ) +  ", " + std::to_string( phip ) + ") " + 
-	  " ; xc; yc ";
-
-	
-	fTransformed[ibb].push_back( new TH2S( hname.c_str(), htitle.c_str(),
-					       nbins_x, xmin, xmax,
-					       nbins_y, ymin, ymax )  );
-    
+	for ( unsigned ix=0; ix<fNx; ++ix ){
+	  fTransformed[ibb][iee][iphi][ix] = new unsigned short[fNy];
+	}
       }
     }
   }
@@ -143,21 +188,7 @@ EllipseHough::EllipseHough( unsigned nbins_bb     , float bbmin   , float bbmax 
 }
 
 EllipseHough::~EllipseHough(){
-  for ( std::vector< TH2S* > fT : fTransformed){
-    for ( unsigned i=0; i<fT.size(); ++i ){
-      //fT[i]->SetDirectory(0);
-      //delete fT[i];
-    }
-    fT.clear();
-  }
-  fTransformed.clear();
-  for ( std::vector< ellipse_st* > est : fE ){
-    for ( ellipse_st* e : est ){
-      if ( e ) delete e;
-    }
-    est.clear();
-  }
-  fE.clear();
+  // cleanup!!!
 
 }
 
@@ -175,54 +206,45 @@ const HoughEllipseResults& EllipseHough::find_ellipses( const std::vector< xypoi
     float vmuse =0., memuse=0.;
     process_mem_usage( vmuse, memuse );
     std::cout<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
-
-
-
-    HoughEllipseResult hr = find_maximum( unused_hits );
-    //HoughEllipseResult hr;
-    //do {
-    //hr = find_maximum( unused_hits );
-
-    if ( hr.peakval > threshold ) {
-      hr.type = HoughEllipse;
-    } else {
-      done = true;
+    
+    std::vector< HoughEllipseResult > hrs = find_maximum( unused_hits );
+    
+    for ( HoughEllipseResult & hr : hrs ){
+      if ( hr.peakval > threshold ) {
+	hr.type = HoughEllipse;
+      }
+      
+      std::cout<<"Find ellipse "<<fresults.size()+1<<std::endl;
+      std::cout<< hr <<std::endl;
+      
+      
+      fresults.push_back( hr );
+      save_hough_histo( fresults.size(), hr );
+      plot_candidate( fresults.size(), hr );
     }
     
-    std::cout<<"Find ellipse "<<fresults.size()+1<<std::endl;
-    std::cout<< hr <<std::endl;
-
+    if ( hrs.size() == 0 ) done = true;
+      
     process_mem_usage( vmuse, memuse );
     std::cout<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
-
-
-    fresults.push_back( hr );
-    //if ( done ) break;
-    save_hough_histo( fresults.size(), fTransformed[ hr.ibb ][ hr.ihist ] );
-    plot_candidate( fresults.size(), hr );
-      
-      // remove current maximum.
-      //for ( unsigned ibb = 0; ibb < fTransformed.size(); ++ibb ) {
-      //	for ( unsigned ihist = 0; ihist < fTransformed[ibb].size(); ++ihist ) {
-      //	  for ( int dx=-2; dx<3; ++dx ){
-      //	    for ( int dy=-2; dy<3; ++dy ){
-      //	      int ibin = fTransformed[ ibb ][ ihist ]->FindBin( hr.e.get_xy().x + dx*fxbwid, hr.e.get_xy().y + dy*fybwid ); 
-      //	      fTransformed[ ibb ][ ihist ]->SetBinContent( ibin, 0 );
-      //	    }
-      //	  }
-      //	} 
-      //}
-      
-      //} while ( hr.peakval > threshold );
   }
-
-  // cleanup
-  //for ( unsigned i=0; i<fTransformed.size(); ++i ){
-  //  fTransformed[i]->SetDirectory(0);
-    //delete fTransformed[i];
-  //}
+  
 
   return fresults;
+}
+
+
+void EllipseHough::zero_hough_counts(){
+  size_t shortsized = sizeof( unsigned short );
+  for ( unsigned ibb=0; ibb<fNbb; ++ibb){
+    for ( unsigned iee=0; iee<fNee; ++iee ){
+      for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
+	for ( unsigned ix=0; ix<fNx; ++ix ){
+	  memset( fTransformed[ibb][iee][iphi][ix], 0, fNy*shortsized );
+	}
+      }
+    }
+  } 
 }
 
 void EllipseHough::hough_transform( const std::vector< xypoint >& data ){
@@ -230,49 +252,49 @@ void EllipseHough::hough_transform( const std::vector< xypoint >& data ){
   std::cout<<"EllipseHough::hough_transform call on data with "<<data.size()<<" points"<<std::endl;
 
   float bbwid = (fbbmax-fbbmin)/fNbb;
-  float fxbwid = (fxmax-fxmin)/fNx; 
-  float fybwid = (fymax-fymin)/fNy;
   
-  for ( std::vector<TH2S*> hists : fTransformed){
-    for ( TH2S* h : hists ){
-      h->Reset();
-    }
-  }
+  zero_hough_counts();
   
   float vmuse =0., memuse=0.;
   process_mem_usage( vmuse, memuse );
   std::cout<<"histos-reset vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
-  
-  assert( fE.size() == fTransformed.size() );
-
 
   for ( const xypoint& xy : data ){
-    for ( unsigned ibb=0; ibb < fE.size(); ++ibb ){
-      assert( fE[ibb].size() == fTransformed[ibb].size() );
-      for ( unsigned ihist=0; ihist < fE[ibb].size(); ++ihist ) {
-	ellipse_st * elli = fE[ibb][ihist]; // has set everything but x and y
-
-	elli->set_xy( xy );
-
-	float bb = elli->get_b();
-	// pick number of angles based on bb
-	unsigned nang = unsigned( 2 * bb / bbwid );
-	float   dtheta = 2*pi/nang;
-	for ( unsigned itheta = 0; itheta<nang; ++itheta ){
-	  xypoint ab = elli->xy( itheta*dtheta );
-
-	  float a = ab.x;
-	  float b = ab.y;
-	  short weight = 1;
-	  //fTransformed[ ibb ][ ihist ]->Fill( a, b);
-	  for ( int xx=-1; xx<2; ++xx ){
-	    for ( int yy=-1; yy<2; ++yy ){
-	      weight = 4-2*abs(xx)-2*abs(yy)+abs(xx*yy);
-	      float curx = a+xx*fxbwid;
-	      float cury = b+yy*fybwid;
-	      if ( curx > fxmin && curx < fxmax &&
-		   cury > fymin && cury < fymax ){
-		fTransformed[ ibb ][ ihist ] -> Fill( curx, cury, weight );
+    for ( unsigned ibb=0; ibb<fNbb; ++ibb){
+      for ( unsigned iee=0; iee<fNee; ++iee ){
+	for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
+	  ellipse_st * elli = &fE[ibb][iee][iphi]; // has set everything but x and y
+	  elli->set_xy( xy );
+	  
+	  float bb = elli->get_b();
+	  // pick number of angles based on bb
+	  unsigned nang = unsigned( 2 * bb / bbwid );
+	  float   dtheta = 2*pi/nang;
+	  for ( unsigned itheta = 0; itheta<nang; ++itheta ){
+	    xypoint ab = elli->xy( itheta*dtheta );
+	    
+	    float a = ab.x;
+	    float b = ab.y;
+	    // calculate bin
+	    int xbin = get_xbin( a );
+	    int ybin = get_ybin( b );
+	    if ( xbin<0 || ybin<0 ) continue;
+	    
+	    unsigned short weight = 1;
+	    for ( int xx=-1; xx<2; ++xx ){
+	      for ( int yy=-1; yy<2; ++yy ){
+		weight = 4-2*abs(xx)-2*abs(yy)+abs(xx*yy);
+		int curx = xbin + xx;
+		int cury = ybin + yy;
+		if ( curx >=0 && curx < fNx &&
+		     cury >=0 && cury < fNy ){
+		  /*		  std::cout<<"ibb= "<<ibb<<"  "
+			   <<"iee= "<<iee<<"  "
+			   <<"iphi= "<<iphi<<"  "
+			   <<"icurx= "<<curx<<"  "
+			   <<"icury= "<<cury<<std::endl;*/
+		  fTransformed[ ibb ][ iee ][ iphi ][ curx ][ cury ] += weight ;
+		}
 	      }
 	    }
 	  }
@@ -283,81 +305,138 @@ void EllipseHough::hough_transform( const std::vector< xypoint >& data ){
 }
 
 
-/*
+  
 struct binindices_st {
   unsigned ibb;
-  unsigned ihist;
+  unsigned iee;
+  unsigned iphi;
   unsigned ix;
   unsigned iy;
-  binindices_st() : ibb(0), ihist(0), ix(0), iy(0) { } 
+  unsigned pkval;
+  binindices_st() : ibb(0), iee(0), iphi(0), ix(0), iy(0), pkval(0) { } 
+  binindices_st( unsigned bb, unsigned ee, unsigned phi, unsigned x, unsigned y, unsigned pk) : 
+    ibb(bb), iee(ee), iphi(phi), ix(x), iy(y), pkval(pk) { } 
+  binindices_st( const binindices_st& bi ) : 
+    ibb(bi.ibb), iee(bi.iee), iphi(bi.iphi), ix(bi.ix), iy(bi.iy), pkval(bi.pkval) { } 
+
+  bool operator<( const binindices_st& bi ) const{
+    return ( pkval < bi.pkval );
+  }
+
 };
-*/
+
 
 //void EllipseHough::find_maximum( std::vector< xypoint >& hits, std::vector< HoughEllipseResult > & result ){
-HoughEllipseResult EllipseHough::find_maximum( std::vector< xypoint >& hits ){
+std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoint >& hits ){
+  std::vector< binindices_st > passed_threshold;
+  std::vector< HoughEllipseResult > results;
 
-  //std::vector< binindices_st > passed_threshold;
 
-  HoughEllipseResult curbest( ellipse_st(), 0 );
-  // loop over the hough transform histograms to find the peak
+  // loop over the hough transform array to find the peak
   // and store the "best" circle center and radius
-  for ( unsigned ibb=0; ibb < fTransformed.size(); ++ibb ){
-    for ( unsigned ihist=0; ihist < fTransformed[ibb].size(); ++ihist ) {
-      //float vmuse =0., memuse=0.;
-      //process_mem_usage( vmuse, memuse );
-      //std::cout<<"find_maximum ibb="<<ibb<<" ihist="<<ihist<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
-      TH2S* h = fTransformed[ibb][ihist];
-
-      for ( int ix=1; ix<=h->GetNbinsX(); ++ix ){
-	for ( int iy=1; iy<=h->GetNbinsY(); ++iy ){
-	  if ( h->GetBinContent( ix, iy ) > curbest.peakval ) {
-	    float x = h->GetXaxis()->GetBinCenter( ix );
-	    float y = h->GetYaxis()->GetBinCenter( iy );
-	    curbest.peakval = h->GetBinContent( ix, iy );
-	    curbest.ibb = ibb;
-	    curbest.ihist = ihist;
-	    ellipse_st * elli = fE[ curbest.ibb ][ curbest.ihist ]; // has set everything but x and y
-	    elli->set_xy( xypoint( x, y ) );
-	    curbest.e = *elli;
+  for ( unsigned ibb=0; ibb<fNbb; ++ibb){
+    for ( unsigned iee=0; iee<fNee; ++iee ){
+      for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
+	for ( unsigned ix=0; ix<fNx; ++ix ){
+	  for ( unsigned iy=0; iy<fNy; ++iy ){
+	      if ( fTransformed[ibb][iee][iphi][ix][iy] > threshold ){
+		passed_threshold.push_back( 
+					   binindices_st( ibb, iee, iphi, ix, iy, 
+							  
+							   fTransformed[ibb][iee][iphi][ix][iy] ) );			  
+	      }
 	  }
 	}
       }
-      //process_mem_usage( vmuse, memuse );
-      //std::cout<<"endloop find_maximum ibb="<<ibb<<" ihist="<<ihist<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
     }
   }
-
+ 
   // find the hits that are associated with the ellipse and add them
   // to the result, otherwise add them to list of unused_hits
   // use bin sizes in xc, yc as threshold distance for hit to be from circle
-  float bbwid = (fbbmax-fbbmin)/fNbb;
-  float fxbwid = (fxmax-fxmin)/fNx; 
+  float fxbwid = (fxmax-fxmin)/fNx;
   float fybwid = (fymax-fymin)/fNy;
   float rthres = drscaling * std::sqrt( fxbwid*fxbwid + fybwid*fybwid );
-  std::cout<<"rthres="<<rthres<<std::endl;
-  std::cout<<"curbest.e "<<curbest.e<<std::endl;
-  std::vector< xypoint > unused_hits;
-  for ( xypoint xy : hits ){
-    float dr  = curbest.e.dmin( xy );
-    if ( fabs( dr ) < rthres ){
-      curbest.data.push_back( xy );
-    } else {
-      unused_hits.push_back( xy );
+  
+  
+  std::sort( passed_threshold.begin(), passed_threshold.end() );
+  std::cout<<"found "<<passed_threshold.size()<<" bins above threshold"<<std::endl;
+  unsigned pkmax = 0;
+  if ( passed_threshold.size() > 0 ) pkmax = passed_threshold.back().pkval;
+  while ( passed_threshold.size() > 0 ){
+    binindices_st bi = passed_threshold.back();
+    passed_threshold.pop_back();
+    
+    if ( bi.pkval != pkmax ) break;
+
+    float x = get_x_frombin( bi.ix );
+    float y = get_y_frombin( bi.iy );
+    bool alreadyfound=false;
+    for ( const HoughEllipseResult& hr : results ) {
+      if ( fabs( hr.e.get_xy().x - x ) < hr.e.get_b() &&
+	   fabs( hr.e.get_xy().x - x ) < hr.e.get_b() ) {
+	alreadyfound=true;
+	//std::cout<<"skipping this bin, already found "<<hr.e<<std::endl;
+	break;
+      }
+    }
+    if (alreadyfound) continue;
+    std::cout<<passed_threshold.size()<<" bins remain to be checked "<<std::endl;
+
+    HoughEllipseResult curbest( ellipse_st( get_b_frombin( bi.ibb ),
+					    get_e_frombin( bi.iee  ),
+					    get_phi_frombin( bi.iphi ),
+					    xypoint( x, y ) ),
+				bi.pkval );
+
+    std::cout<<"curbest.e "<<curbest.e<<" pk="<<curbest.peakval<<" / "<<threshold<<std::endl;  
+
+    std::vector< xypoint > unused_hits;
+ 
+    for ( xypoint xy : hits ){
+      float dr  = curbest.e.dmin( xy );
+      if ( fabs( dr ) < rthres ){
+	curbest.data.push_back( xy );
+      } else {
+	unused_hits.push_back( xy );
+      }
+    }
+    
+    if ( curbest.data.size() >= minhits ) {
+      hits = unused_hits;
+      results.push_back( curbest );
+      std::cout<<"New ellipse "<<results.size()<<" with "<<curbest.data.size()<<" points "
+	       <<" --- "<<hits.size()<<" remaining hits to match"
+	       <<std::endl;
     }
   }
-
-  hits = unused_hits;
-  return curbest;
+      
+  return results;
 }
 
   
-void EllipseHough::save_hough_histo( unsigned num, TH2S* histo ){
+void EllipseHough::save_hough_histo( unsigned num, const HoughEllipseResult& hr ){
   TDirectory* curdir = gDirectory;
   houghdir->cd();
+  
+  std::string hname = "hough_space_" + std::to_string( num );
 
-  std::string hname = std::string( histo->GetName() ) + "_cand_" + std::to_string( num );
-  TH2S* savehist = (TH2S*)histo->Clone( hname.c_str() );
-  savehist->SetName( hname.c_str() );
+  std::string htitle = 
+    std::string( "Hough Space bb = ") + std::to_string( get_b_frombin( hr.ibb ) ) +
+    std::string( "ee = ") + std::to_string( get_b_frombin( hr.iee ) ) +
+    std::string( "phi = ") + std::to_string( get_b_frombin( hr.iphi ) ) +
+    " ; xc; yc ";
+
+  TH2S* savehist = new TH2S( hname.c_str(), htitle.c_str(),
+			     fNx, fxmin, fxmax,
+			     fNy, fymin, fymax ) ;
+
+  for ( unsigned ix=0; ix<fNx; ++ix ){
+    for ( unsigned iy=0; iy<fNy; ++iy ){
+      savehist->SetBinContent( ix+1, iy+1, 
+			       fTransformed[hr.ibb][hr.iee][hr.iphi][ ix ] [iy ] );
+    }
+  }
   savehist->SetDirectory( houghdir );
   curdir->cd();
 }
@@ -367,10 +446,18 @@ void EllipseHough::plot_candidate( unsigned num, const HoughEllipseResult & hr )
   houghdir->cd();
   
   std::string hname = std::string("hcircle_")+std::to_string(num);
-  TH2S* hplot = (TH2S*)fTransformed[ hr.ibb ][ hr.ihist ]->Clone( hname.c_str() );
-  hplot->SetName( hname.c_str() );
+
+  std::string htitle = 
+    std::string( "Ellipse candidate bb = ") + std::to_string( get_b_frombin( hr.ibb ) ) +
+    std::string( "ee = ") + std::to_string( get_b_frombin( hr.iee ) ) +
+    std::string( "phi = ") + std::to_string( get_b_frombin( hr.iphi ) ) +
+    " ; xc; yc ";
+
+  TH2S* hplot = new TH2S( hname.c_str(), htitle.c_str(),
+			     fNx, fxmin, fxmax,
+			     fNy, fymin, fymax ) ;
+  hplot->SetMarkerStyle( 7 );
   hplot->SetDirectory( houghdir );
-  hplot->Reset();
 
   for ( const xypoint& xy : hr.data ){
     hplot->Fill( xy.x, xy.y );
@@ -380,7 +467,7 @@ void EllipseHough::plot_candidate( unsigned num, const HoughEllipseResult & hr )
 			       hr.e.get_a(), 0., 360., RADTODEG( hr.e.get_phi() ) );
   el->SetFillStyle(0);
   hplot->GetListOfFunctions()->Add( el );
-  TMarker *mark = new TMarker( hr.e.get_xy().x, hr.e.get_xy().y, 20 );
+  TMarker *mark = new TMarker( hr.e.get_xy().x, hr.e.get_xy().y, 2 );
   hplot->GetListOfFunctions()->Add( mark );
 
   curdir->cd();
