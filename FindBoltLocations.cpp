@@ -251,6 +251,7 @@ main (int argc, char **argv)
 
 	/// draw all ellipses in her on image_ellipse and write
 	for ( const HoughEllipseResult& her : hers ){
+	  if ( her.data.size() < 9 ) continue;
 	  Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
 	  Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
 	  ellipse( image_ellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (0, 0, 255) );
@@ -265,6 +266,7 @@ main (int argc, char **argv)
 	/// take hough resutls and fill vector of PMTIdentified info
 	std::vector< PMTIdentified > ellipse_pmts;
 	for ( const HoughEllipseResult& her : hers ){
+	  if ( her.data.size() < 9 ) continue;
 	  Vec3f pmtloc{ her.e.get_xy().x, her.e.get_xy().y, her.e.get_b() };
 	  std::vector< Vec3f > boltlocs;
 	  std::vector< float > dists;

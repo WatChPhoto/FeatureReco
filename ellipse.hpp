@@ -27,7 +27,8 @@ struct ellipse_st {
   ellipse_st() : c( xypoint(0.,0.) ), b(1.), e(0.), phi(0.), epenalty(0.) { }
   ellipse_st( const ellipse_st& elli ) : 
     c( elli.get_xy() ), b( elli.get_b() ), e( elli.get_e() ), phi( elli.get_phi() ) { }
-  
+
+  void set_bephi( double bb, double ee, double phiphi ){ b=bb; e=ee; phi=phiphi; } 
 
   // parametric function radius of ellipse 
   // at theta == angle from long axis in radians

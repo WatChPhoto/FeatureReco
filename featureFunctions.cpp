@@ -162,8 +162,12 @@ void draw_line( const std::vector< PMTIdentified >& pmtsfound, const MedianTextD
 
       int x= pmtid.bolts[ boltidx ][0];
       int y= pmtid.bolts[ boltidx ][1];
-    //line(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int lineType=8, int shift=0)
-    line(imcol, cv::Point(m_x,m_y), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
+      
+      float dist=std::sqrt( (m_x-x)*(m_x-x) + (m_x-y)*(m_x-y) );
+      if ( dist > 20 ) continue;
+
+      //line(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int lineType=8, int shift=0)
+      line(imcol, cv::Point(m_x,m_y), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
     }
   }
 }
