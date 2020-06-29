@@ -14,48 +14,11 @@
 
 #include "hough_ellipse.hpp"
 
+#include "ellipse_detection.hpp" //ellipse detection fast
 using std::string;
 using std::vector;
 
 using namespace cv;
-
-//Returns the data from text file
-//Returns empty vector if text file is not supplied.
-MedianTextData assign (int argc, string argv) {
-    if (argc == 2)
-      {
-	  MedianTextData a;
-	  return a;
-      }
-    if (argc == 3)
-      {
-	  MedianTextReader *
-	      boltreader = MedianTextReader::Get ();
-
-	  boltreader->set_input_file (string (argv));
-	  return boltreader->get_data ();
-      }
-}
-
-//flags to turn on/off saving images
-vector < bool > setup_image_saveflags () {
-    vector < bool > options;
-    try
-    {
-	int option = config::Get_int ("save_option");
-
-	for (int i = 0; i < 5; i++)
-	  {
-	      options.push_back (bool (option % 2));
-	      option /= 10;
-	  }
-
-    } catch (std::string e)
-    {
-	std::cout << "Error with config file key " << e << std::endl;
-    }
-    return options;
-}
 
 int
 main (int argc, char **argv)
@@ -86,6 +49,18 @@ main (int argc, char **argv)
     Mat image;
     cvtColor (image_color, image, COLOR_RGBA2GRAY);
 
+    /*
+    // sharpen image using "unsharp mask" algorithm
+    Mat blurred; double sigma = 1, threshold = 5, amount = 1;
+    GaussianBlur(image, blurred, Size(), sigma, sigma);
+    Mat lowContrastMask = abs(image - blurred) < threshold;
+    Mat sharpened = image*(1+amount) + blurred*(-amount);
+    image.copyTo(sharpened, lowContrastMask);
+    //
+
+    image = sharpened.clone();
+    imwrite("sharp.jpg", sharpened);
+*/
     // Open a root file to put histograms into
     TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
 
@@ -229,6 +204,11 @@ main (int argc, char **argv)
 	      blobs.push_back (temp);
 	}
 
+	//ellipse trial
+	detect_ellipse(blobs, image_ellipse, 90, 120 ,90, 120, 4);
+	imwrite("ellipses.jpg",image_ellipse);
+	//trialend
+
 	//Draws circle from data to the input image
 	draw_circle_from_data (blobs, img_blob_map, Scalar (0, 0, 255));
 	if (option[3]) {
@@ -248,7 +228,7 @@ main (int argc, char **argv)
 
 	/// Read in truth bolt locations
 	//Returns empty vector if text file is not supplied.
-	const MedianTextData & mtd = assign (argc, string (argv[argc - 1]));
+	const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
 
 	//Debug information PMt
 	if(verbose){
@@ -257,7 +237,7 @@ main (int argc, char **argv)
 	  }
 	}
 
-
+	/*
 	///===========================================================
 	/// Begin ellipse hough transfrom stuff
 	EllipseHough h;
@@ -305,7 +285,7 @@ main (int argc, char **argv)
 	         ellipse_dist->Fill (dist);
 	    }
 	}
-
+	
 	if (have_truth){
 	  //Find bolt matches between those we found and truth
 	  find_closest_matches( ellipse_pmts, mtd );
@@ -335,7 +315,7 @@ main (int argc, char **argv)
 
 	/// End ellipse hough transform stuff
 	
-      
+	*/
 
 	/// Hough Transform
 	vector < Vec3f > circles;
@@ -482,50 +462,146 @@ main (int argc, char **argv)
 
 	//testing purpose
 	if (option[0]) {
+	  //overlays the bolt angle and bolt id in input image using final_pmts input
+	  overlay_bolt_angle_boltid(final_pmts, image_final);
 	  outputname = build_output_filename (argv[1], "final");
 	  imwrite (outputname, image_final);
 	}
 
-  ///bwlabel trial
-  Mat contour1 = image.clone();
-  Mat contour3 = image.clone();
-    
-  cv::threshold( contour1, contour1, 230, 255,THRESH_BINARY );
-  BwLabel b;
-  vector<vector<int>> ma = b.find_label(contour1);
-  Mat img3 = Mat::zeros(contour1.rows, contour1.cols, CV_8UC3);
 
-  std::cout<<"size of label "<<ma.size()<<" cols "<<ma[0].size()<<std::endl;
-  for(int i=0; i<ma.size(); i++){
-      for(int j=0; j<ma[i].size(); j++){
-	        if(ma[i][j]>0){
-	            img3.at<Vec3b>(i,j)[0]= 30*ma[i][j];
-	            img3.at<Vec3b>(i,j)[1]= 10*ma[i][j];
-	            img3.at<Vec3b>(i,j)[2]= 20*ma[i][j];
-          }
-      }  
-  }
-  vector<Vec2f> lines;
-  HoughLines(contour1, lines, 1, CV_PI/180, 60, 0, 0,CV_PI/2.2,CV_PI/1.8 );
-	//vector<Vec4i> linesP;
-        
-  // Draw the lines
-  for( size_t i = 0; i < lines.size(); i++ )
-      {
-        float rho = lines[i][0], theta = lines[i][1];
-        Point pt1, pt2;
-        double a = cos(theta), b = sin(theta);
-        double x0 = a*rho, y0 = b*rho;
-        pt1.x = cvRound(x0 + 1000*(-b));
-        pt1.y = cvRound(y0 + 1000*(a));
-        pt2.x = cvRound(x0 - 1000*(-b));
-        pt2.y = cvRound(y0 - 1000*(a));
-        line( contour1, pt1, pt2, Scalar(255,255,255), 1, LINE_AA);
+	/*
+  ///bwlabel trial
+	///bwlabel trial
+	Mat contour1 = image.clone();
+	Mat contour3 = image.clone();
+    
+	cv::threshold( contour1, contour1, 230, 255,THRESH_BINARY );
+	BwLabel b;
+	vector<vector<int>> ma = b.find_label(contour1);
+	struct dots{
+	  std::vector<cv::Point> pts;
+	  cv::Point centre;
+	  dots(std::vector<cv::Point> pts): pts(pts){}
+	};
+	std::vector<dots> maa;
+	std::vector<int> grps;
+	for(unsigned i=0; i<ma.size();i++){
+	  //bool brk =false;
+	  for(unsigned j=0; j<ma[0].size();j++){
+	    if(ma[i][j]!=0){ 
+	      bool bel=false;
+	      for(int grou : grps){
+		if(ma[i][j] == grou){bel=true; break;}
+	      }
+	      if(!bel){
+		
+		grps.push_back(ma[i][j]);
+	      }
+	    }
+	      
+	  }
 	}
-     
-  imwrite("threshold.jpg", contour1);
-  //trialend
+	std::cout<<"group size "<<grps.size()<<std::endl;
+    
+	for(int grn:grps){
+	  int ida=-1;
+	  int idb=-1;
+	  for(int i=0; i<ma.size();i++){
+	    bool brk =false;
+	    for(int j=0; j<ma[0].size();j++){
+	      if(ma[i][j] == grn){ ida = i; idb =j; brk=true; break;} 
+	    }
+	    if(brk){break;}
+	  }
+	  
+	  int lowy = ((ida-150)>0)?(ida-150):0;
+	  int lowx = ((idb-150)>0)?(idb-150):0;
+	  int higy = ((ida+150)<ma.size())?(ida+150):ma.size();
+	  int higx = ((idb+150)<ma[0].size())?(idb+150):ma[0].size();
+	  
+	  std::vector<cv::Point> pts;
+	  for(int k=lowy; k<higy;k++){
+	    for(int l=lowx; l<higx;l++){
+	      //for(int k=0; k<ma.size();k++){
+	      //for(int l=0; l<ma[k].size();l++){
+	      if(ma[k][l]!=0){
+		if(ma[k][l]==grn){ pts.push_back(cv::Point(l,k));} 
+	      }
+	    }
+	  }
+	  std::cout<<"Pts size "<<pts.size()<<std::endl;
+	  if(pts.size()>50 && pts.size()<200){maa.push_back(dots(pts));}
+	  // }
+	}
+
+	std::vector<cv::Point> ab;
+	for(int i=0; i<maa.size();i++){
+	  int xmin=maa[i].pts[0].x;
+	  int ymin=maa[i].pts[0].y;
+	  int xmax=maa[i].pts[0].x;
+	  int ymax=maa[i].pts[0].y;
       
+	  for(cv::Point xy:maa[i].pts){
+	    if(xy.x<xmin){xmin=xy.x;}
+	    if(xy.y<ymin){ymin=xy.y;}
+	    if(xy.x>xmax){xmax=xy.x;}
+	    if(xy.y>ymax){ymax=xy.y;}
+	  }
+	  maa[i].centre=cv::Point((xmin+xmax)/2.0,(ymin+ymax)/2.0);
+	  ab.push_back(cv::Point((xmin+xmax)/2.0,(ymin+ymax)/2.0));
+	}
+    
+	
+	for(cv::Point p:ab){
+	  int x1 =p.x;
+	  int y1 = p.y;
+	  for(cv::Point q:ab){
+	    int x2 = q.x;
+	    int y2 = q.y;
+	    
+	    float slope = (y2-y1+0.0)/(x2-x1);
+	    float dist = sqrt(std::pow(y2-y2,2)+std::pow(x2-x1,2));
+	    
+	  }
+	  
+	}
+	Mat img3 = Mat::zeros(contour1.rows, contour1.cols, CV_8UC1);
+
+	std::cout<<"size of label "<<maa.size()<<" cols "<<ma[0].size()<<std::endl;
+	for(int i=0; i<maa.size(); i++){
+	  //for(int j=0; j<maa[i].pts.size(); j++){
+	  //if(ma[i][j]>0){
+	  //img3.at<uchar>((cv::Point)maa[i].pts[j]) = 255;//30*ma[i][j];
+	  img3.at<uchar>(maa[i].centre) = 255;//30*ma[i][j];
+	  std::cout<<"x "<<maa[i].centre.x<<" y "<<maa[i].centre.y<<std::endl;
+	  //img3.at<Vec3b>((cv::Point)maa[i].pts[j])[1]= 255;//10*ma[i][j];
+	  //img3.at<Vec3b>((cv::Point)maa[i].pts[j])[2]= 255;//20*ma[i][j];
+	  //}
+	  //cout:: 
+	}
+    
+	vector<Vec2f> lines;
+	//HoughLines(img3, lines, 1, CV_PI/180, 60, 0, 0,CV_PI/2.2,CV_PI/1.8 );
+	HoughLines(img3, lines, 1, CV_PI/180, 30, 0, 0,0,CV_PI );
+	//vector<Vec4i> linesP;
+	// Draw the lines
+	for( size_t i = 0; i < lines.size(); i++ )
+	  {
+	    float rho = lines[i][0], theta = lines[i][1];
+	    Point pt1, pt2;
+	    double a = cos(theta), b = sin(theta);
+	    double x0 = a*rho, y0 = b*rho;
+	    pt1.x = cvRound(x0 + 1000*(-b));
+	    pt1.y = cvRound(y0 + 1000*(a));
+	    pt2.x = cvRound(x0 - 1000*(-b));
+	    pt2.y = cvRound(y0 - 1000*(a));
+	    line( img3, pt1, pt2, Scalar(255,255,255), 1, LINE_AA);
+	  }
+     
+	imwrite("threshold.jpg", contour1);
+	imwrite("bwlbl.jpg",img3);
+	//trialend
+	*/
     }
     catch (std::string e)
     {

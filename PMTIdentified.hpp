@@ -69,6 +69,9 @@ void make_bolt_dist_histogram( const std::vector<PMTIdentified > & matches, TH1D
 //Makes histogram from text file to found circle
 //void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, TH1D *&hist_dist );
 
+//Overlays the boltangle and boltid in the image
+void overlay_bolt_angle_boltid(const std::vector< PMTIdentified > final_pmts, cv::Mat image_final);
+  
 
 #endif
 

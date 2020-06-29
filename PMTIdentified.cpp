@@ -90,11 +90,10 @@ void PMTIdentified::calculate_angles(){
   for( Vec3f bolt : bolts ) {
     float x = bolt[0];
     float y = bolt[1];
-    float theta = atan2f((y-b),(x-a));  
+    float theta = atan2f((x-a),-(y-b)); //getting angle with ^ axis wrt image  
     theta = RADTODEG(theta);
     theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
-    //Finding angle wrt to Y-axis ^ (nothing to do with axis direction in OpenCv
-    theta = (theta<270)?(theta+90):(theta-270);
+    
     angles.push_back( theta );
   }
 }
@@ -160,7 +159,7 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
     }
 
     // have closest match to MedianTextRecord?
-    if ( dmin < bad_dmin ){
+    if ( dmin < 20){//bad_dmin ){
       final_pmts[ dmin_pmtidx ].idx_txt[ dmin_boltidx ] = mtr_idx;
       final_pmts[ dmin_pmtidx ].dist_txt[ dmin_boltidx ] = dmin;
     }
@@ -183,5 +182,34 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
   }
 }
 
+void overlay_bolt_angle_boltid(const std::vector< PMTIdentified > final_pmts, cv::Mat image_final){
+  for( const PMTIdentified pmt : final_pmts ){
+    float a = pmt.circ[0]; //x-coordinate of centre of pmt
+    float b = pmt.circ[1];
+    for(int i=0; i<pmt.bolts.size();i++){
+      std::string txt = std::to_string((int)pmt.angles[i]);
+      // A(x1,y1)         P(x,y)            B(x2,y2) 
+      //  o-----------------o-----------------o
+      //  AP:PB = m:n
+      float m = 4;
+      float n =1;
+      float x = pmt.bolts[i][0];
+      float y = pmt.bolts[i][1];
+      cv::Point text_at = Point((m*x + n*a)/(m+n),(m*y + n*b)/(m+n));
 
+      //writing bolt angle from ^ in image 
+      cv::putText( image_final, txt, text_at, FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
+
+      txt = std::to_string((int)pmt.boltid[i]);
+      m = 3;
+      n =2;
+      x = pmt.bolts[i][0];
+      y = pmt.bolts[i][1];
+      text_at = Point((m*x + n*a)/(m+n),(m*y + n*b)/(m+n));
+
+      //writing boltid in image
+      cv::putText( image_final, txt, text_at, FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,255),1);
+    }
+  }
+}
 
