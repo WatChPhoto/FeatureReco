@@ -96,8 +96,11 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
   }
   for(ParametricEllipse ellipses: elData){
     
-    cv::RotatedRect rRect = cv::RotatedRect(ellipses.centre, cv::Size2f(ellipses.a,ellipses.b), ellipses.alpha);
-      ellipse(img, rRect, cv::Scalar(255,255,255), 3);
+    cv::Size axes( ellipses.a, ellipses.b );
+    cv::Point center = ellipses.centre;
+    const double PI = std::acos(-1);
+    ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
+
 
   }
 }

@@ -14,6 +14,7 @@
 
 #include "hough_ellipse.hpp"
 
+#include "ellipse_detection.hpp" //ellipse detection fast
 using std::string;
 using std::vector;
 
@@ -202,6 +203,11 @@ main (int argc, char **argv)
 	      temp[2] = r;
 	      blobs.push_back (temp);
 	}
+
+	//ellipse trial
+	detect_ellipse(blobs, image_ellipse, 90, 120 ,90, 120, 4);
+	imwrite("ellipses.jpg",image_ellipse);
+	//trialend
 
 	//Draws circle from data to the input image
 	draw_circle_from_data (blobs, img_blob_map, Scalar (0, 0, 255));
