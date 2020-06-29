@@ -44,4 +44,8 @@ MedianTextData assign_data_from_text(int argc, std::string argv);
 
 //flags to turn on/off saving images
 std::vector<bool> setup_verbosity(int option);
+
+//flags to turn on/off saving images
+std::vector < bool > setup_image_saveflags ();
+
 #endif

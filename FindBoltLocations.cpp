@@ -19,45 +19,6 @@ using std::vector;
 
 using namespace cv;
 
-//Returns the data from text file
-//Returns empty vector if text file is not supplied.
-MedianTextData assign (int argc, string argv) {
-    if (argc == 2)
-      {
-	  MedianTextData a;
-	  return a;
-      }
-
-
-    MedianTextReader *
-      boltreader = MedianTextReader::Get ();
-
-    boltreader->set_input_file (string (argv));
-    return boltreader->get_data ();
-
-
-}
-
-//flags to turn on/off saving images
-vector < bool > setup_image_saveflags () {
-    vector < bool > options;
-    try
-    {
-	int option = config::Get_int ("save_option");
-
-	for (int i = 0; i < 5; i++)
-	  {
-	      options.push_back (bool (option % 2));
-	      option /= 10;
-	  }
-
-    } catch (std::string e)
-    {
-	std::cout << "Error with config file key " << e << std::endl;
-    }
-    return options;
-}
-
 int
 main (int argc, char **argv)
 {
@@ -261,7 +222,7 @@ main (int argc, char **argv)
 
 	/// Read in truth bolt locations
 	//Returns empty vector if text file is not supplied.
-	const MedianTextData & mtd = assign (argc, string (argv[argc - 1]));
+	const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
 
 	//Debug information PMt
 	if(verbose){
@@ -495,38 +456,14 @@ main (int argc, char **argv)
 
 	//testing purpose
 	if (option[0]) {
-	  for(const PMTIdentified &pmt:final_pmts ){
-	    float a = pmt.circ[0]; //x-coordinate of centre of pmt
-	    float b = pmt.circ[1];
-	    for(int i=0; i<pmt.bolts.size();i++){
-	      string txt = std::to_string((int)pmt.angles[i]);
-	      // A(x1,y1)         P(x,y)            B(x2,y2)
-	      //  o-----------------o-----------------o
-	      //  AP:PB = m:n
-	      float m = 4;
-	      float n =1;
-	      float x = pmt.bolts[i][0];
-	      float y = pmt.bolts[i][1];
-	      Point text_at = Point((m*x + n*a)/(m+n),(m*y + n*b)/(m+n));
-	      //writing bolt angle from ^ in image
-	      cv::putText( image_final, txt, text_at, FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
-	      
-	      txt = std::to_string((int)pmt.boltid[i]);
-	      m = 3;
-	      n =2;
-	      x = pmt.bolts[i][0];
-	      y = pmt.bolts[i][1];
-	      text_at = Point((m*x + n*a)/(m+n),(m*y + n*b)/(m+n));
-	      
-	      //writing boltid in image
-	      cv::putText( image_final, txt, text_at, FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,255),1);
-	    }
-	  }
-
+	  //overlays the bolt angle and bolt id in input image using final_pmts input
+	  overlay_bolt_angle_boltid(final_pmts, image_final);
 	  outputname = build_output_filename (argv[1], "final");
 	  imwrite (outputname, image_final);
 	}
 
+
+	/*
   ///bwlabel trial
 	///bwlabel trial
 	Mat contour1 = image.clone();
@@ -542,9 +479,9 @@ main (int argc, char **argv)
 	};
 	std::vector<dots> maa;
 	std::vector<int> grps;
-	for(int i=0; i<ma.size();i++){
+	for(unsigned i=0; i<ma.size();i++){
 	  //bool brk =false;
-	  for(int j=0; j<ma[0].size();j++){
+	  for(unsigned j=0; j<ma[0].size();j++){
 	    if(ma[i][j]!=0){ 
 	      bool bel=false;
 	      for(int grou : grps){
@@ -658,7 +595,7 @@ main (int argc, char **argv)
 	imwrite("threshold.jpg", contour1);
 	imwrite("bwlbl.jpg",img3);
 	//trialend
-      
+	*/
     }
     catch (std::string e)
     {

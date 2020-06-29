@@ -24,7 +24,7 @@ Locate bolts in image by applying filters and hough transform.
 
 ./FindBoltLocations [input-image-file-name-with-path] [opt=bolt-location-textfile-with-path]
 
-#Config.txt
+# Config.txt
 Configuration file to change parameters and set verbosity flag.
 
 <pre>
@@ -35,8 +35,9 @@ Output file names are:
 *  blob_candidate             -- b&w image with bolts found using blob detection represented as white and rest black.
 *  hough_candidate 	      -- b&w image with bolts found using hough transform represented as white and rest black.
 *  circles[input-file-name]   -- original image with circles found by hough added
-*  final 		      -- final image.
+*  final.jpg 		      -- final image.
 *  FindBoltLocation.root      -- root histograms
+*  bolts[input-file-name].txt -- text file containing [pmtid(-1 for now) pmtx pmty pmtr boltid boltx bolty] 
 </pre>
 
 To do list:
