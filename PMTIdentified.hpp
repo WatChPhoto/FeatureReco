@@ -70,7 +70,11 @@ void make_bolt_dist_histogram( const std::vector<PMTIdentified > & matches, TH1D
 //void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, TH1D *&hist_dist );
 
 //Overlays the boltangle and boltid in the image
-void overlay_bolt_angle_boltid(const std::vector< PMTIdentified > final_pmts, cv::Mat image_final);
+void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, cv::Mat image_final);
+
+
+/// look for duplicate bolts and keep only best matches
+void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset );
   
 
 #endif

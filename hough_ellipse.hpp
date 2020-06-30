@@ -21,11 +21,14 @@ struct HoughEllipseResult {
   HoughEllipseResult() : e( ellipse_st() ),  peakval(0), type(HoughEllipseUnusedPoints) { }
   
   std::vector< xypoint > data;      // the points for this result
-  ellipse_st             e;      // ellipse parameters
+  ellipse_st             e;         // ellipse parameters
   float                  peakval;   // peak height in hough space
   HoughEllipseResultType type;      // result type
-  unsigned               ibb{0};    // bb bin number
-  unsigned               ihist{0};  // histogram bin number
+  unsigned               ibb{0};    // b hough array index
+  unsigned               iee{0};    // e hough array index
+  unsigned               iphi{0};   // phi hough array index
+  unsigned               ix{0};     // x hough array index
+  unsigned               iy{0};     // y hough array indxe
 };
 
 /// Vector of Hough transform results
@@ -67,11 +70,14 @@ class EllipseHough {
   /// center x = center location in x
   /// center y = center location in y
   /// along with range in each of those values
-  EllipseHough( unsigned nbins_bb     = 20,   float bbmin=85.0,   float bbmax=125.0,
+  EllipseHough( unsigned nbins_bb     = 22,   float bbmin=81.0,   float bbmax=125.0,
 		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
 		unsigned nbins_phiphi = 10,   float phphimin=0.0, float phiphimax=std::acos(-1),
-		unsigned nbins_x      = 1900, float xmin=600,     float xmax=3399,
-		unsigned nbins_y      =  900, float ymin=600,     float ymax=2399);
+		unsigned nbins_x      = 1200, float xmin=300,     float xmax=2700,
+		unsigned nbins_y      = 2200, float ymin=300,     float ymax=3700);
+
+		//		unsigned nbins_x      = 2200, float xmin=300,     float xmax=3700,
+		//		unsigned nbins_y      = 1200, float ymin=300,     float ymax=2700);
 
   ~EllipseHough();
 
@@ -92,8 +98,8 @@ class EllipseHough {
   const HoughEllipseResults& find_ellipses( const std::vector< xypoint >& data );
 
   /// Get the histogram of the transformed data
-  std::vector< std::vector< TH2S* > > get_transform() { return fTransformed; }
-  std::vector< std::vector< ellipse_st* > > get_ebins() { return fE; }
+  //std::vector< std::vector< TH2S* > > get_transform() { return fTransformed; }
+  //std::vector< std::vector< ellipse_st* > > get_ebins() { return fE; }
 
  private:
   // Save binning info
@@ -115,11 +121,17 @@ class EllipseHough {
 
   // one XY histogram per bin
   // Store each radius in a separate TDirectory (nbins_bb directories == 80)
-  std::vector< TDirectory* > fDirectories;
+  //std::vector< TDirectory* > fDirectories;
   // each TDirectory has nbins_ee * nbins_phiphi histograms == 10*18 = 180
-  std::vector< std::vector< TH2S* > > fTransformed;
+  //std::vector< std::vector< TH2S* > > fTransformed;
   // store ellipse at origin for each xy histogram
-  std::vector< std::vector< ellipse_st* > > fE;
+  //std::vector< std::vector< ellipse_st* > > fE;
+
+
+  // Replace histograms with an array
+  unsigned short ***** fTransformed; //[fNbb][fNee][fNphi][fNx][fNy]
+  ellipse_st *** fE; //[fNbb][fNee][fNphi]
+
 
   // top directory to store results
   TDirectory * houghdir;
@@ -129,7 +141,7 @@ class EllipseHough {
   // Fill a HoughResult, pass it a copy of all the hits that
   // and any that don't get used in the HoughResult are returned
   // as unused hits
-  HoughEllipseResult find_maximum( std::vector< xypoint >& unused_hits );
+  std::vector< HoughEllipseResult > find_maximum( std::vector< xypoint >& unused_hits );
 
   // Reset the hough transformed histograms and fill them
   // with the data passed
@@ -138,11 +150,30 @@ class EllipseHough {
   // Make a clone of one of hough transformed histograms for
   // a candidate ellipse.  Pass it the candidate number, and
   // histogram pointer
-  void save_hough_histo( unsigned num, TH2S* histo );
+  void save_hough_histo( unsigned num, const HoughEllipseResult & hr );
 
   // make a histogram of the candidate ellipse points, and draw
   // the hough estimate for ellipse
   void plot_candidate( unsigned num, const HoughEllipseResult & hr );
+
+  // following return -1 if outside bin range
+  int get_bbin  ( double bb ) const;
+  int get_ebin  ( double ee ) const;
+  int get_phibin( double phi ) const;
+  int get_xbin  ( double x ) const;
+  int get_ybin  ( double y ) const;
+
+  float get_b_frombin( int bin ) const;
+  float get_e_frombin( int bin ) const;
+  float get_phi_frombin( int bin ) const;
+  float get_x_frombin( int bin ) const;
+  float get_y_frombin( int bin ) const;
+
+
+private:
+  // helper
+  void zero_hough_counts();
+
 }; /// end of EllipseHough
 
 
