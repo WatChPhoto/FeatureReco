@@ -256,7 +256,25 @@ void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
     pmt.boltid = boltid;
     pmt.idx_txt = idx_txt;
     pmt.dist_txt = dist_txt;
-  }	  
+  }
+
+  
+}
+
+
+void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts ){
+
+  std::vector< PMTIdentified > pruned_pmts;
+
+  for ( PMTIdentified& pmt : final_pmts ){
+    if ( pmt.bolts.size() >= numbolts ){
+      pruned_pmts.push_back( pmt );
+    }
+  }
+  
+  final_pmts = pruned_pmts;
+  
+
 }
 
 

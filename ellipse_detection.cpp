@@ -69,7 +69,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	    int b = abs(sint*a*d)/sqrt((std::pow(a,2)-std::pow(d,2)*std::pow(cost,2)));
 	    
 	    int index;
-	    std::cout<<" index "<<index<<std::endl;
+	    //std::cout<<" index "<<index<<std::endl;
 	    double essentricity = (a>b)?((b+0.0)/a):((a+0.0)/b);
 	    if(has_key(bbins,b,index)){
 	      bbins[index].y +=1;
@@ -89,7 +89,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	      int max_index=-1;
 	      int max_freq;
 	      find_max(bbins, max_freq, max_index);
-	      std::cout<<"max_index"<<max_index<<std::endl;	
+	      //std::cout<<"max_index"<<max_index<<std::endl;	
 	      if(max_index>=0){
 		int bmax=bbins[max_index].x;
 		if(max_freq>min_minor_freq){// && alfa>=0.0 && bmax>=min_minor){
@@ -116,7 +116,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
       }
     }
   
-   std::cout<<"im in draw exit"<<std::endl;	
+    //std::cout<<"im in draw exit"<<std::endl;	
   }
   for(ParametricEllipse ellipses: elData){
     
