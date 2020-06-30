@@ -58,6 +58,10 @@ hough_param2 = 9 #7  # minimum accumulator value to call it a circle
 hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
+# Ellipse hough transform
+do_ellipse_hough = 1  # 1 for true, 0 for false
+
+
 #Second Hough transform parameters
 sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
 sec_hough_minDist = 216 #210 # min distance between circles
@@ -65,6 +69,8 @@ sec_hough_param1 = 1 # threshold placed on image| Minimum brightness to use for 
 sec_hough_param2 = 3 #5  # minimum accumulator value to call it a circle
 sec_hough_minR = 90 #80 # minimum radius in pixels
 sec_hough_maxR = 116 #120 # maximum radius in pixels
+
+
 
 #Choose to make rsm histogram or mean histogram.
 do_avg = 1 #1 for true 0 for false
