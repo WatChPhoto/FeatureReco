@@ -44,6 +44,7 @@ main (int argc, char **argv)
 
     Mat image_final = image_color.clone ();
     Mat image_ellipse = image_color.clone();
+    Mat image_houghellipse = image_color.clone();
 
     /// build output image
     Mat image;
@@ -237,87 +238,147 @@ main (int argc, char **argv)
 	  }
 	}
 
-	/*
-	///===========================================================
-	/// Begin ellipse hough transfrom stuff
-	EllipseHough h;
-	std::vector< xypoint > data;
-	for ( unsigned i=0 ; i < blobs.size(); ++i ){
-	  data.push_back( xypoint( blobs[i][0], blobs[i][1] ) );
-	}
-	HoughEllipseResults hers = h.find_ellipses( data );
 	
-	std::cout<< hers <<std::endl;
+	bool do_ellipse_hough = (bool)config::Get_int( "do_ellipse_hough" );
+	if ( do_ellipse_hough ){
 
-	/// draw all ellipses in her on image_ellipse and write
-	for ( const HoughEllipseResult& her : hers ){
-	  if ( her.data.size() < 9 ) continue;
-	  Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
-	  Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
-	  ellipse( image_ellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (0, 0, 255) );
-
-	  Scalar my_color( 0, 255, 0 );
-	  for ( const xypoint& xy : her.data ){
-	    circle( image_ellipse, Point( xy.x, xy.y ), 3, my_color, 1, 0 );
-	    //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
+	  ///===========================================================
+	  /// Begin ellipse hough transfrom stuff
+	  EllipseHough h;
+	  std::vector< xypoint > data;
+	  for ( unsigned i=0 ; i < blobs.size(); ++i ){
+	    data.push_back( xypoint( blobs[i][0], blobs[i][1] ) );
 	  }
-	}  
-
-	/// take hough resutls and fill vector of PMTIdentified info
-	std::vector< PMTIdentified > ellipse_pmts;
-	for ( const HoughEllipseResult& her : hers ){
-	  if ( her.data.size() < 9 ) continue;
-	  Vec3f pmtloc{ her.e.get_xy().x, her.e.get_xy().y, her.e.get_b() };
-	  std::vector< Vec3f > boltlocs;
-	  std::vector< float > dists;
-	  for ( const xypoint& xy : her.data ){
-	    boltlocs.push_back( Vec3f( xy.x, xy.y, 3 ) );
-	    dists.push_back( her.e.dmin( xy ) );
-	  }
-	  ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
-	}
-
-	//Fill ellipse_dist histogram
-	TH1D * ellipse_dist = new TH1D ("ellipse_dist",
-				     "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
-				     51, -0.5, 49.5);
-
-	for (const PMTIdentified & pmt : ellipse_pmts) {
-	    for (const float dist : pmt.dists) {
-	         ellipse_dist->Fill (dist);
+	  HoughEllipseResults hers = h.find_ellipses( data );
+	  
+	  std::cout<< hers <<std::endl;
+	  
+	  /// draw all ellipses in her on image_ellipse and write
+	  for ( const HoughEllipseResult& her : hers ){
+	    if ( her.data.size() < 9 ) continue;
+	    Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
+	    Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
+	    ellipse( image_houghellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (0, 0, 255) );
+	    
+	    Scalar my_color( 0, 255, 0 );
+	    for ( const xypoint& xy : her.data ){
+	      circle( image_houghellipse, Point( xy.x, xy.y ), 3, my_color, 1, 0 );
+	      //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
 	    }
-	}
+	  }  
+	  
+	  /// take hough resutls and fill vector of PMTIdentified info
+	  std::vector< PMTIdentified > ellipse_pmts;
+	  for ( const HoughEllipseResult& her : hers ){
+	    //if ( her.data.size() < 9 ) continue;
+	    Vec3f pmtloc{ her.e.get_xy().x, her.e.get_xy().y, her.e.get_b() };
+	    std::vector< Vec3f > boltlocs;
+	    std::vector< float > dists;
+	    for ( const xypoint& xy : her.data ){
+	      boltlocs.push_back( Vec3f( xy.x, xy.y, 3 ) );
+	      dists.push_back( her.e.dmin( xy ) );
+	    }
+	    ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
+	  }
+	  
+	  //Fill ellipse_dist histogram
+	  TH1D * ellipse_dist = new TH1D ("ellipse_dist",
+					  "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
+					  51, -0.5, 49.5);
+	  
+	  for (const PMTIdentified & pmt : ellipse_pmts) {
+	    for (const float dist : pmt.dists) {
+	      ellipse_dist->Fill (dist);
+	    }
+	  }
 	
-	if (have_truth){
-	  //Find bolt matches between those we found and truth
-	  find_closest_matches( ellipse_pmts, mtd );
-
-	  //Draw line from truth to closest bolt found 
-	  draw_line (ellipse_pmts, mtd, image_ellipse);
-
-	  //Distance histogram
-	  TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
-					 "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
-					 51, -0.5, 49.5);
-	  for ( const PMTIdentified & pmt : ellipse_pmts ){
-	    for ( const float dist : pmt.dist_txt ) {
-	      if ( dist < bad_dmin ){
-		ellipse_truth_dist->Fill( dist );
+	  if (have_truth){
+	    //Find bolt matches between those we found and truth
+	    find_closest_matches( ellipse_pmts, mtd );
+	    
+	    //Draw line from truth to closest bolt found 
+	    draw_line (ellipse_pmts, mtd, image_ellipse);
+	    
+	    //Distance histogram
+	    TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
+						  "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
+						  51, -0.5, 49.5);
+	    for ( const PMTIdentified & pmt : ellipse_pmts ){
+	      for ( const float dist : pmt.dist_txt ) {
+		if ( dist < bad_dmin ){
+		  ellipse_truth_dist->Fill( dist );
+		}
 	      }
 	    }
+	    
+	    draw_text_circles (image_houghellipse, mtd);
 	  }
 
-	  draw_text_circles (image_ellipse, mtd);
-	}
 
-	outputname = build_output_filename (argv[1], "ellipse");
-	imwrite (outputname, image_ellipse );
+	  TH1D * hangboltel = new TH1D ("hangboltel", "Angles of bolts (hough ellipse); angle (deg)", 360, 0., 360.);
+	  TH1D * hdangboltel = new TH1D ("hdangboltel", "Angle of bolt from expected (hough ellipse); #Delta angle (deg)", 60, -15., 15.);
+
+	  for  (const PMTIdentified & pmt : ellipse_pmts) {
+	    //std::cout << pmt;
+	    //fang_out << pmt;
+	    for ( const float &ang : pmt.angles) {
+	      hangboltel->Fill (ang);
+	    }
+	    for ( const float &dang : pmt.dangs) {
+	      hdangboltel->Fill (dang);
+	    }
+	  }
 
 
+	  // look for duplicate bolts and keep only best matches
+	  prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
 
-	/// End ellipse hough transform stuff
+
+	  // histograms after pruning
+	  TH1D * hangboltel_cor = new TH1D ("hangboltel_cor", "Angles of bolts (hough ellipse corrected); angle (degrees)", 360, 0., 360.);
+	  TH1D * hdangboltel_cor = new TH1D ("hdangboltel_cor", "Angle of bolt from expected (hough ellipse corrected); #Delta angle (degrees)", 60, -15., 15.);
+
+
+	  //template will be {angles of one pmt bolt,-5, angles of next pmt bolts}
+	  //it's a way to identify which angle belong to which bolt and which pmt.
+	  //since final_PMTs and seral_final_bolts are in sync this approach work.
+	  //const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
+	  string outfilename = build_output_textfilename (argv[1], "he_bolts"); 
+	  std::ofstream fang_out (outfilename);
+
+
+	  for  (const PMTIdentified & pmt : ellipse_pmts) {
+	    std::cout << pmt;
+	    fang_out << pmt;
+	    for ( const float &ang : pmt.angles) {
+	      float ang_cor = ang - hdangboltel->GetMean();
+	      if ( ang_cor < 0 ) ang_cor += 360.0;
+	      hangboltel_cor->Fill(ang_cor);
+	    }
+	    for ( const float &dang : pmt.dangs) {
+	      hdangboltel_cor->Fill (dang -  hdangboltel->GetMean());
+	    }
+	  }
+
+
+	  // add the circles for the bolts after pruning
+	  for (const PMTIdentified & pmt : ellipse_pmts) {
+	    draw_circle_from_data (pmt.bolts, image_houghellipse,
+				   Scalar (255, 255, 255), 1);
+	  }
+
+	  // annotate with bolt numbers and angles
+	  overlay_bolt_angle_boltid( ellipse_pmts, image_houghellipse );
+	  
+	  outputname = build_output_filename (argv[1], "houghellipse");
+	  imwrite (outputname, image_houghellipse );
+	  
+
+
+	  /// End ellipse hough transform stuff
 	
-	*/
+	}
+	
 
 	/// Hough Transform
 	vector < Vec3f > circles;
@@ -413,7 +474,7 @@ main (int argc, char **argv)
 				     Scalar (255, 102, 255), 2);
 	      draw_circle_from_data (pmt.bolts, image_final,
 				     Scalar (0, 0, 255), 3);
-	  }
+	}
 
 	if (have_truth) {
 	  // draw the true location of the bolts on the final image
@@ -438,20 +499,14 @@ main (int argc, char **argv)
 	  }
 	}
 	
-	//template will be {angles of one pmt bolt,-5, angles of next pmt bolts}
-	//it's a way to identify which angle belong to which bolt and which pmt.
-	//since final_PMTs and seral_final_bolts are in sync this approach work.
-	//const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
-	string outfilename = build_output_textfilename (argv[1], "bolts");
 
-	std::ofstream fang_out (outfilename);
 
 	TH1D * hangbolt = new TH1D ("hangbolt", "Angles of bolts", 360, 0., 360.);
 	TH1D * hdangbolt = new TH1D ("hdangbolt", "Angle of bolt from expected", 60, -15., 15.);
 
 	for  (const PMTIdentified & pmt : final_pmts) {
-	  std::cout << pmt;
-	  fang_out << pmt;
+	  //std::cout << pmt;
+	  //fang_out << pmt;
 	  for ( const float &ang : pmt.angles) {
 	    hangbolt->Fill (ang);
 	  }
@@ -460,7 +515,45 @@ main (int argc, char **argv)
 	  }
 	}
 
-	fang_out.close ();
+	//fang_out.close ();
+
+	// look for duplicate bolts and keep only best matches
+	prune_bolts( final_pmts, hdangbolt->GetMean() );
+
+
+	// histograms after pruning
+	TH1D * hangbolt_cor = new TH1D ("hangbolt_cor", "Angles of bolts (corrected); angle (degrees)", 360, 0., 360.);
+	TH1D * hdangbolt_cor = new TH1D ("hdangbolt_cor", "Angle of bolt from expected (corrected); #Delta angle (degrees)", 60, -15., 15.);
+
+	//template will be {angles of one pmt bolt,-5, angles of next pmt bolts}
+	//it's a way to identify which angle belong to which bolt and which pmt.
+	//since final_PMTs and seral_final_bolts are in sync this approach work.
+	//const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
+	string outfilename = build_output_textfilename (argv[1], "bolts");
+
+	std::ofstream fang_out (outfilename);
+
+
+	for  (const PMTIdentified & pmt : final_pmts) {
+	  std::cout << pmt;
+	  fang_out << pmt;
+	  for ( const float &ang : pmt.angles) {
+	    float ang_cor = ang - hdangbolt->GetMean();
+	    if ( ang_cor < 0 ) ang_cor += 360.0;
+	    hangbolt_cor->Fill(ang_cor);
+	  }
+	  for ( const float &dang : pmt.dangs) {
+	    hdangbolt_cor->Fill (dang -  hdangbolt->GetMean());
+	  }
+	}
+
+
+	// add the circles for the bolts after pruning
+	for (const PMTIdentified & pmt : final_pmts) {
+	  draw_circle_from_data (pmt.bolts, image_final,
+				 Scalar (255, 255, 255), 1);
+	}
+
 
 	//testing purpose
 	if (option[0]) {
