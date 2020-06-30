@@ -73,8 +73,11 @@ class EllipseHough {
   EllipseHough( unsigned nbins_bb     = 22,   float bbmin=81.0,   float bbmax=125.0,
 		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
 		unsigned nbins_phiphi = 10,   float phphimin=0.0, float phiphimax=std::acos(-1),
-		unsigned nbins_x      = 2200, float xmin=300,     float xmax=3700,
-		unsigned nbins_y      = 1200, float ymin=300,     float ymax=2700);
+		unsigned nbins_x      = 1200, float xmin=300,     float xmax=2700,
+		unsigned nbins_y      = 2200, float ymin=300,     float ymax=3700);
+
+		//		unsigned nbins_x      = 2200, float xmin=300,     float xmax=3700,
+		//		unsigned nbins_y      = 1200, float ymin=300,     float ymax=2700);
 
   ~EllipseHough();
 

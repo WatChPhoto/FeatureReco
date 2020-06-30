@@ -1,4 +1,5 @@
 #include "PMTIdentified.hpp"
+#include <map>
 
 using namespace cv;
 using std::vector;
@@ -182,8 +183,87 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
   }
 }
 
-void overlay_bolt_angle_boltid(const std::vector< PMTIdentified > final_pmts, cv::Mat image_final){
-  for( const PMTIdentified pmt : final_pmts ){
+
+
+void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
+  float angle_between_bolts = 360.0 / 24; // 24 bolts
+  float dang = angle_between_bolts/2;
+
+
+  for( PMTIdentified& pmt : final_pmts ){
+    std::map<  unsigned, std::vector< unsigned > > boltmap; 
+    for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
+     boltmap[ pmt.boltid[i] ].push_back( i );
+    }
+    std::vector<unsigned> indices_to_remove;
+    for ( const std::pair<const unsigned int, std::vector<unsigned int> >& key : boltmap ){
+      unsigned boltnum = key.first;
+      if ( key.second.size() > 0 ){
+	float mindist = 10000.0;
+	unsigned idxkeep = 0;
+	float boltidang = (boltnum-1) * angle_between_bolts + ang_offset;
+	for ( unsigned idx : key.second ){
+	  // compare angle to expected 
+	  float da = pmt.angles[ idx ] - boltidang;
+	  if ( da > 360.0-dang ) da -= 360.0;
+	  if ( da < mindist ){
+	    mindist = da;
+	    idxkeep = idx;
+	  }
+	} 
+	for ( unsigned idx : key.second ){
+	  if ( idx != idxkeep || fabs( mindist )>=4.0 ){ // only keep best if it is within +-4 degrees of expected
+	    indices_to_remove.push_back( idx );
+	  }
+	}
+
+      }	
+    }
+
+    // now remove bolts
+    std::vector<cv::Vec3f> bolts; // bolts going with this PMT
+    std::vector<float> dists; // distance of bolt from PMT circle 
+    std::vector<float> angles; // angle of each bolt
+    std::vector<float> dangs;  // difference in angle from boltid's angle
+    std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
+
+    // include comparison to truth if available
+    std::vector<int>   idx_txt; // index of medianTextReader
+    std::vector<float> dist_txt; // distance to closest matching bolt
+
+    for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
+      if ( std::find( indices_to_remove.begin(), 
+		      indices_to_remove.end(), i ) == indices_to_remove.end() ){
+
+	bolts.push_back( pmt.bolts[ i ] );
+	dists.push_back( pmt.dists[ i ] );
+	float cor_ang = pmt.angles[ i ] - ang_offset;
+	if ( cor_ang > 360.0 ) cor_ang-=360.0;
+	angles.push_back( cor_ang );
+	dangs.push_back( pmt.dangs[ i ] - ang_offset );
+	boltid.push_back( pmt.boltid[ i ] );
+	if ( pmt.idx_txt.size() > 0 ){
+	  idx_txt.push_back( pmt.idx_txt[ i ] );
+	  dist_txt.push_back( pmt.dist_txt[ i ] );
+	}
+      }
+
+    }
+
+    pmt.bolts = bolts;
+    pmt.dists = dists;
+    pmt.angles = angles;
+    pmt.boltid = boltid;
+    pmt.idx_txt = idx_txt;
+    pmt.dist_txt = dist_txt;
+  }	  
+}
+
+
+
+
+void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, cv::Mat image_final){
+  for( const PMTIdentified& pmt : final_pmts ){
     float a = pmt.circ[0]; //x-coordinate of centre of pmt
     float b = pmt.circ[1];
     for(int i=0; i<pmt.bolts.size();i++){
