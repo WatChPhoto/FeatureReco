@@ -13,7 +13,7 @@ double distance(cv::Point p1, cv::Point p2){
 
 
   //constructor 
-ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha  ): centre(centre),a(a),b(b),alpha(alpha){}
+ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
 
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
@@ -32,8 +32,9 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
   }
 }
 	
-void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
   std::vector<ParametricEllipse> elData;
+  
   //Get first point
   for(int i=0;i<coordinates.size(); i++){
     int x1 = coordinates[i][0];//x for first point
@@ -52,6 +53,7 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
 	double a = dist/2.0; //length of semi major axis
 	double alfa = atan2((y2-y1),(x2-x1));
 	//third loop to look for point around centre of ellipse where the distance is in range of minor axis.
+	std::vector<cv::Vec3f> unused;
 	for(int k=0; k<coordinates.size(); k++){
 	  int x = coordinates[k][0];
 	  int y = coordinates[k][1];
@@ -77,6 +79,12 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
 	      bbins.push_back(cv::Point2i(b,1));
 	    }
 	  }
+	  else{cv::Vec3f temp;
+	    temp[0]=x;
+	    temp[1]=y;
+	    temp[2]=coordinates[k][2];
+	    unused.push_back(temp);
+	  }
 	}   
 	      int max_index=-1;
 	      int max_freq;
@@ -85,7 +93,23 @@ void detect_ellipse(const std::vector<cv::Vec3f>& coordinates, cv::Mat& img, con
 	      if(max_index>=0){
 		int bmax=bbins[max_index].x;
 		if(max_freq>min_minor_freq){// && alfa>=0.0 && bmax>=min_minor){
-		  elData.push_back(ParametricEllipse(centre, a, bmax, alfa));
+		  int indx=-1;
+		  for(int i=0; i<elData.size(); i++){//ParametricEllipse pel: elData){
+		    
+		    float d_cent = distance(elData[i].centre, centre);
+		    //float theta = atan2(centre.y-elData[i].centre.y, centre.x-elData[i].centre.x);
+		    //float r_theta = elData[i].alpha-theta;
+		    //float disa = sqrt(std::pow(elData[i].b*cos(r_theta)-elData[i].centre.x,2)+std::pow(elData[i].a*sin(r_theta)-elData[i].centre.y,2));
+		    float di = (a>elData[i].a)?a:elData[i].a;
+		    //float disb =sqrt(std::pow(bmax*cos(r_theta)-centre.x,2) + std::pow(a*sin(r_theta)-centre.y,2) );
+		    if(d_cent<2*di && max_freq > elData[i].freq ){indx =i; break;}
+		  } 
+		  
+		  if(indx==-1){
+		    elData.push_back(ParametricEllipse(centre, a, bmax, alfa, max_freq ));
+		  }
+		  else{ elData[indx]= ParametricEllipse(centre, a, bmax, alfa, max_freq );}
+		  coordinates = unused; 
 		}
 		//bbins.clear();
 	      }
