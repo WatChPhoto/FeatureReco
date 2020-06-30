@@ -214,8 +214,20 @@ int main (int argc, char **argv) {
 	}
 
 	//ellipse trial
-	detect_ellipse(blobs, image_ellipse, 90, 120 ,90, 120, 4);
-	imwrite("ellipses.jpg",image_ellipse);
+	int de_min_major = 80;
+	int de_max_major = 160;
+	int de_min_minor = 80;
+	int de_max_minor = 160;
+	int de_threshold = 4;
+
+	detect_ellipse(blobs, image_ellipse, 
+		       de_min_major, de_max_major,
+		       de_min_minor, de_max_minor, de_threshold );
+
+
+
+	outputname = build_output_filename (argv[1], "ellipses");
+	imwrite(outputname, image_ellipse);
 	//trialend
 
 	//Draws circle from data to the input image
@@ -226,8 +238,8 @@ int main (int argc, char **argv) {
 	}
 	// Make image that just has circle centers from blob detection
 	Mat blob_circles = Mat::zeros (image.size (), image.type ());
-	draw_found_center (blobs, blob_circles);
-
+	//draw_found_center (blobs, blob_circles);
+	draw_foundblobs( blobs, blob_circles );
 
 	if (option[2]) {
 	  outputname = build_output_filename (argv[1], "blobCandidate");
@@ -432,7 +444,9 @@ int main (int argc, char **argv) {
 
 	/// Make image that just has circle centers from previous Hough Transform on it
 	Mat img_circles = Mat::zeros (image.size (), image.type ());
-	draw_found_center (circles, img_circles);
+	//draw_found_center (circles, img_circles);
+	draw_foundblobs( circles, img_circles );
+
 
 	if (option[2])
 	  {
