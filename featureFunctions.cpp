@@ -206,7 +206,7 @@ void histogram_inbetween(const std::vector<cv::Vec3f>& circles, const MedianText
 }
 */
 
-void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, cv::Scalar color, int line_width  ){
+void draw_circle_from_data(const std::vector <cv::Vec3f>& data, cv::Mat & image, cv::Scalar color, int line_width  ){
   for( size_t i = 0; i < data.size(); i++ ) {
     cv::Point center(cvRound(data[i][0]), cvRound(data[i][1]));
     int radius = cvRound(data[i][2]);
@@ -219,11 +219,21 @@ void draw_circle_from_data(const std::vector <cv::Vec3f> data, cv::Mat & image, 
   //  std::cout<<"=============================================================================="<<std::endl;
 }
 
-void draw_found_center(const std::vector<cv::Vec3f> data, cv::Mat & image){
+void draw_found_center(const std::vector<cv::Vec3f>& data, cv::Mat & image){
   for( size_t i = 0; i < data.size(); i++ ) {
     image.at<uchar>(data[i][1], data[i][0]) = 255 ;
   }
 }
+
+
+void draw_foundblobs(const std::vector<cv::Vec3f>& data, cv::Mat & image){
+  for( size_t i = 0; i < data.size(); i++ ) {
+    circle(image, cv::Point( data[i][0], data[i][1] ), data[i][2], 255, -1 );
+  }
+}
+
+
+
 
 void draw_text_circles(cv::Mat &img, const MedianTextData& mtd){
   for ( const MedianTextRecord & rec : mtd ){
