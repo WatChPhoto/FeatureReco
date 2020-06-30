@@ -33,6 +33,10 @@ struct PMTIdentified {
     calculate_angles();
     calculate_boltid();
   }
+  PMTIdentified( const PMTIdentified& pmt ) :
+    pmtid(-1), circ( pmt.circ ), bolts( pmt.bolts ), dists( pmt.dists ),
+    angles( pmt.angles ), dangs( pmt.dangs ), boltid( pmt.boltid ),
+    idx_txt( pmt.idx_txt ), dist_txt( pmt.dist_txt ) {}
 
 private:
 
@@ -51,7 +55,7 @@ private:
 ///	   vector< PMTIdentified > final_bolts; // bolt locations selected
 ///	 
 /// only accept PMTs that are more than some number of pixels away from edge of image
-const unsigned trim_pixels = 600;
+const unsigned trim_pixels = 10;
 void find_candidate_bolts( const std::vector< cv::Vec3f >& blobs, 
 			   const std::vector< cv::Vec3f >& circles_of_blob,
 			   std::vector< PMTIdentified >& pmts_found,
@@ -76,6 +80,9 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
 /// look for duplicate bolts and keep only best matches
 void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset );
   
+/// remove bolts and PMTs from PMTs with fewer than some threshold bolts
+void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts );
+
 
 #endif
 

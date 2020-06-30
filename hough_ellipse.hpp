@@ -71,13 +71,14 @@ class EllipseHough {
   /// center y = center location in y
   /// along with range in each of those values
   EllipseHough( unsigned nbins_bb     = 22,   float bbmin=81.0,   float bbmax=125.0,
-		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
+		//		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
+		unsigned nbins_ee     = 16,   float eemin=0.0,    float eemax=0.8,
 		unsigned nbins_phiphi = 10,   float phphimin=0.0, float phiphimax=std::acos(-1),
-		unsigned nbins_x      = 1200, float xmin=300,     float xmax=2700,
-		unsigned nbins_y      = 2200, float ymin=300,     float ymax=3700);
+		//		unsigned nbins_x      = 1200, float xmin=300,     float xmax=2700,
+		//              unsigned nbins_y      = 2200, float ymin=300,     float ymax=3700);
 
-		//		unsigned nbins_x      = 2200, float xmin=300,     float xmax=3700,
-		//		unsigned nbins_y      = 1200, float ymin=300,     float ymax=2700);
+				unsigned nbins_x      = 2400, float xmin=100,     float xmax=3900,
+				unsigned nbins_y      = 1400, float ymin=100,     float ymax=2900);
 
   ~EllipseHough();
 

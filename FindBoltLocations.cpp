@@ -20,25 +20,21 @@ using std::vector;
 
 using namespace cv;
 
-int
-main (int argc, char **argv)
-{
+int main (int argc, char **argv) {
 
-    if (argc != 2 && argc != 3)
-      {
-	  printf
-	      ("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
-	  return -1;
-      }
-    //have_truth == 0 means 2 argument mode without true bolt information provided
-    bool have_truth = argc - 2;
+  if (argc != 2 && argc != 3) {
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
+    return -1;
+  }
+  //have_truth == 0 means 2 argument mode without true bolt information provided
+  bool have_truth = argc - 2;
+  
+  Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
+  if (!image_color.data) {
+    printf ("No image data \n");
+    return -1;
+  }
 
-    Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
-    if (!image_color.data)
-      {
-	  printf ("No image data \n");
-	  return -1;
-      }
     //option has final, text, candidate, circled, filters
     const vector < bool > & option = setup_image_saveflags ();
 
@@ -47,8 +43,20 @@ main (int argc, char **argv)
     Mat image_houghellipse = image_color.clone();
 
     /// build output image
+    Mat image_orig;
+    cvtColor (image_color, image_orig, COLOR_RGBA2GRAY);
+
+
+    // equalize image
+    std::cout<<"Applying equalization"<<std::endl;
     Mat image;
-    cvtColor (image_color, image, COLOR_RGBA2GRAY);
+    Ptr<CLAHE> clahe = createCLAHE();
+    clahe->setClipLimit( 4.0 );
+    //clahe->setTilesGridSize( 16 );
+    clahe->apply( image_orig, image );
+    std::cout<<"Equalized"<<std::endl;
+
+
 
     /*
     // sharpen image using "unsharp mask" algorithm
@@ -332,7 +340,29 @@ main (int argc, char **argv)
 
 	  // look for duplicate bolts and keep only best matches
 	  prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
+	  // remove pmts below threshold (9 bolts)
+	  prune_pmts( ellipse_pmts, 9 );
 
+
+	  // histogram PMT locations
+	  TH1D * hpmt_locx = new TH1D("hpmt_locx","PMT location ; x (pixels); counts/bin",120,0.,4000.);
+	  TH1D * hpmt_locy = new TH1D("hpmt_locy","PMT location ; y (pixels); counts/bin",90,0.,3000.);
+	  TH1D * hpmt_b    = new TH1D("hpmt_b","PMT b ; b (pixels); counts/bin",80,80,140);
+	  // histogram PMT phi as function of locations
+	  TH2D * hpmt_phixy = new TH2D("hpmt_phixy","PMT ellipse angle ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
+	  TH2D * hpmt_bxy = new TH2D("hpmt_bxy","PMT ellipse b ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
+	  TH2D * hpmt_exy = new TH2D("hpmt_exy","PMT ellipse e ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
+
+	  for ( const HoughEllipseResult& her : hers ){
+	    float x = her.e.get_xy().x ;
+	    float y = her.e.get_xy().y ;
+	    hpmt_locx->Fill( x );
+	    hpmt_locy->Fill( y );
+	    hpmt_b->Fill( her.e.get_b() );
+	    hpmt_phixy->Fill( x, y, her.e.get_phi() );
+	    hpmt_bxy->Fill( x, y, her.e.get_b() );
+	    hpmt_exy->Fill( x, y, her.e.get_e() );
+	  }
 
 	  // histograms after pruning
 	  TH1D * hangboltel_cor = new TH1D ("hangboltel_cor", "Angles of bolts (hough ellipse corrected); angle (degrees)", 360, 0., 360.);
