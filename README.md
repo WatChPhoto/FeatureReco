@@ -4,18 +4,19 @@ Code to do feature recognition to locate bolts and PMT centers.  Implemented usi
 
 You will need a copy of opencv libraries installed.  To build the code:
 
-"""
+```
 > cd FeatureReco
 > cmake .
 > make
-"""
+```
 
 # Undistortion program
 
 Simple program to take input JPG, apply undistortion, and write out undistoted image.
 
-
+```
 ./UndistortImage /bigdisk/jamieson/TOW-Feb2020/BarrelSurveyFar/B0170163.JPG [output-file]
+```
 
 If output file is not specified, then it names output file undistorted<input-file-name>
 
@@ -23,7 +24,9 @@ If output file is not specified, then it names output file undistorted<input-fil
 
 Locate bolts in image by applying filters and hough transform.
 
+```
 ./FindBoltLocations [input-image-file-name-with-path] [opt=bolt-location-textfile-with-path]
+```
 
 # Config.txt
 Configuration file to change parameters and set verbosity flag.
