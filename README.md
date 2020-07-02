@@ -4,10 +4,11 @@ Code to do feature recognition to locate bolts and PMT centers.  Implemented usi
 
 You will need a copy of opencv libraries installed.  To build the code:
 
+"""
 > cd FeatureReco
 > cmake .
 > make
-
+"""
 
 # Undistortion program
 
