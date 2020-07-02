@@ -14,7 +14,7 @@
 
 #include "hough_ellipse.hpp"
 
-#include "ellipse_detection.hpp" //ellipse detection fast
+#include "ellipse_detection_2.1.hpp" //ellipse detection fast
 using std::string;
 using std::vector;
 
@@ -43,10 +43,11 @@ int main (int argc, char **argv) {
     Mat image_houghellipse = image_color.clone();
 
     /// build output image
-    Mat image_orig;
+     Mat image_orig;
     cvtColor (image_color, image_orig, COLOR_RGBA2GRAY);
-
-
+    /*Mat image;
+    cvtColor (image_color, image, COLOR_RGBA2GRAY);
+    */
     // equalize image
     std::cout<<"Applying equalization"<<std::endl;
     Mat image;
@@ -55,7 +56,7 @@ int main (int argc, char **argv) {
     //clahe->setTilesGridSize( 16 );
     clahe->apply( image_orig, image );
     std::cout<<"Equalized"<<std::endl;
-
+   
 
 
     /*
@@ -214,12 +215,12 @@ int main (int argc, char **argv) {
 	}
 
 	//ellipse trial
-	int de_min_major = 80;
-	int de_max_major = 160;
-	int de_min_minor = 80;
-	int de_max_minor = 160;
-	int de_threshold = 4;
-
+	int de_min_major = 90;//80;
+	int de_max_major = 120;//160;
+	int de_min_minor = 90;//80;
+	int de_max_minor = 120;//160;
+	int de_threshold = 4;//4;
+	std::cout<<"before ellipse"<<std::endl;
 	detect_ellipse(blobs, image_ellipse, 
 		       de_min_major, de_max_major,
 		       de_min_minor, de_max_minor, de_threshold );
