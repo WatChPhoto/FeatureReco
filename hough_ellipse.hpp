@@ -9,21 +9,44 @@
 #include <vector>
 #include <utility>
 
-enum   HoughEllipseResultType {HoughEllipse, HoughEllipseUnusedPoints };
+//enum   HoughEllipseResultType {HoughEllipse, HoughEllipseUnusedPoints };
+const unsigned HoughEllipse = 0;
+const unsigned HoughEllipseUnusedPoints = 1;
+
+struct binindices_st {
+  unsigned ibb;
+  unsigned iee;
+  unsigned iphi;
+  unsigned ix;
+  unsigned iy;
+  unsigned pkval;
+  binindices_st() : ibb(0), iee(0), iphi(0), ix(0), iy(0), pkval(0) { } 
+  binindices_st( unsigned bb, unsigned ee, unsigned phi, unsigned x, unsigned y, unsigned pk) : 
+    ibb(bb), iee(ee), iphi(phi), ix(x), iy(y), pkval(pk) { } 
+  binindices_st( const binindices_st& bi ) : 
+    ibb(bi.ibb), iee(bi.iee), iphi(bi.iphi), ix(bi.ix), iy(bi.iy), pkval(bi.pkval) { } 
+  
+  bool operator<( const binindices_st& bi ) const{
+    return ( pkval < bi.pkval );
+  }
+  
+};
+
+
 
 /// Define structure type to store results in
 /// A single of Hough transform is a vector of data points
 /// and a set of ellipse parameters
 struct HoughEllipseResult {
   HoughEllipseResult( const ellipse_st& el, float pkval ) :
-    e( el ), peakval(pkval), type(HoughEllipseUnusedPoints) { }
+    e( el ), peakval(pkval), eltype(HoughEllipseUnusedPoints) { }
 
-  HoughEllipseResult() : e( ellipse_st() ),  peakval(0), type(HoughEllipseUnusedPoints) { }
+  HoughEllipseResult() : e( ellipse_st() ),  peakval(0), eltype(HoughEllipseUnusedPoints) { }
   
   std::vector< xypoint > data;      // the points for this result
   ellipse_st             e;         // ellipse parameters
   float                  peakval;   // peak height in hough space
-  HoughEllipseResultType type;      // result type
+  unsigned               eltype;      // result type (0 for ellipse, 1 for unused points)
   unsigned               ibb{0};    // b hough array index
   unsigned               iee{0};    // e hough array index
   unsigned               iphi{0};   // phi hough array index
@@ -52,7 +75,7 @@ std::ostream& operator<<( std::ostream& os, const HoughEllipseResult& hr );
 /// cout<<"Number of ellipses found is "<<res.num_ellipses()<<endl;
 /// // Loop over ellipses and do a fit to the hits
 /// for (int ires=0; ires<res.data.size(); ++ires ){
-///     if ( res[ires].type == HoughEllipse ){
+///     if ( res[ires].eltype == HoughEllipse ){
 ///         ellipse_fit( res[ires].data );
 ///
 /// Parameters that can be tweaked to tune the transform:
@@ -70,15 +93,15 @@ class EllipseHough {
   /// center x = center location in x
   /// center y = center location in y
   /// along with range in each of those values
-  EllipseHough( unsigned nbins_bb     = 22,   float bbmin=81.0,   float bbmax=125.0,
-		//		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
-		unsigned nbins_ee     = 16,   float eemin=0.0,    float eemax=0.8,
+  EllipseHough( unsigned nbins_bb     = 30,   float bbmin=81.0,   float bbmax=141.0,
+		unsigned nbins_ee     =  8,   float eemin=0.0,    float eemax=0.32,
+		//unsigned nbins_ee     = 16,   float eemin=0.0,    float eemax=0.8,
 		unsigned nbins_phiphi = 10,   float phphimin=0.0, float phiphimax=std::acos(-1),
 		//		unsigned nbins_x      = 1200, float xmin=300,     float xmax=2700,
 		//              unsigned nbins_y      = 2200, float ymin=300,     float ymax=3700);
 
-				unsigned nbins_x      = 2400, float xmin=100,     float xmax=3900,
-				unsigned nbins_y      = 1400, float ymin=100,     float ymax=2900);
+		unsigned nbins_x      = 2300, float xmin=200,     float xmax=3800,
+		unsigned nbins_y      = 1300, float ymin=200,     float ymax=2800);
 
   ~EllipseHough();
 
@@ -102,7 +125,7 @@ class EllipseHough {
   //std::vector< std::vector< TH2S* > > get_transform() { return fTransformed; }
   //std::vector< std::vector< ellipse_st* > > get_ebins() { return fE; }
 
- private:
+  // private:
   // Save binning info
   unsigned fNbb;   float fbbmin;   float fbbmax;
   unsigned fNee;   float feemin;   float feemax;
@@ -174,8 +197,13 @@ class EllipseHough {
 private:
   // helper
   void zero_hough_counts();
-
+  
+  //  void hough_transform_phibin( unsigned iphi,  const std::vector< xypoint >& data );
+  
+  //  void find_maximum_phibin( unsigned iphi, std::vector< binindices_st >& passed_threshold );
+    
 }; /// end of EllipseHough
+  
 
 
 
