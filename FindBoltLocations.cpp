@@ -22,96 +22,92 @@ using namespace cv;
 
 int main (int argc, char **argv) {
 
-  if (argc != 2 && argc != 3) {
-    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
-    return -1;
-  }
-  //have_truth == 0 means 2 argument mode without true bolt information provided
-  bool have_truth = argc - 2;
-  
-  Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
-  if (!image_color.data) {
-    printf ("No image data \n");
-    return -1;
-  }
-
-    //option has final, text, candidate, circled, filters
-    const vector < bool > & option = setup_image_saveflags ();
-
-    Mat image_final = image_color.clone ();
-    Mat image_ellipse = image_color.clone();
-    Mat image_houghellipse = image_color.clone();
-
-    /// build output image
-     Mat image_orig;
-    cvtColor (image_color, image_orig, COLOR_RGBA2GRAY);
-    /*Mat image;
-    cvtColor (image_color, image, COLOR_RGBA2GRAY);
-    */
-    // equalize image
-    std::cout<<"Applying equalization"<<std::endl;
-    Mat image;
-    Ptr<CLAHE> clahe = createCLAHE();
-    clahe->setClipLimit( 4.0 );
-    //clahe->setTilesGridSize( 16 );
-    clahe->apply( image_orig, image );
-    std::cout<<"Equalized"<<std::endl;
-   
+      if (argc != 2 && argc != 3) {
+	printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
+	return -1;
+      }
+      //have_truth == 0 means 2 argument mode without true bolt information provided
+      bool have_truth = argc - 2;
+      
+      Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
+      if (!image_color.data) {
+	printf ("No image data \n");
+	return -1;
+      }
+      
+      //option has final, text, candidate, circled, filters
+      const vector < bool > & option = setup_image_saveflags ();
+      
+      Mat image_final = image_color.clone ();
+      Mat image_ellipse = image_color.clone();
+      Mat image_houghellipse = image_color.clone();
+      
+      /// build output image
+      Mat image;
+      cvtColor (image_color, image, COLOR_RGBA2GRAY);
+      
 
 
-    /*
-    // sharpen image using "unsharp mask" algorithm
-    Mat blurred; double sigma = 1, threshold = 5, amount = 1;
-    GaussianBlur(image, blurred, Size(), sigma, sigma);
-    Mat lowContrastMask = abs(image - blurred) < threshold;
-    Mat sharpened = image*(1+amount) + blurred*(-amount);
-    image.copyTo(sharpened, lowContrastMask);
-    //
+      string outputname;
 
-    image = sharpened.clone();
-    imwrite("sharp.jpg", sharpened);
-*/
-    // Open a root file to put histograms into
-    TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
 
-    string outputname;
+      /*
+      // sharpen image using "unsharp mask" algorithm
+      Mat blurred; double sigma = 1, threshold = 5, amount = 1;
+      GaussianBlur(image, blurred, Size(), sigma, sigma);
+      Mat lowContrastMask = abs(image - blurred) < threshold;
+      Mat sharpened = image*(1+amount) + blurred*(-amount);
+      image.copyTo(sharpened, lowContrastMask);
+      //
 
-    // Gaussian blur
+      image = sharpened.clone();
+      imwrite("sharp.jpg", sharpened);
+      */
+      // Open a root file to put histograms into
+      TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
 
-    Mat img_blur = image.clone ();
+
+
     try
     {
-	bool verbose = config::Get_int("verbosity");
-	bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
+      
+      // Gaussian blur
 
-	if ( do_gaus_blur ) {
-	      int blurpixels = config::Get_int ("blurpixels");	// size of kernel in pixels (must be odd)
-	      double blursigma = config::Get_double ("blursigma");	// sigma of gaussian in pixels
+      Mat img_blur = image.clone ();
 
-	      GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma);
-	      if ( option[4] ) {
-		    outputname = build_output_filename (argv[1], "gausblur");
-		    imwrite (outputname, img_blur);
-		}
-	  }
-	// Bilateral filter
-	bool do_bifilter = (bool) config::Get_int ("do_bifilter");
-	Mat img_flt = img_blur.clone ();
-	if ( do_bifilter ) {
-	      int d = config::Get_int ("d");	// value 5-9 distance around each pixel to filter (must be odd)
-	      int sigColor = config::Get_int ("sigColor");	// range of colours to call the same
-	      int sigSpace = config::Get_int ("sigSpace");	// ???
+      bool verbose = config::Get_int("verbosity");
+      bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
 
-	      bilateralFilter (image, img_flt, d, sigColor, sigSpace);
-	      if (option[4]) {
-		    outputname = build_output_filename (argv[1], "bifilter");
-		    imwrite (outputname, img_flt);
-	      }
+      if ( do_gaus_blur ) {
+	int blurpixels = config::Get_int ("blurpixels");	// size of kernel in pixels (must be odd)
+	double blursigma = config::Get_double ("blursigma");	// sigma of gaussian in pixels
+	
+	GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma);
+	if ( option[4] ) {
+	  outputname = build_output_filename (argv[1], "gausblur");
+	  imwrite (outputname, img_blur);
 	}
-	/// Do Sobel edge detection
-	bool do_sobel = (bool) config::Get_int ("do_sobel");
-	Mat grad = img_flt.clone ();
-	if ( do_sobel ) {
+      }
+      // Bilateral filter
+      bool do_bifilter = (bool) config::Get_int ("do_bifilter");
+      Mat img_flt = img_blur.clone ();
+      if ( do_bifilter ) {
+	int d = config::Get_int ("d");	// value 5-9 distance around each pixel to filter (must be odd)
+	int sigColor = config::Get_int ("sigColor");	// range of colours to call the same
+	int sigSpace = config::Get_int ("sigSpace");	// ???
+	
+	bilateralFilter (image, img_flt, d, sigColor, sigSpace);
+	if (option[4]) {
+	  outputname = build_output_filename (argv[1], "bifilter");
+	  imwrite (outputname, img_flt);
+	}
+      }
+
+
+      /// Do Sobel edge detection
+      bool do_sobel = (bool) config::Get_int ("do_sobel");
+      Mat grad = img_flt.clone ();
+      if ( do_sobel ) {
 	      int scale = config::Get_int ("scale");
 	      int delta = config::Get_int ("delta");
 	      int ddepth = CV_16S;
@@ -153,6 +149,35 @@ int main (int argc, char **argv) {
 	      }
 	}
 
+
+
+
+
+	// equalize image
+	Mat image_clahe;
+    
+	bool do_clahe = (bool)config::Get_int( "do_clahe" );
+	if ( do_clahe ){
+	  std::cout<<"Applying equalization"<<std::endl;
+	  int gridsize = config::Get_int( "clahe_gridsize" );
+	  int cliplimit = config::Get_int( "clahe_cliplimit" );
+	
+	  Ptr<CLAHE> clahe = createCLAHE();
+	  clahe->setClipLimit( cliplimit );
+	  clahe->setTilesGridSize( cv::Size( gridsize, gridsize ) );
+	  clahe->apply( img_can, image_clahe );
+	  std::cout<<"Equalized"<<std::endl;
+	  
+	  outputname = build_output_filename (argv[1], "clahe");
+	  imwrite (outputname, image_clahe);
+	} else {
+	  image_clahe = img_can.clone();
+	}
+
+
+
+
+
 	histogram_channel0 (img_can, "hbefore_thres_cut");
 	int threshold = config::Get_int ("threshold");
 
@@ -160,7 +185,7 @@ int main (int argc, char **argv) {
 	histogram_channel0 (grad, "hafter_thres_cut");
 
 	//Blob detection
-	Mat img_blob = image.clone ();
+	Mat img_blob = image_clahe.clone ();
 	Mat img_blob_map = image_color.clone ();
 	// Setup SimpleBlobDetector parameters.
 	SimpleBlobDetector::Params params;
@@ -268,25 +293,30 @@ int main (int argc, char **argv) {
 	  EllipseHough h;
 	  std::vector< xypoint > data;
 	  for ( unsigned i=0 ; i < blobs.size(); ++i ){
-	    data.push_back( xypoint( blobs[i][0], blobs[i][1] ) );
+	    float radius = blobs[i][2];
+	    int blobx = blobs[i][0];
+	    int bloby = blobs[i][1];
+	    //for ( int ix=-radius ; ix<=radius; ++ix ){
+	    // for ( int iy=-radius ; iy<=radius; ++iy ){
+	    //	float r = sqrt( float(ix)*ix + float(iy)*iy );
+	    //	if ( r <= radius ){
+	    //	  int curx = blobx + ix;
+	    //	  int cury = bloby + iy;
+	    //	  if ( curx > 0 && cury > 0 ) {
+	
+
+	    //data.push_back( xypoint( curx , cury ) );
+	    data.push_back( xypoint( blobx , bloby ) );
+
+
+		    //	  }
+		    //}
+		    // }
+		    // }
 	  }
 	  HoughEllipseResults hers = h.find_ellipses( data );
 	  
 	  std::cout<< hers <<std::endl;
-	  
-	  /// draw all ellipses in her on image_ellipse and write
-	  for ( const HoughEllipseResult& her : hers ){
-	    if ( her.data.size() < 9 ) continue;
-	    Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
-	    Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
-	    ellipse( image_houghellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (0, 0, 255) );
-	    
-	    Scalar my_color( 0, 255, 0 );
-	    for ( const xypoint& xy : her.data ){
-	      circle( image_houghellipse, Point( xy.x, xy.y ), 3, my_color, 1, 0 );
-	      //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
-	    }
-	  }  
 	  
 	  /// take hough resutls and fill vector of PMTIdentified info
 	  std::vector< PMTIdentified > ellipse_pmts;
@@ -302,38 +332,6 @@ int main (int argc, char **argv) {
 	    ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
 	  }
 	  
-	  //Fill ellipse_dist histogram
-	  TH1D * ellipse_dist = new TH1D ("ellipse_dist",
-					  "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
-					  51, -0.5, 49.5);
-	  
-	  for (const PMTIdentified & pmt : ellipse_pmts) {
-	    for (const float dist : pmt.dists) {
-	      ellipse_dist->Fill (dist);
-	    }
-	  }
-	
-	  if (have_truth){
-	    //Find bolt matches between those we found and truth
-	    find_closest_matches( ellipse_pmts, mtd );
-	    
-	    //Draw line from truth to closest bolt found 
-	    draw_line (ellipse_pmts, mtd, image_ellipse);
-	    
-	    //Distance histogram
-	    TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
-						  "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
-						  51, -0.5, 49.5);
-	    for ( const PMTIdentified & pmt : ellipse_pmts ){
-	      for ( const float dist : pmt.dist_txt ) {
-		if ( dist < bad_dmin ){
-		  ellipse_truth_dist->Fill( dist );
-		}
-	      }
-	    }
-	    
-	    draw_text_circles (image_houghellipse, mtd);
-	  }
 
 
 	  TH1D * hangboltel = new TH1D ("hangboltel", "Angles of bolts (hough ellipse); angle (deg)", 360, 0., 360.);
@@ -354,8 +352,59 @@ int main (int argc, char **argv) {
 	  // look for duplicate bolts and keep only best matches
 	  prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
 	  // remove pmts below threshold (9 bolts)
-	  prune_pmts( ellipse_pmts, 9 );
+	  prune_pmts( ellipse_pmts, 12, "ellipsehough" );
 
+
+	  //Fill ellipse_dist histogram
+	  TH1D * ellipse_dist = new TH1D ("ellipse_dist",
+					  "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
+					  51, -0.5, 49.5);
+	  
+	  for (const PMTIdentified & pmt : ellipse_pmts) {
+	    for (const float dist : pmt.dists) {
+	      ellipse_dist->Fill (dist);
+	    }
+	  }
+	
+	  if (have_truth){
+	    //Find bolt matches between those we found and truth
+	    find_closest_matches( ellipse_pmts, mtd );
+	    
+	    //Draw line from truth to closest bolt found 
+	    draw_line (ellipse_pmts, mtd, image_houghellipse);
+	    
+	    //Distance histogram
+	    TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
+						  "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
+						  51, -0.5, 49.5);
+	    for ( const PMTIdentified & pmt : ellipse_pmts ){
+	      for ( const float dist : pmt.dist_txt ) {
+		if ( dist < bad_dmin ){
+		  ellipse_truth_dist->Fill( dist );
+		}
+	      }
+	    }
+	    
+	    draw_text_circles (image_houghellipse, mtd);
+	  }
+
+
+
+
+	  /// draw all ellipses in her on image_ellipse and write
+	  for ( const HoughEllipseResult& her : hers ){
+	    if ( her.data.size() < 9 ) continue;
+	    Size axes(  int(her.e.get_a()), int(her.e.get_b()) );
+	    Point center( int(her.e.get_xy().x), int(her.e.get_xy().y) );
+	    ellipse( image_houghellipse, center, axes, RADTODEG( her.e.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
+	    
+	    Scalar my_color( 0, 0, 255 );
+	    for ( const xypoint& xy : her.data ){
+	      circle( image_houghellipse, Point( xy.x, xy.y ), 3, my_color, 1, 0 );
+	      //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
+	    }
+	  }  
+	  
 
 	  // histogram PMT locations
 	  TH1D * hpmt_locx = new TH1D("hpmt_locx","PMT location ; x (pixels); counts/bin",120,0.,4000.);
@@ -500,6 +549,33 @@ int main (int argc, char **argv) {
 	std::vector< PMTIdentified > final_pmts;
 	find_candidate_bolts( blobs, blob_circles_of_bolts, final_pmts, image );
 
+
+
+	TH1D * hangbolt = new TH1D ("hangbolt", "Angles of bolts", 360, 0., 360.);
+	TH1D * hdangbolt = new TH1D ("hdangbolt", "Angle of bolt from expected", 60, -15., 15.);
+
+	for  (const PMTIdentified & pmt : final_pmts) {
+	  //std::cout << pmt;
+	  //fang_out << pmt;
+	  for ( const float &ang : pmt.angles) {
+	    hangbolt->Fill (ang);
+	  }
+	  for ( const float &dang : pmt.dangs) {
+	    hdangbolt->Fill (dang);
+	  }
+	}
+
+	//fang_out.close ();
+
+	// look for duplicate bolts and keep only best matches
+	prune_bolts( final_pmts, hdangbolt->GetMean() );
+	// remove pmts below threshold (12 bolts)
+	prune_pmts( final_pmts, 12, "circlehough" );
+
+	
+
+
+
 	//Fill bolb_dist2 histogram
 	TH1D * blob_dist = new TH1D ("blob_dist",
 				     "Distance to closest blob to PMT circle; distance (pixels); Count/bin",
@@ -544,26 +620,6 @@ int main (int argc, char **argv) {
 	  }
 	}
 	
-
-
-	TH1D * hangbolt = new TH1D ("hangbolt", "Angles of bolts", 360, 0., 360.);
-	TH1D * hdangbolt = new TH1D ("hdangbolt", "Angle of bolt from expected", 60, -15., 15.);
-
-	for  (const PMTIdentified & pmt : final_pmts) {
-	  //std::cout << pmt;
-	  //fang_out << pmt;
-	  for ( const float &ang : pmt.angles) {
-	    hangbolt->Fill (ang);
-	  }
-	  for ( const float &dang : pmt.dangs) {
-	    hdangbolt->Fill (dang);
-	  }
-	}
-
-	//fang_out.close ();
-
-	// look for duplicate bolts and keep only best matches
-	prune_bolts( final_pmts, hdangbolt->GetMean() );
 
 
 	// histograms after pruning
@@ -742,6 +798,7 @@ int main (int argc, char **argv) {
 	imwrite("bwlbl.jpg",img3);
 	//trialend
 	*/
+    
     }
     catch (std::string e)
     {

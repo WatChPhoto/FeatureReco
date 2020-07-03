@@ -1,5 +1,6 @@
 #include "PMTIdentified.hpp"
 #include <map>
+#include <TH1D.h>
 
 using namespace cv;
 using std::vector;
@@ -262,19 +263,86 @@ void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
 }
 
 
-void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts ){
+void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label ){
 
-  std::vector< PMTIdentified > pruned_pmts;
+  std::vector< PMTIdentified > not_pruned_pmts;
 
-  for ( PMTIdentified& pmt : final_pmts ){
-    if ( pmt.bolts.size() >= numbolts ){
-      pruned_pmts.push_back( pmt );
+
+  for ( unsigned i = 0; i < final_pmts.size(); ++i ){ 
+    const PMTIdentified& pmt = final_pmts[i];
+    bool isinside=false;
+    bool hasfewerbolts=false; // only set for intersecting pmts
+    for ( unsigned j = i+1; j < final_pmts.size(); ++j ){
+      const PMTIdentified& pmtb =  final_pmts[j];
+      //if ( i == j ) continue;
+      float r1 = pmt.circ[2];
+      float r2 = pmtb.circ[2];
+      float r1r2 = r1+r2;
+      float x1 = pmt.circ[0], y1 = pmt.circ[1];
+      float x2 = pmtb.circ[0], y2 = pmtb.circ[1];
+      float dist = sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+      if ( dist < r1 && 
+	   r1 < pmtb.circ[2] ) {
+
+
+
+	  
+	isinside = true;
+      } else {
+	if ( dist < r1r2 && 
+	     pmt.bolts.size() < pmtb.bolts.size() ) {
+
+	  std::cout<<"hasfewerbolts i="<<i<<" j="<<j<<std::endl;
+	  std::cout<<"(x1,y1)= ("<<x1<<", "<<y1<< ") r1="<<r1
+		   <<" (x2,y2)="<<x2<<", "<<y2<< ") r2="<<r2
+		   <<" dist ="<<dist<<" r1r2="<<r1r2<<std::endl;
+
+	  hasfewerbolts = true;
+	}
+      }
+    }
+      
+    if ( pmt.bolts.size() >= numbolts 
+	 //	 || !isinside 
+	 	 && !hasfewerbolts 
+	 ){
+      not_pruned_pmts.push_back( pmt );
     }
   }
-  
-  final_pmts = pruned_pmts;
-  
 
+  final_pmts = not_pruned_pmts;
+
+  // make some histograms of distances
+
+  std::ostringstream os_name;
+  os_name << "prunepmt_closest_" << label;
+  TH1D* hdist = new TH1D( os_name.str().c_str(), " ; distance in PMT radii; count/bin", 200, 0., 5. ); 
+  
+  std::ostringstream os_name2;
+  os_name2 << "prunepmt_all_" << label;
+  TH1D* hdist_all = new TH1D( os_name2.str().c_str(), " ; distance in PMT radii; count/bin", 200, 0., 5. ); 
+
+
+  for ( unsigned i = 0; i < final_pmts.size(); ++i ){ 
+    const PMTIdentified& pmta = final_pmts[i];
+    float closest_dist = 9999999.0;
+    for ( unsigned j = i+1; j < final_pmts.size(); ++j ){
+      const PMTIdentified& pmtb =  final_pmts[j];
+      //if ( i == j ) continue;
+      //float r = pmta.circ[2];
+      float r1 = pmta.circ[2]; float r2 = pmtb.circ[2];
+      float r = (r1+r2)/2;
+      float x1 = pmta.circ[0], x2 = pmtb.circ[0];
+      float y1 = pmtb.circ[0], y2 = pmtb.circ[1];
+      float dist = sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) )/r;
+      if ( fabs( x1 - x2 ) < r || fabs( y1 - y2 ) < r ) { 
+	hdist_all->Fill( dist );
+      }
+      if ( dist < closest_dist ) closest_dist = dist;
+    }
+    hdist->Fill( closest_dist );
+  }
+			 
 }
 
 

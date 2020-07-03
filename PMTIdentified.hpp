@@ -81,7 +81,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
 void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset );
   
 /// remove bolts and PMTs from PMTs with fewer than some threshold bolts
-void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts );
+void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label );
 
 
 #endif

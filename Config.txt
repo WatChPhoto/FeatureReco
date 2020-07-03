@@ -9,7 +9,12 @@
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-save_option = 00101
+save_option = 10101
+
+# Contrast Limited Adaptive Histogram Equalization
+do_clahe = 1 # 0 off, 1 on
+clahe_gridsize = 16 # size of box to equalize in
+clahe_cliplimit = 4 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
 
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
@@ -19,11 +24,11 @@ blursigma = 40  #10.0  #sigma of gaussian in pixels
 #Bilateral filter
 do_bifilter = 1 # 0 for off, any other number for on
 d =	5 #5  #value 5-9 distance around each pixels to filter(must be odd)
-sigColor = 250 #5 #250 #10 #range of colours to call the same
-sigSpace = 10  #???
+sigColor = 2   # gausian range in color to filter over
+sigSpace = 50  # gaussian sigma in distance for filtering over
 
 #Sobel edge detection
-do_sobel = 1 # 0 for off, any other number for on
+do_sobel = 0 # 0 for off, any other number for on
 scale = 1 #Scalar to multiply the gradient 
 delta = 15 #0
 
@@ -37,17 +42,17 @@ thresh_high = 230   #The gradient valu agreater than this will be kept.
 threshold = 0
 
 #Blob parameters
-blob_minThreshold = 150 #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_minThreshold = 150  #100 #30 #80 #90  #min threshold of color to consider for blob
 blob_maxThreshold = 255 #max threshold of color to consider for blob 
 blob_filterByArea = 1 #1 for true 0 for false
 blob_minArea = 5 #3 #4 #6      #Min area to consider as a blob
 blob_maxArea = 70     #Max area to consider as a blob                                                                                  
-blob_filterByCircularity = 1 #1 for true 0 for false
+blob_filterByCircularity = 0 #1 for true 0 for false
 blob_minCircularity = 0.003 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
 blob_minDistBetweenBlobs = 10 #10 #Minimum distance between the blobs
-blob_filterByConvexity = 1  #1 for true 0 for false
+blob_filterByConvexity = 0  #1 for true 0 for false
 blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
-blob_filterByInertia = 1  #1 for true 0 for false
+blob_filterByInertia = 0  #1 for true 0 for false
 blob_minInertiaRatio = 0.00001   #It can be thought as essentricity of ellipse
 
 #Hough transform parameters
