@@ -12,7 +12,9 @@
 
 #include<cmath>
 #include<iostream>
-#include "ellipse_detection.hpp"
+#include "ellipse_detection_2.1.hpp"
+#include "distance_to_ellipse.hpp"
+
 double distance(cv::Point p1, cv::Point p2){
   int x1 = p1.x;
   int y1 = p1.y;
@@ -26,8 +28,6 @@ double distance(cv::Point p1, cv::Point p2){
 
   //constructor 
 ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
-void ParametricEllipse::set_xypoints(std::vector<cv::Vec3f> xypoints){this->xypoints = xypoints;}
-
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
   for(int i=0; i<bbins.size(); ++i){
@@ -45,7 +45,7 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
   }
 }
 	
-void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+ std::vector<ParametricEllipse> detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
   std::vector<ParametricEllipse> elData;
 
   //Get first point
@@ -117,12 +117,8 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 
      if(probable.freq > min_minor_freq){
        //Now probable is final ellipse 
+       elData.push_back(probable);
        
-       //points belonging to current pmt.
-       std::vector<cv::Vec3f> xypoints;
-       xypoints.push_back(coordinates[i]);
-       xypoints.push_back(coordinates[sec_ind]);
-
        //unused will include all the unused points
        std::vector<cv::Vec3f> unused;
        
@@ -136,8 +132,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
        //setting the second point to (-1000,-1000) to preserve array structure.
        coordinates[sec_ind][0]=-1000;
        coordinates[sec_ind][1]=-1000;
-      
-       //double angle = atan2(
+             
        //removing all the points that were considered for current ellipse.
        for(int m=i+1; m<coordinates.size();m++){
 	 int x = coordinates[m][0];
@@ -145,7 +140,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	 int d = distance(cv::Point(x, y), probable.centre);
 	
 	 // If the points were considered for current ellipse ignore them
-	 if(d>=min_minor && d<=max_minor){ xypoints.push_back(coordinates[m]); continue;}
+	 if(d>=min_minor && d<=max_minor){ continue;}
       	
 	 // else keep those points.
 	 cv::Vec3f temp;
@@ -154,15 +149,31 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	 temp[2]=coordinates[m][2];
 	 unused.push_back(temp);
        }  
+       
        //Data is modified removing used points for current ellipse.
        coordinates = unused;
-       
-       //set the points belonging to current pmt
-       probable.set_xypoints(xypoints);
-       elData.push_back(probable);
+     }
+   }
+   return elData;
+ }
+
+{
+   for(int a=0; a<elData.size(); a++){
+     //ParametricEllipse ellipses = elData[i];
+     cv::Point centre =  elData[a].centre;
+     double e0 = elData[a].a;
+     double e1 = elData[a].b;
+     double phi = elData[a].alpha;
+     for(int b=0; b<elData[a].xypoints.size();b++){
+       cv::Point q;
+       cv::Point p = cv::Point(elData[a].xypoints[b][0],elData[a].xypoints[b][1]);
+       double dist =  get_distance(centre, e0, e1, p , q, phi);
+       //double dist =  dmin(centre, e0, e1, p , q, phi);
+       elData[a].closest_points.push_back(q);
+       elData[a].dist.push_back(dist);
      }
      
-     
+   
    }
    for(ParametricEllipse ellipses: elData){
      
@@ -171,7 +182,15 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
      const double PI = std::acos(-1);
      ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
      
-     for(cv::Vec3f bolts: ellipses.xypoints){ cv::circle( img, cv::Point( bolts[0], bolts[1] ), 3, cv::Scalar(0,255,55), 1, 0 );}
+     for(int i = 0; i<ellipses.xypoints.size(); i++){
+       cv::Vec3f bolts = ellipses.xypoints[i];
+       cv::circle( img, cv::Point( bolts[0], bolts[1] ), 3, cv::Scalar(0,255,55), 1, 0 );
+       //int m_x = 
+       line(img, cv::Point( cvRound(bolts[0]), cvRound(bolts[1]) ), cv::Point(cvRound(ellipses.closest_points[i].x),cvRound(ellipses.closest_points[i].y)), cv::Scalar(0,0,0), 1, 8,0);
+
+     }
+     
+     
    }
 }
   

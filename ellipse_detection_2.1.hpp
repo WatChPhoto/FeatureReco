@@ -7,14 +7,13 @@
 double distance(cv::Point p1, cv::Point p2);
 class ParametricEllipse{
 public:
-  std::vector<cv::Vec3f> xypoints;
   cv::Point2i centre;
-  int a;
+  double a;
   int b;
-  int alpha;
+  double alpha;
   int freq;
   ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  );
-  void set_xypoints(std::vector<cv::Vec3f> xypoints);
+ 
 };
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index);
