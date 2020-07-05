@@ -68,195 +68,200 @@ int main (int argc, char **argv) {
 
 
 
-    try
-    {
+      try
+	{
       
-      // Gaussian blur
-
-      Mat img_blur = image.clone ();
-
-      bool verbose = config::Get_int("verbosity");
-      bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
-
-      if ( do_gaus_blur ) {
-	int blurpixels = config::Get_int ("blurpixels");	// size of kernel in pixels (must be odd)
-	double blursigma = config::Get_double ("blursigma");	// sigma of gaussian in pixels
-	
-	GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma);
-	if ( option[4] ) {
-	  outputname = build_output_filename (argv[1], "gausblur");
-	  imwrite (outputname, img_blur);
-	}
-      }
-      // Bilateral filter
-      bool do_bifilter = (bool) config::Get_int ("do_bifilter");
-      Mat img_flt = img_blur.clone ();
-      if ( do_bifilter ) {
-	int d = config::Get_int ("d");	// value 5-9 distance around each pixel to filter (must be odd)
-	int sigColor = config::Get_int ("sigColor");	// range of colours to call the same
-	int sigSpace = config::Get_int ("sigSpace");	// ???
-	
-	bilateralFilter (image, img_flt, d, sigColor, sigSpace);
-	if (option[4]) {
-	  outputname = build_output_filename (argv[1], "bifilter");
-	  imwrite (outputname, img_flt);
-	}
-      }
-
-
-      /// Do Sobel edge detection
-      bool do_sobel = (bool) config::Get_int ("do_sobel");
-      Mat grad = img_flt.clone ();
-      if ( do_sobel ) {
-	      int scale = config::Get_int ("scale");
-	      int delta = config::Get_int ("delta");
-	      int ddepth = CV_16S;
-
-	      /// Generate grad_x and grad_y
-	      Mat grad_x, grad_y;
-	      Mat abs_grad_x, abs_grad_y;
-
-	      /// Gradient X
-	      //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
-	      Sobel (img_flt, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT);
-	      convertScaleAbs (grad_x, abs_grad_x);
-
-	      /// Gradient Y
-	      //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
-	      Sobel (img_flt, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT);
-	      convertScaleAbs (grad_y, abs_grad_y);
-
-	      /// Total Gradient (approximate)
-	      addWeighted (abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad);
-
-	      if (option[4]) {
-		    outputname = build_output_filename (argv[1], "sobel");
-		    imwrite (outputname, grad);
-	      }
-	}
-	//Canny edge detector.                                                                                                                   
-	bool do_canny = (bool) config::Get_int ("do_canny");
-	int thresh_low = config::Get_int ("thresh_low");	//The gradient value below thresh_low will be discarded.                                  
-	int thresh_high = config::Get_int ("thresh_high");	//The gradient value above thresh_high will be used. The inbetween gradient is kept if \the edge is connected.                                                                                                                        
-
-	Mat img_can = grad.clone();
-	if (do_canny) {
-	      Canny (grad, img_can, thresh_low, thresh_high);
-
-	      if (option[option.size() - 1]) {
-		    outputname = build_output_filename (argv[1], "canny");
-		    imwrite (outputname, img_can);
-	      }
-	}
-
-
-
-
-
-	// equalize image
-	Mat image_clahe;
-    
-	bool do_clahe = (bool)config::Get_int( "do_clahe" );
-	if ( do_clahe ){
-	  std::cout<<"Applying equalization"<<std::endl;
-	  int gridsize = config::Get_int( "clahe_gridsize" );
-	  int cliplimit = config::Get_int( "clahe_cliplimit" );
-	
-	  Ptr<CLAHE> clahe = createCLAHE();
-	  clahe->setClipLimit( cliplimit );
-	  clahe->setTilesGridSize( cv::Size( gridsize, gridsize ) );
-	  clahe->apply( img_can, image_clahe );
-	  std::cout<<"Equalized"<<std::endl;
+	  // Gaussian blur
 	  
-	  outputname = build_output_filename (argv[1], "clahe");
-	  imwrite (outputname, image_clahe);
-	} else {
-	  image_clahe = img_can.clone();
-	}
+	  Mat img_blur = image.clone ();
+
+	  bool verbose = config::Get_int("verbosity");
+	  bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
+
+	  if ( do_gaus_blur ) {
+	    int blurpixels = config::Get_int ("blurpixels");	// size of kernel in pixels (must be odd)
+	    double blursigma = config::Get_double ("blursigma");	// sigma of gaussian in pixels
+	    
+	    GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma);
+	    if ( option[4] ) {
+	      outputname = build_output_filename (argv[1], "gausblur");
+	      imwrite (outputname, img_blur);
+	    }
+	  }
+	  // Bilateral filter
+	  bool do_bifilter = (bool) config::Get_int ("do_bifilter");
+	  Mat img_flt = img_blur.clone ();
+	  if ( do_bifilter ) {
+	    int d = config::Get_int ("d");	// value 5-9 distance around each pixel to filter (must be odd)
+	    int sigColor = config::Get_int ("sigColor");	// range of colours to call the same
+	    int sigSpace = config::Get_int ("sigSpace");	// ???
+	    
+	    bilateralFilter (image, img_flt, d, sigColor, sigSpace);
+	    if (option[4]) {
+	      outputname = build_output_filename (argv[1], "bifilter");
+	      imwrite (outputname, img_flt);
+	    }
+	  }
 
 
+	  /// Do Sobel edge detection
+	  bool do_sobel = (bool) config::Get_int ("do_sobel");
+	  Mat grad = img_flt.clone ();
+	  if ( do_sobel ) {
+	    int scale = config::Get_int ("scale");
+	    int delta = config::Get_int ("delta");
+	    int ddepth = CV_16S;
+
+	    /// Generate grad_x and grad_y
+	    Mat grad_x, grad_y;
+	    Mat abs_grad_x, abs_grad_y;
+
+	    /// Gradient X
+	    //Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+	    Sobel (img_flt, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT);
+	    convertScaleAbs (grad_x, abs_grad_x);
+
+	    /// Gradient Y
+	    //Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+	    Sobel (img_flt, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT);
+	    convertScaleAbs (grad_y, abs_grad_y);
+
+	    /// Total Gradient (approximate)
+	    addWeighted (abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad);
+	    
+	    if (option[4]) {
+	      outputname = build_output_filename (argv[1], "sobel");
+	      imwrite (outputname, grad);
+	    }
+	  }
+	  //Canny edge detector.                                                                                                                   
+	  bool do_canny = (bool) config::Get_int ("do_canny");
+	  int thresh_low = config::Get_int ("thresh_low");	//The gradient value below thresh_low will be discarded.                                  
+	  int thresh_high = config::Get_int ("thresh_high");	//The gradient value above thresh_high will be used. The inbetween gradient is kept if \the edge is connected.                                                                                                                        
+
+	  Mat img_can = grad.clone();
+	  if (do_canny) {
+	    Canny (grad, img_can, thresh_low, thresh_high);
+
+	    if (option[option.size() - 1]) {
+	      outputname = build_output_filename (argv[1], "canny");
+	      imwrite (outputname, img_can);
+	    }
+	  }
 
 
+	  // equalize image
+	  Mat image_clahe;
+    
+	  bool do_clahe = (bool)config::Get_int( "do_clahe" );
+	  if ( do_clahe ){
+	    std::cout<<"Applying equalization"<<std::endl;
+	    int gridsize = config::Get_int( "clahe_gridsize" );
+	    int cliplimit = config::Get_int( "clahe_cliplimit" );
+	
+	    Ptr<CLAHE> clahe = createCLAHE();
+	    clahe->setClipLimit( cliplimit );
+	    clahe->setTilesGridSize( cv::Size( gridsize, gridsize ) );
+	    clahe->apply( img_can, image_clahe );
+	    std::cout<<"Equalized"<<std::endl;
+	    
+	    outputname = build_output_filename (argv[1], "clahe");
+	    imwrite (outputname, image_clahe);
+	  } else {
+	    image_clahe = img_can.clone();
+	  }
 
-	histogram_channel0 (img_can, "hbefore_thres_cut");
-	int threshold = config::Get_int ("threshold");
 
-	apply_image_threshold (img_can, threshold);
-	histogram_channel0 (grad, "hafter_thres_cut");
+	  histogram_channel0 (img_can, "hbefore_thres_cut");
+	  int threshold = config::Get_int ("threshold");
 
-	//Blob detection
-	Mat img_blob = image_clahe.clone ();
-	Mat img_blob_map = image_color.clone ();
-	// Setup SimpleBlobDetector parameters.
-	SimpleBlobDetector::Params params;
+	  apply_image_threshold (img_can, threshold);
+	  histogram_channel0 (grad, "hafter_thres_cut");
 
-	//detect white
-	//params.filterByColor=true;  
-	params.blobColor = 255;
+	  //Blob detection
+	  Mat img_blob = image_clahe.clone ();
+	  Mat img_blob_map = image_color.clone ();
+	  // Setup SimpleBlobDetector parameters.
+	  SimpleBlobDetector::Params params;
+	  
+	  //detect white
+	  //params.filterByColor=true;  
+	  params.blobColor = 255;
+	  
+	  // Change thresholds
+	  params.minThreshold = config::Get_int ("blob_minThreshold");
+	  params.maxThreshold = config::Get_int ("blob_maxThreshold");
 
-	// Change thresholds
-	params.minThreshold = config::Get_int ("blob_minThreshold");
-	params.maxThreshold = config::Get_int ("blob_maxThreshold");
+	  // Filter by Area.
+	  params.filterByArea = config::Get_int ("blob_filterByArea");
+	  params.minArea = config::Get_double ("blob_minArea");
+	  params.maxArea = config::Get_double ("blob_maxArea");
 
-	// Filter by Area.
-	params.filterByArea = config::Get_int ("blob_filterByArea");
-	params.minArea = config::Get_double ("blob_minArea");
-	params.maxArea = config::Get_double ("blob_maxArea");
+	  // Filter by Circularity
+	  params.filterByCircularity = config::Get_int ("blob_filterByCircularity");
+	  params.minCircularity = config::Get_double ("blob_minCircularity");
 
-	// Filter by Circularity
-	params.filterByCircularity = config::Get_int ("blob_filterByCircularity");
-	params.minCircularity = config::Get_double ("blob_minCircularity");
+	  //Filter by distance
+	  params.minDistBetweenBlobs = config::Get_double ("blob_minDistBetweenBlobs");
+	  // Filter by Convexity
+	  params.filterByConvexity = config::Get_int ("blob_filterByConvexity");
+	  params.minConvexity = config::Get_double ("blob_minConvexity");
 
-	//Filter by distance
-	params.minDistBetweenBlobs = config::Get_double ("blob_minDistBetweenBlobs");
-	// Filter by Convexity
-	params.filterByConvexity = config::Get_int ("blob_filterByConvexity");
-	params.minConvexity = config::Get_double ("blob_minConvexity");
+	  // Filter by Inertia
+	  params.filterByInertia = config::Get_int ("blob_filterByInertia");
+	  params.minInertiaRatio = config::Get_double ("blob_minInertiaRatio");
 
-	// Filter by Inertia
-	params.filterByInertia = config::Get_int ("blob_filterByInertia");
-	params.minInertiaRatio = config::Get_double ("blob_minInertiaRatio");
-
-	// Set up the detector with default parameters.                                                                                         
-	Ptr < SimpleBlobDetector > detector = SimpleBlobDetector::create (params);
+	  // Set up the detector with set parameters.                                                                                         
+	  Ptr < SimpleBlobDetector > detector = SimpleBlobDetector::create (params);
 
 	// Detect blobs.                                                                                                                        
-	std::vector < KeyPoint > keypoints;
-	detector->detect (img_blob, keypoints);
+	  std::vector < KeyPoint > keypoints;
+	  detector->detect (img_blob, keypoints);
+	  
+	  //blob vector will contain x,y,r
+	  vector < Vec3f > blobs;
+	  for (KeyPoint keypoint:keypoints) {
+	    //Point center1 = keypoint.pt;
+	    int x = keypoint.pt.x;
+	    int y = keypoint.pt.y;
+	    float r = ((keypoint.size) + 0.0) / 2;
 
-	//blob vector will contain x,y,r
-	vector < Vec3f > blobs;
-	for (KeyPoint keypoint:keypoints) {
-	  //Point center1 = keypoint.pt;
-	      int x = keypoint.pt.x;
-	      int y = keypoint.pt.y;
-	      float r = ((keypoint.size) + 0.0) / 2;
+	    Vec3f temp;
+	    temp[0] = x;
+	    temp[1] = y;
+	    temp[2] = r;
+	    blobs.push_back (temp);
+	  }
 
-	      Vec3f temp;
-	      temp[0] = x;
-	      temp[1] = y;
-	      temp[2] = r;
-	      blobs.push_back (temp);
-	}
+	  //ellipse trial
+	  int de_min_major = 90;//80;
+	  int de_max_major = 120;//160;
+	  int de_min_minor = 90;//80;
+	  int de_max_minor = 120;//160;
+	  int de_threshold = 4;//4;
+	  std::cout<<"before ellipse"<<std::endl;
 
-	//ellipse trial
-	int de_min_major = 90;//80;
-	int de_max_major = 120;//160;
-	int de_min_minor = 90;//80;
-	int de_max_minor = 120;//160;
-	int de_threshold = 4;//4;
-	std::cout<<"before ellipse"<<std::endl;
-	detect_ellipse(blobs, image_ellipse, 
-		       de_min_major, de_max_major,
-		       de_min_minor, de_max_minor, de_threshold );
+	  std::vector<ParametricEllipse> f_ellipses= detect_ellipse(blobs, 
+								    de_min_major, de_max_major,
+								    de_min_minor, de_max_minor, de_threshold );
 
+	  std::vector< PMTIdentified > f_ellipse_pmts;
+	  for(ParametricEllipse ellipses: f_ellipses){
+	    
+	      Vec3f pmtloc{ ellipses.centre.x, ellipses.centre.y, ellipses.b };
+	      std::vector< Vec3f > boltlocs = ellipses.bolts;
+	      std::vector< float > dists = ellipses.dist;
 
+	      f_ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
+	  }
 
-	outputname = build_output_filename (argv[1], "ellipses");
-	imwrite(outputname, image_ellipse);
-	//trialend
+	  draw_ellipses(f_ellipses, image_ellipse );
+	    
+	  outputname = build_output_filename (argv[1], "ellipses");
+	  imwrite(outputname, image_ellipse);
+	  //trialend
 
-	//Draws circle from data to the input image
+	  //Draws circle from data to the input image
 	draw_circle_from_data (blobs, img_blob_map, Scalar (0, 0, 255));
 	if (option[3]) {
 	  outputname = build_output_filename (argv[1], "blob");

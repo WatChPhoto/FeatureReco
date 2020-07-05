@@ -45,7 +45,9 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
   }
 }
 	
- std::vector<ParametricEllipse> detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& input_data, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+
+  std::vector<cv::Vec3f> coordinates = input_data;
   std::vector<ParametricEllipse> elData;
 
   //Get first point
@@ -154,44 +156,53 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
        coordinates = unused;
      }
    }
-   return elData;
+
+   //Filling the closest point, dist  and bolts in the pmt info.
+   for(int i=0; i< elData.size(); ++i){
+
+     cv::Point centre =  elData[i].centre;
+     double e0 = elData[i].a;
+     double e1 = elData[i].b;
+     double phi = elData[i].alpha;
+
+     for(int j=0; j<input_data.size(); ++j){
+       cv::Point p = cv::Point(input_data[j][0], input_data[j][1]); //bolt's centre.
+       double d = distance(centre , p); //distance of current blob from centre.
+       
+       if(d > 2*(e0+e1)){ continue; } // If the point is more than 2X(major axis+minor axis) away then it is too far.
+       cv::Point q;
+       double dist =  get_distance(centre, e0, e1, p , q, phi); //get the distance of the bolt from current ellipse
+       
+       if(dist<6){
+	 elData[i].bolts.push_back(input_data[j]);
+	 elData[i].query.push_back(q);
+	 elData[i].dist.push_back(dist);
+       }
+     }
+   }
+ 
+  return elData;
  }
 
-{
-   for(int a=0; a<elData.size(); a++){
-     //ParametricEllipse ellipses = elData[i];
-     cv::Point centre =  elData[a].centre;
-     double e0 = elData[a].a;
-     double e1 = elData[a].b;
-     double phi = elData[a].alpha;
-     for(int b=0; b<elData[a].xypoints.size();b++){
-       cv::Point q;
-       cv::Point p = cv::Point(elData[a].xypoints[b][0],elData[a].xypoints[b][1]);
-       double dist =  get_distance(centre, e0, e1, p , q, phi);
-       //double dist =  dmin(centre, e0, e1, p , q, phi);
-       elData[a].closest_points.push_back(q);
-       elData[a].dist.push_back(dist);
-     }
-     
-   
-   }
-   for(ParametricEllipse ellipses: elData){
-     
-     cv::Size axes( ellipses.a, ellipses.b );
-     cv::Point center = ellipses.centre;
-     const double PI = std::acos(-1);
-     ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
-     
-     for(int i = 0; i<ellipses.xypoints.size(); i++){
-       cv::Vec3f bolts = ellipses.xypoints[i];
-       cv::circle( img, cv::Point( bolts[0], bolts[1] ), 3, cv::Scalar(0,255,55), 1, 0 );
-       //int m_x = 
-       line(img, cv::Point( cvRound(bolts[0]), cvRound(bolts[1]) ), cv::Point(cvRound(ellipses.closest_points[i].x),cvRound(ellipses.closest_points[i].y)), cv::Scalar(0,0,0), 1, 8,0);
+void draw_ellipses(const std::vector<ParametricEllipse>& elData, cv::Mat& img ){   
+  const double PI = std::acos(-1);
+  for(const ParametricEllipse ellipses: elData){
+    cv::Size axes( ellipses.a, ellipses.b );
+    cv::Point center = ellipses.centre;
+    
+    ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
+    
+    //drawing line from bolts to closest point in the ellipse
+    for(int i = 0; i<ellipses.bolts.size(); i++){
+      cv::Vec3f bolts = ellipses.bolts[i];
+      //drawing included bolts
+      cv::circle( img, cv::Point( bolts[0], bolts[1] ), bolts[2], cv::Scalar(0,0,255), 1, 0 );
+    
+      //drawing line from bolt to closest point in the ellipse
+      line(img, cv::Point( cvRound(bolts[0]), cvRound(bolts[1]) ), cv::Point(cvRound(ellipses.query[i].x),cvRound(ellipses.query[i].y)), cv::Scalar(0,0,0), 1, 8,0);
 
-     }
-     
-     
-   }
+    }
+  }
 }
   
 
