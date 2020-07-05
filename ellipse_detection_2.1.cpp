@@ -173,7 +173,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
        cv::Point q;
        double dist =  get_distance(centre, e0, e1, p , q, phi); //get the distance of the bolt from current ellipse
        
-       if(dist<6){
+       if(dist<30){
 	 elData[i].bolts.push_back(input_data[j]);
 	 elData[i].query.push_back(q);
 	 elData[i].dist.push_back(dist);
