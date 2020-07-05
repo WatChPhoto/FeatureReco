@@ -233,7 +233,7 @@ int main (int argc, char **argv) {
 	    blobs.push_back (temp);
 	  }
 
-	  //ellipse trial
+	  //fast ellipse trial
 	  int de_min_major = 90;//80;
 	  int de_max_major = 120;//160;
 	  int de_min_minor = 90;//80;
@@ -241,24 +241,63 @@ int main (int argc, char **argv) {
 	  int de_threshold = 4;//4;
 	  std::cout<<"before ellipse"<<std::endl;
 
+	  //Fast ellipse detection
 	  std::vector<ParametricEllipse> f_ellipses= detect_ellipse(blobs, 
 								    de_min_major, de_max_major,
 								    de_min_minor, de_max_minor, de_threshold );
 
+	  //draw ellipses with line showing shortest distance from the point to the ellipse.
+	  draw_ellipses(f_ellipses, image_ellipse );
+	  
+	  //Filling PMTIdentified vector. Data is obtained from Fast ellipse detection.
 	  std::vector< PMTIdentified > f_ellipse_pmts;
 	  for(ParametricEllipse ellipses: f_ellipses){
 	    
 	      Vec3f pmtloc{ ellipses.centre.x, ellipses.centre.y, ellipses.b };
 	      std::vector< Vec3f > boltlocs = ellipses.bolts;
 	      std::vector< float > dists = ellipses.dist;
-
+	      
 	      f_ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
 	  }
 
-	  draw_ellipses(f_ellipses, image_ellipse );
-	    
-	  outputname = build_output_filename (argv[1], "ellipses");
+	  // annotate with bolt numbers and angles
+	  overlay_bolt_angle_boltid( f_ellipse_pmts, image_ellipse );
+	  outputname = build_output_filename (argv[1], "fast_ellipses");
 	  imwrite(outputname, image_ellipse);
+	 
+
+	  //Angle made by bolts with vertical(12 O' clock)
+	  TH1D * fhangboltel = new TH1D ("fhangboltel", "Angles of bolts (fast ellipse); angle (deg)", 360, 0., 360.);
+	  //Difference in angle from expected angle of the bolt.
+	  TH1D * fhdangboltel = new TH1D ("fhdangboltel", "Angle of bolt from expected (fast ellipse); #Delta angle (deg)", 60, -15., 15.);
+
+	  for  (const PMTIdentified & pmt : f_ellipse_pmts) {
+	    for ( const float &ang : pmt.angles) {
+	      fhangboltel->Fill (ang);
+	    }
+	    for ( const float &dang : pmt.dangs) {
+	      fhdangboltel->Fill (dang);
+	    }
+	  }
+
+	  // look for duplicate bolts and keep only best matches
+	  prune_bolts( f_ellipse_pmts, fhdangboltel->GetMean() );
+	  // remove pmts below threshold (9 bolts)
+	  prune_pmts( f_ellipse_pmts, 12, "f_ellipsehough" );
+
+
+	  //Fill ellipse_dist histogram
+	  TH1D * f_ellipse_dist = new TH1D ("f_ellipse_dist",
+					  "Distance from bolt to fast PMT ellipse; distance (pixels); Count/bin",
+					  51, -0.5, 49.5);
+	  
+	  for (const PMTIdentified & pmt : f_ellipse_pmts) {
+	    for (const float dist : pmt.dists) {
+	      f_ellipse_dist->Fill (dist);
+	    }
+	  }
+	
+
 	  //trialend
 
 	  //Draws circle from data to the input image

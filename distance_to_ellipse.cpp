@@ -193,7 +193,7 @@ double get_distance(cv::Point c, double e0, double e1, cv::Point p , cv::Point& 
     //keeping record of the sign
     int f_sign = (y_0<0)?-1:1;
     int s_sign = (y_1<0)?-1:1;
-    std::cout<<"fsign = "<<f_sign<<" s_sign - "<<s_sign<<std::endl;
+    //    std::cout<<"fsign = "<<f_sign<<" s_sign - "<<s_sign<<std::endl;
 
     //switch e0 and e1
     //changing the related constant after rotating axis.
