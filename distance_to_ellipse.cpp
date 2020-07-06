@@ -1,3 +1,15 @@
+/*==================================================================================
+#   Function to calculate the minimum distance of the point from the given ellipse #
+#  dmin is the first method which is slow(but improvised).                         #
+#                                                                                  #
+#                      The function  get_distance                                  #
+#        is the second method which uses the method from this article              #
+#  https://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf  #
+# all other function are auxiliary function for the second method.                 #
+#                                                                                  #
+#==================================================================================#*/
+
+
 #include "distance_to_ellipse.hpp"
 #include<iostream>
 

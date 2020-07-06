@@ -1,4 +1,4 @@
-/*=====================================================================================================================
+/*=====================================================================================================================#
 #                                               Fast Ellipse detection code.                                           #
 #    Ellipse detection version 2.1.  Different approach of finalizing the ellipse. Looks at all the ellipse formed     # 
 #    that include first point and chooses the one with max peak value(max freq) of b (semi minor axis). If the found   #
@@ -7,8 +7,9 @@
 #    matter which point in the image you will consider the distance to (-500,-500) will be too big to consider for     #
 #    semi-major axis or semi-minor axis. Also all other points that are within min_minor to max_minor are removed      #
 #    from the data(coordinate). Another reason for changing (x1,y1) and (x2,y2) to be(-1000,-100) instead of removing  #
-#    them completely is to avoid skipping data due of removal of data at index.
-======================================================================================================================*/
+#    them completely is to avoid skipping data due of removal of data at index.                                        #
+# The method is based on the article http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf #
+#======================================================================================================================#*/
 
 #include<cmath>
 #include<iostream>
@@ -173,7 +174,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
        cv::Point q;
        double dist =  get_distance(centre, e0, e1, p , q, phi); //get the distance of the bolt from current ellipse
        
-       if(dist<30){
+       if(dist<30){ //counting as a bolt if the bolt is within the distance from pmt.
 	 elData[i].bolts.push_back(input_data[j]);
 	 elData[i].query.push_back(q);
 	 elData[i].dist.push_back(dist);
