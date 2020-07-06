@@ -22,7 +22,7 @@ struct PMTIdentified {
   std::vector<float> angles; // angle of each bolt
   std::vector<float> dangs;  // difference in angle from boltid's angle
   std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
-
+  
   // include comparison to truth if available
   std::vector<int>   idx_txt; // index of medianTextReader
   std::vector<float> dist_txt; // distance to closest matching bolt

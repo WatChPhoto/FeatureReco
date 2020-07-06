@@ -1,4 +1,4 @@
-/*=====================================================================================================================
+/*=====================================================================================================================#
 #                                               Fast Ellipse detection code.                                           #
 #    Ellipse detection version 2.1.  Different approach of finalizing the ellipse. Looks at all the ellipse formed     # 
 #    that include first point and chooses the one with max peak value(max freq) of b (semi minor axis). If the found   #
@@ -7,12 +7,15 @@
 #    matter which point in the image you will consider the distance to (-500,-500) will be too big to consider for     #
 #    semi-major axis or semi-minor axis. Also all other points that are within min_minor to max_minor are removed      #
 #    from the data(coordinate). Another reason for changing (x1,y1) and (x2,y2) to be(-1000,-100) instead of removing  #
-#    them completely is to avoid skipping data due of removal of data at index.
-======================================================================================================================*/
+#    them completely is to avoid skipping data due of removal of data at index.                                        #
+# The method is based on the article http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf #
+#======================================================================================================================#*/
 
 #include<cmath>
 #include<iostream>
-#include "ellipse_detection.hpp"
+#include "ellipse_detection_2.1.hpp"
+#include "distance_to_ellipse.hpp"
+
 double distance(cv::Point p1, cv::Point p2){
   int x1 = p1.x;
   int y1 = p1.y;
@@ -26,8 +29,6 @@ double distance(cv::Point p1, cv::Point p2){
 
   //constructor 
 ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
-void ParametricEllipse::set_xypoints(std::vector<cv::Vec3f> xypoints){this->xypoints = xypoints;}
-
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
   for(int i=0; i<bbins.size(); ++i){
@@ -45,7 +46,9 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
   }
 }
 	
-void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& input_data, const int min_major, const int max_major, const int min_minor, const int max_minor,int min_minor_freq){
+
+  std::vector<cv::Vec3f> coordinates = input_data;
   std::vector<ParametricEllipse> elData;
 
   //Get first point
@@ -117,12 +120,8 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 
      if(probable.freq > min_minor_freq){
        //Now probable is final ellipse 
+       elData.push_back(probable);
        
-       //points belonging to current pmt.
-       std::vector<cv::Vec3f> xypoints;
-       xypoints.push_back(coordinates[i]);
-       xypoints.push_back(coordinates[sec_ind]);
-
        //unused will include all the unused points
        std::vector<cv::Vec3f> unused;
        
@@ -136,8 +135,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
        //setting the second point to (-1000,-1000) to preserve array structure.
        coordinates[sec_ind][0]=-1000;
        coordinates[sec_ind][1]=-1000;
-      
-       //double angle = atan2(
+             
        //removing all the points that were considered for current ellipse.
        for(int m=i+1; m<coordinates.size();m++){
 	 int x = coordinates[m][0];
@@ -145,7 +143,7 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	 int d = distance(cv::Point(x, y), probable.centre);
 	
 	 // If the points were considered for current ellipse ignore them
-	 if(d>=min_minor && d<=max_minor){ xypoints.push_back(coordinates[m]); continue;}
+	 if(d>=min_minor && d<=max_minor){ continue;}
       	
 	 // else keep those points.
 	 cv::Vec3f temp;
@@ -154,25 +152,58 @@ void detect_ellipse(std::vector<cv::Vec3f> coordinates, cv::Mat& img, const int 
 	 temp[2]=coordinates[m][2];
 	 unused.push_back(temp);
        }  
+       
        //Data is modified removing used points for current ellipse.
        coordinates = unused;
-       
-       //set the points belonging to current pmt
-       probable.set_xypoints(xypoints);
-       elData.push_back(probable);
      }
-     
-     
    }
-   for(ParametricEllipse ellipses: elData){
-     
-     cv::Size axes( ellipses.a, ellipses.b );
-     cv::Point center = ellipses.centre;
-     const double PI = std::acos(-1);
-     ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
-     
-     for(cv::Vec3f bolts: ellipses.xypoints){ cv::circle( img, cv::Point( bolts[0], bolts[1] ), 3, cv::Scalar(0,255,55), 1, 0 );}
+
+   //Filling the closest point, dist  and bolts in the pmt info.
+   for(int i=0; i< elData.size(); ++i){
+
+     cv::Point centre =  elData[i].centre;
+     double e0 = elData[i].a;
+     double e1 = elData[i].b;
+     double phi = elData[i].alpha;
+
+     for(int j=0; j<input_data.size(); ++j){
+       cv::Point p = cv::Point(input_data[j][0], input_data[j][1]); //bolt's centre.
+       double d = distance(centre , p); //distance of current blob from centre.
+       
+       if(d > 2*(e0+e1)){ continue; } // If the point is more than 2X(major axis+minor axis) away then it is too far.
+       cv::Point q;
+       double dist =  get_distance(centre, e0, e1, p , q, phi); //get the distance of the bolt from current ellipse
+       
+       if(dist<30){ //counting as a bolt if the bolt is within the distance from pmt.
+	 elData[i].bolts.push_back(input_data[j]);
+	 elData[i].query.push_back(q);
+	 elData[i].dist.push_back(dist);
+       }
+     }
    }
+ 
+  return elData;
+ }
+
+void draw_ellipses(const std::vector<ParametricEllipse>& elData, cv::Mat& img ){   
+  const double PI = std::acos(-1);
+  for(const ParametricEllipse ellipses: elData){
+    cv::Size axes( ellipses.a, ellipses.b );
+    cv::Point center = ellipses.centre;
+    
+    ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
+    
+    //drawing line from bolts to closest point in the ellipse
+    for(int i = 0; i<ellipses.bolts.size(); i++){
+      cv::Vec3f bolts = ellipses.bolts[i];
+      //drawing included bolts
+      cv::circle( img, cv::Point( bolts[0], bolts[1] ), bolts[2], cv::Scalar(0,0,255), 1, 0 );
+    
+      //drawing line from bolt to closest point in the ellipse
+      line(img, cv::Point( cvRound(bolts[0]), cvRound(bolts[1]) ), cv::Point(cvRound(ellipses.query[i].x),cvRound(ellipses.query[i].y)), cv::Scalar(0,0,0), 1, 8,0);
+
+    }
+  }
 }
   
 
