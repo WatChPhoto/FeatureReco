@@ -378,12 +378,13 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
     //std::cout<<"find_maximum: iphi="<<iphi<<std::endl;
     passed_threshold.push_back( binindices_st() );
     std::cout<<"find_maximum: starting thread "<<iphi<<std::endl;
-    phibin_threads.push_back( std::thread( find_maximum_phibin, std::ref(*this), iphi, std::ref( passed_threshold[iphi]) ) );
+    //phibin_threads.push_back( std::thread( find_maximum_phibin, std::ref(*this), iphi, std::ref( passed_threshold[iphi]) ) );
+    find_maximum_phibin( std::ref(*this), iphi, std::ref( passed_threshold[iphi]) );
     //std::cout<<"find_maximum: thread "<<iphi<<" started "<<std::endl;
   }
 
   for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
-    phibin_threads[iphi].join();
+    //phibin_threads[iphi].join();
     std::cout<<"find_maximum: thread "<<iphi<<" finished"<<std::endl;
   }
 
