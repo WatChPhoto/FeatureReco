@@ -15,6 +15,7 @@ save_option = 10101
 do_clahe = 1 # 0 off, 1 on
 clahe_gridsize = 16 # size of box to equalize in
 clahe_cliplimit = 4 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
+clahe_write = 1 # 1 to write image, 0 not
 
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
@@ -42,7 +43,7 @@ thresh_high = 230   #The gradient valu agreater than this will be kept.
 threshold = 0
 
 #Blob parameters
-blob_minThreshold = 150  #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_minThreshold = 160  #100 #30 #80 #90  #min threshold of color to consider for blob
 blob_maxThreshold = 255 #max threshold of color to consider for blob 
 blob_filterByArea = 1 #1 for true 0 for false
 blob_minArea = 5 #3 #4 #6      #Min area to consider as a blob
@@ -64,7 +65,7 @@ hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
 # Ellipse hough transform
-do_ellipse_hough = 0  # 1 for true, 0 for false
+do_ellipse_hough = 1  # 1 for true, 0 for false
 
 
 #Second Hough transform parameters

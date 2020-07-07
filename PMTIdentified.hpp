@@ -6,6 +6,7 @@
 #include <opencv2/imgproc.hpp>
 #include "MedianTextReader.hpp"
 #include <TH1D.h>
+#include "ellipse.hpp"
 
 const float bad_dmin = 500.; //pixels
 const double PI = std::acos(-1);
@@ -15,8 +16,8 @@ inline double RADTODEG( double R ){ return (180.0 * R) / PI; }
 /// For each pmt found it stores a vector of bolts found that are around this PMT
 /// Identifies the bolt number by the angle clockwise from 12 o'clock
 struct PMTIdentified {
-  int                pmtid; // -1 if not identified
-  cv::Vec3f          circ; // [0]=xc, [1]=yc, [2]=radius
+  int                pmtid;     // -1 if not identified
+  ellipse_st         circ;      // [0]=xc, [1]=yc, [2]=radius -- or use get methods for ellipse
   std::vector<cv::Vec3f> bolts; // bolts going with this PMT
   std::vector<float> dists; // distance of bolt from PMT circle 
   std::vector<float> angles; // angle of each bolt
@@ -29,6 +30,11 @@ struct PMTIdentified {
 
   PMTIdentified() : pmtid(-1) { }
   PMTIdentified( const cv::Vec3f& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists ) : 
+    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
+    calculate_angles();
+    calculate_boltid();
+  }
+  PMTIdentified( const ellipse_st& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists ) : 
     pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
     calculate_angles();
     calculate_boltid();
