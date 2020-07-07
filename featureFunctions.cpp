@@ -37,7 +37,9 @@ void histogram_channel0( const cv::Mat& img,  std::string hname ){
 void apply_image_threshold( cv::Mat& img, int threshold ){ 
   int nRows = img.rows;
   int nCols = img.cols;
-  
+
+  histogram_channel0 (img, "hbefore_thres_cut");
+
   for ( int x = 0; x<nCols; ++x){
     for ( int y = 0; y<nRows; ++y){
       cv::Scalar intensity = img.at<uchar>(y, x);
@@ -46,6 +48,9 @@ void apply_image_threshold( cv::Mat& img, int threshold ){
       }
     }
   }
+
+  histogram_channel0 (img, "hafter_thres_cut");
+
 }
 
 
