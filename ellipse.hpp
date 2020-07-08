@@ -10,6 +10,7 @@
 #include <iostream>
 #include <cmath>
 #include "xypoint.hpp"
+#include "opencv2/imgproc.hpp"
 
 using std::ostream;
 using std::acos;
@@ -27,6 +28,9 @@ struct ellipse_st {
   ellipse_st() : c( xypoint(0.,0.) ), b(1.), e(0.), phi(0.), epenalty(0.) { }
   ellipse_st( const ellipse_st& elli ) : 
     c( elli.get_xy() ), b( elli.get_b() ), e( elli.get_e() ), phi( elli.get_phi() ) { }
+  ellipse_st( const cv::Vec3f &v ) :
+    c( xypoint( v[0], v[1] ) ), b( v[2] ), e( 0. ), phi( 0. ) { }
+
 
   void set_bephi( double bb, double ee, double phiphi ){ b=bb; e=ee; phi=phiphi; } 
 
@@ -86,6 +90,23 @@ struct ellipse_st {
   // find closest point on ellipse that is smallest distance from 
   // arbitrary point (px, py) to a point on the ellipse.
   xypoint closest_point( xypoint p ) const;
+
+
+  // treat as Vec3f circle [0]=xc, [1]=yc, [2]=r
+  float operator[]( unsigned idx ) const{
+    switch (idx){
+    case 0: 
+      return c.x;
+    case 1:
+      return c.y;
+    case 2:
+      return b;
+    default:
+      return 0.;
+    }
+  }
+      
+		 
 
   friend ostream& operator<<( ostream& os, const ellipse_st &  e );
 
