@@ -9,7 +9,7 @@
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-save_option = 10101
+save_option = 11111
 
 # Contrast Limited Adaptive Histogram Equalization
 do_clahe = 1 # 0 off, 1 on
@@ -24,9 +24,9 @@ blursigma = 40  #10.0  #sigma of gaussian in pixels
 
 #Bilateral filter
 do_bifilter = 1 # 0 for off, any other number for on
-d =	5 #5  #value 5-9 distance around each pixels to filter(must be odd)
-sigColor = 2   # gausian range in color to filter over
-sigSpace = 50  # gaussian sigma in distance for filtering over
+d           = 5 #5  #value 5-9 distance around each pixels to filter(must be odd)
+sigColor    = 2   # gausian range in color to filter over
+sigSpace    = 50  # gaussian sigma in distance for filtering over
 
 #Sobel edge detection
 do_sobel = 0 # 0 for off, any other number for on
@@ -65,8 +65,24 @@ hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
 # Ellipse hough transform
-do_ellipse_hough = 1  # 1 for true, 0 for false
-
+do_ellipse_hough = 0  # 1 for true, 0 for false
+ellipse_hough_nbins_bb     =  20  # bins along shorter axis half-length
+ellipse_hough_nbins_ee     =  20  # bins in eccentricity
+ellipse_hough_nbins_phiphi =  19  # bins in rotation of ellipse
+ellipse_hough_nbins_x      = 1400 # bins in center location
+ellipse_hough_nbins_y      = 800 # of ellipse
+# above number of bins multiply as short (2 bytes per bin)
+# therefore eg. 2 x 40 x 10 x 10 x 2300 x 1300 = 23.8 GB !!!
+ellipse_hough_bbmin        = 81.0   
+ellipse_hough_bbmax        = 121.0
+ellipse_hough_eemin        =   0.0
+ellipse_hough_eemax        =   0.6
+ellipse_hough_phphimin     =   0.0 
+ellipse_hough_phiphimax    = 3.14159265359
+ellipse_hough_xmin         =  600
+ellipse_hough_xmax         = 3400
+ellipse_hough_ymin         =  600
+ellipse_hough_ymax         = 2200
 
 #Second Hough transform parameters
 sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
@@ -76,6 +92,12 @@ sec_hough_param2 = 3 #5  # minimum accumulator value to call it a circle
 sec_hough_minR = 80 #80 # minimum radius in pixels
 sec_hough_maxR = 140 #120 # maximum radius in pixels
 
+#Fast ellipse detection parameters
+de_min_major = 90 
+de_max_major = 220
+de_min_minor = 90
+de_max_minor = 220
+de_threshold = 3
 
 
 #Choose to make rsm histogram or mean histogram.
