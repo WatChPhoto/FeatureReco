@@ -233,9 +233,11 @@ const HoughEllipseResults& EllipseHough::find_ellipses( const std::vector< xypoi
     process_mem_usage( vmuse, memuse );
     std::cout<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
 
+    unsigned nfound=0;
     for ( HoughEllipseResult & hr : hrs ){
       if ( hr.peakval > threshold ) {
 	hr.eltype = HoughEllipse;
+	++nfound;
       }
       
       std::cout<<"Find ellipse "<<fresults.size()+1<<std::endl;
@@ -247,7 +249,7 @@ const HoughEllipseResults& EllipseHough::find_ellipses( const std::vector< xypoi
       plot_candidate( fresults.size(), hr );
     }
     
-    if ( hrs.size() == 0 ) done = true;
+    if ( nfound == 0 ) done = true;
       
     process_mem_usage( vmuse, memuse );
     std::cout<<" vmuse = "<<vmuse/1024/1024<<" GB, memuse = "<<memuse/1024/1024<<" GB "<<std::endl;
@@ -377,14 +379,16 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
   for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
     //std::cout<<"find_maximum: iphi="<<iphi<<std::endl;
     passed_threshold.push_back( binindices_st() );
+  }
+  for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
     std::cout<<"find_maximum: starting thread "<<iphi<<std::endl;
-    //phibin_threads.push_back( std::thread( find_maximum_phibin, std::ref(*this), iphi, std::ref( passed_threshold[iphi]) ) );
-    find_maximum_phibin( std::ref(*this), iphi, std::ref( passed_threshold[iphi]) );
+    phibin_threads.push_back( std::thread( find_maximum_phibin, std::ref(*this), iphi, std::ref( passed_threshold[iphi]) ) );
+    //find_maximum_phibin( std::ref(*this), iphi, std::ref( passed_threshold[iphi]) );
     //std::cout<<"find_maximum: thread "<<iphi<<" started "<<std::endl;
   }
 
   for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
-    //phibin_threads[iphi].join();
+    phibin_threads[iphi].join();
     std::cout<<"find_maximum: thread "<<iphi<<" finished"<<std::endl;
   }
 
