@@ -65,24 +65,24 @@ hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
 # Ellipse hough transform
-do_ellipse_hough = 0  # 1 for true, 0 for false
+do_ellipse_hough = 1  # 1 for true, 0 for false
 ellipse_hough_nbins_bb     =  20  # bins along shorter axis half-length
-ellipse_hough_nbins_ee     =  20  # bins in eccentricity
-ellipse_hough_nbins_phiphi =  19  # bins in rotation of ellipse
-ellipse_hough_nbins_x      = 1400 # bins in center location
-ellipse_hough_nbins_y      = 800 # of ellipse
+ellipse_hough_nbins_ee     =  10  # bins in eccentricity
+ellipse_hough_nbins_phiphi =  11  # bins in rotation of ellipse
+ellipse_hough_nbins_x      = 1900 # bins in center location
+ellipse_hough_nbins_y      = 1400 # of ellipse
 # above number of bins multiply as short (2 bytes per bin)
 # therefore eg. 2 x 40 x 10 x 10 x 2300 x 1300 = 23.8 GB !!!
-ellipse_hough_bbmin        = 81.0   
-ellipse_hough_bbmax        = 121.0
+ellipse_hough_bbmin        = 86.0   
+ellipse_hough_bbmax        = 126.0
 ellipse_hough_eemin        =   0.0
 ellipse_hough_eemax        =   0.6
 ellipse_hough_phphimin     =   0.0 
 ellipse_hough_phiphimax    = 3.14159265359
-ellipse_hough_xmin         =  600
-ellipse_hough_xmax         = 3400
-ellipse_hough_ymin         =  600
-ellipse_hough_ymax         = 2200
+ellipse_hough_xmin         =  100
+ellipse_hough_xmax         = 3900
+ellipse_hough_ymin         =  100
+ellipse_hough_ymax         = 2900
 
 #Second Hough transform parameters
 sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
