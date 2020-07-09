@@ -365,32 +365,94 @@ void find_maximum_phibin( EllipseHough& eh, unsigned iphi, binindices_st& best )
   }
 }
 
+void find_maximum_xyslice( EllipseHough& eh, 
+			   unsigned ixmin, unsigned ixmax,
+			   unsigned iymin, unsigned iymax,
+			   binindices_st& best ){
+  //std::mutex m;
+  best.pkval = 0;
+  unsigned curval;
+  for ( unsigned iphi=0; iphi<eh.fNphi; ++iphi ){
+    for ( unsigned ibb=0; ibb<eh.fNbb; ++ibb){
+      for ( unsigned iee=0; iee<eh.fNee; ++iee ){
+	for ( unsigned ix=ixmin; ix<ixmax; ++ix ){
+	  for ( unsigned iy=iymin; iy<iymax; ++iy ){
+	    curval = eh.fTransformed[ibb][iee][iphi][ix][iy];
+	    if ( curval > best.pkval ){
+	      best.ibb = ibb;
+	      best.iee = iee;
+	      best.iphi = iphi;
+	      best.ix = ix;
+	      best.iy = iy;
+	      best.pkval = curval;
+	    }
+	  }
+	}
+      }
+    }
+  }
+}
+
+
+
 
 //void EllipseHough::find_maximum( std::vector< xypoint >& hits, std::vector< HoughEllipseResult > & result ){
 std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoint >& hits ){
   std::vector< binindices_st > passed_threshold;
   std::vector< HoughEllipseResult > results;
   
-  std::vector< std::thread > phibin_threads;
+  std::vector< std::thread > slice_threads;
 
+  const int slice_size = 50;
+  const int xslices = fNx/slice_size;
+  const int yslices = fNy/slice_size;
+  std::vector< std::pair< xypoint, xypoint> > slices;
+  for ( unsigned ix=0; ix<xslices; ++ix ){
+    unsigned ixmin = ix*slice_size;
+    unsigned ixmax = (ix+1)*slice_size;
+    if (ix == xslices-1 ) ixmax = fNx-1;
+    for ( unsigned iy=0; iy<yslices; ++iy ){
+      unsigned iymin = iy*slice_size;
+      unsigned iymax = (iy+1)*slice_size;
+      if (iy == yslices-1 ) iymax = fNy-1;
+      slices.push_back( std::pair<xypoint,xypoint>( xypoint( ixmin, iymin), xypoint( ixmax, iymax ) ) );
+    }
+  }
 
   // loop over the hough transform array to find the peak
   // and store the "best" circle center and radius
-  for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
-    //std::cout<<"find_maximum: iphi="<<iphi<<std::endl;
+  for ( unsigned islice=0; islice<slices.size(); ++islice ){
     passed_threshold.push_back( binindices_st() );
   }
-  for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
-    std::cout<<"find_maximum: starting thread "<<iphi<<std::endl;
-    phibin_threads.push_back( std::thread( find_maximum_phibin, std::ref(*this), iphi, std::ref( passed_threshold[iphi]) ) );
+
+  for ( unsigned islice=0; islice<slices.size(); ++islice ){
+    std::cout<<"find_maximum: starting thread "<<islice<<std::endl;
+    unsigned ixmin = slices[islice].first.x;
+    unsigned iymin = slices[islice].first.y;
+    unsigned ixmax = slices[islice].second.x;
+    unsigned iymax = slices[islice].second.y;
+    slice_threads.push_back( std::thread( find_maximum_xyslice, std::ref(*this), 
+					  ixmin, ixmax, iymin, iymax, std::ref( passed_threshold[islice]) ) );
+
+    if ( islice % 10 == 9 ){
+      for ( unsigned i=0; i<slice_threads.size(); ++i ){
+	std::cout<<"waiting for thread...."<<std::endl;
+	slice_threads[i].join();
+      }
+      slice_threads.clear();
+      std::cout<<"threads up to "<<islice<<" done."<<std::endl;
+    }
     //find_maximum_phibin( std::ref(*this), iphi, std::ref( passed_threshold[iphi]) );
     //std::cout<<"find_maximum: thread "<<iphi<<" started "<<std::endl;
   }
 
-  for ( unsigned iphi=0; iphi<fNphi; ++iphi ){
-    phibin_threads[iphi].join();
-    std::cout<<"find_maximum: thread "<<iphi<<" finished"<<std::endl;
+
+  for ( unsigned i=0; i<slice_threads.size(); ++i ){
+    std::cout<<"waiting for thread...."<<std::endl;
+    slice_threads[i].join();
   }
+  slice_threads.clear();
+  std::cout<<"threads up to "<<slices.size()<<" done."<<std::endl;
 
  
   // find the hits that are associated with the ellipse and add them
@@ -409,7 +471,7 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
     binindices_st bi = passed_threshold.back();
     passed_threshold.pop_back();
     
-    if ( bi.pkval != pkmax ) break;
+    if ( bi.pkval < pkmax/2 || bi.pkval < threshold ) break;
 
     float x = get_x_frombin( bi.ix );
     float y = get_y_frombin( bi.iy );
@@ -436,6 +498,11 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
     std::vector< xypoint > unused_hits;
  
     for ( xypoint xy : hits ){
+      if ( fabs( xy.x - curbest.e.get_xy().x ) > 2*curbest.e.get_b() ||
+	   fabs( xy.y - curbest.e.get_xy().y ) > 2*curbest.e.get_b() ) {
+	unused_hits.push_back( xy );
+	continue;
+      }
       float dr  = curbest.e.dmin( xy );
       if ( fabs( dr ) < rthres ){
 	curbest.data.push_back( xy );
