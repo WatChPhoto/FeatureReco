@@ -597,6 +597,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     // look for duplicate bolts and keep only best matches
     prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
+    prune_pmts( ellipse_pmts, 12, "ellipsehough" );
     prune_pmts( ellipse_pmts, 9, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
