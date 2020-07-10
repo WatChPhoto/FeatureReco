@@ -1,5 +1,6 @@
 
 #include "ellipse.hpp"
+#include "distance_to_ellipse.hpp"
 
 using std::ostream;
 
@@ -42,6 +43,9 @@ xypoint ellipse_st::xy( double theta ) const{
 // a point on the ellipse.
 double ellipse_st::dmin( xypoint p ) const{
   // slow method:  scan points around ellipse
+
+
+  if (1){ // delete if(0) after testing get_distance
   double curdmin = 999e99;
   for ( double theta=0; theta<2*pi; theta+=2*pi/1000 ){
     xypoint curxy = xy( theta );
@@ -49,6 +53,13 @@ double ellipse_st::dmin( xypoint p ) const{
     if ( cur_d < curdmin ) curdmin = cur_d;
   }
   return curdmin;
+  } else {
+
+  cv::Point q;
+  cv::Point center( c.x, c.y );
+  cv::Point point( p.x, p.y );
+  return get_distance( center, get_a(), b, point, q, phi );
+  }
 }
 
 
@@ -56,6 +67,7 @@ double ellipse_st::dmin( xypoint p ) const{
 // a point on the ellipse.
 double ellipse_st::dmin2( xypoint p ) const{
   // slow method:  scan points around ellipse
+  if (1){
   double curdmin = 999e99;
   for ( double theta=0; theta<2*pi; theta+=2*pi/1000 ){
     xypoint curxy = xy( theta );
@@ -63,6 +75,11 @@ double ellipse_st::dmin2( xypoint p ) const{
     if ( cur_d2 < curdmin ) curdmin = cur_d2;
   }
   return curdmin;
+  } else {
+
+  double d = dmin( p );
+  return d*d;
+  }
 }
 
 
