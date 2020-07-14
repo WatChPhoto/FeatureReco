@@ -21,6 +21,188 @@ using std::vector;
 using namespace cv;
 
 
+
+
+
+
+// RGB to CMYK conversion
+void rgb2cmyk(const cv::Mat& img, std::vector<cv::Mat>& cmyk ) {
+  // Allocate cmyk to store 4 componets
+  for (int i = 0; i < 4; i++) {
+    cmyk.push_back(cv::Mat(img.size(), CV_8UC1));
+  }
+
+  // Get rgb
+  std::vector<cv::Mat> rgb;
+  cv::split(img, rgb);
+
+  // rgb to cmyk
+  for (int i = 0; i < img.rows; i++) {
+    for (int j = 0; j < img.cols; j++) {
+      float r = (int)rgb[2].at<uchar>(i, j) / 255.;
+      float g = (int)rgb[1].at<uchar>(i, j) / 255.;
+      float b = (int)rgb[0].at<uchar>(i, j) / 255.;
+      float k = std::min(std::min(1- r, 1- g), 1- b);         
+ 
+      cmyk[0].at<uchar>(i, j) = (1 - r - k) / (1 - k) * 255.;
+      cmyk[1].at<uchar>(i, j) = (1 - g - k) / (1 - k) * 255.;
+      cmyk[2].at<uchar>(i, j) = (1 - b - k) / (1 - k) * 255.;
+      cmyk[3].at<uchar>(i, j) = 255 - k * 255.;
+    }
+  }
+}
+
+
+/// return image of color by index
+/// ret_rgb==true, indicies go red, green, blue
+/// ret_rgb==false, indices go cyan, magenta, yellow, K
+Mat output_image_by_color( const cv::Mat& image, bool ret_rgb, unsigned index, std::string infname, bool write_images=false ){
+
+  std::vector<cv::Mat> cmyk;
+  rgb2cmyk( image, cmyk );
+
+  std::vector<cv::Mat> rgb;
+  cv::split( image, rgb );
+
+  TH1D* red     = new TH1D("color_red"    ,"Red; intensity; pixel count",256,-0.5,255.5);
+  TH1D* green   = new TH1D("color_green"  ,"Green; intensity; pixel count",256,-0.5,255.5);
+  TH1D* blue    = new TH1D("color_blue"   ,"Blue; intensity; pixel count",256,-0.5,255.5);
+  TH1D* cyan    = new TH1D("color_cyan"   ,"Cyan; intensity; pixel count",256,-0.5,255.5);
+  TH1D* magenta = new TH1D("color_magenta","Magenta; intensity; pixel count",256,-0.5,255.5);
+  TH1D* yellow  = new TH1D("color_yellow" ,"Yellow; intensity; pixel count",256,-0.5,255.5);
+  TH1D* K       = new TH1D("color_K"      ,"K; intensity; pixel count",256,-0.5,255.5);
+
+  std::vector< TH1D* > hrgb = {red, green, blue};
+  std::vector< TH1D* > hcmyk = {cyan, magenta, yellow, K};
+
+  for (unsigned icol=0; icol<rgb.size(); ++icol ){
+    const Mat& img = rgb[ icol ];
+    
+    for (int i = 0; i < img.rows; i++) {
+      for (int j = 0; j < img.cols; j++) {
+	int intensity = img.at<uchar>(i, j);
+	hrgb[icol]->Fill( intensity );
+      }
+    }
+  }
+
+  for (unsigned icol=0; icol<cmyk.size(); ++icol ){
+    const Mat& img = cmyk[ icol ];
+    
+    for (int i = 0; i < img.rows; i++) {
+      for (int j = 0; j < img.cols; j++) {
+	int intensity = img.at<uchar>(i, j);
+	hcmyk[icol]->Fill( intensity );
+      }
+    }
+  }
+  
+  std::vector< string > crgb{"red","green","blue"};
+  std::vector< string > ccmyk{"cyan","magenta","yellow","K"};
+  
+  if (write_images){
+    for ( unsigned i=0; i<rgb.size(); ++i ){
+      string outputname = build_output_filename (infname, crgb[i]);
+      imwrite ( outputname, rgb[i] );
+    }
+    
+    for ( unsigned i=0; i<cmyk.size(); ++i ){
+      string outputname = build_output_filename (infname, ccmyk[i]);
+      imwrite ( outputname, cmyk[i] );
+    }
+  }
+  if (ret_rgb) return rgb[index];
+  return cmyk[index];
+
+}
+
+/// equalize each color and then get K image to return
+Mat equalize_by_color( const cv::Mat& image, std::string infname, bool write_images=false ){
+
+
+  int gridsize = config::Get_int( "clahe_gridsize" );
+  int cliplimit = config::Get_int( "clahe_cliplimit" );
+  
+  Ptr<CLAHE> clahe = createCLAHE();
+  clahe->setClipLimit( cliplimit );
+  clahe->setTilesGridSize( cv::Size( gridsize, gridsize ) );
+
+  std::vector<cv::Mat> rgb;
+  cv::split( image, rgb );
+
+  std::vector<cv::Mat> rgb_eq = rgb;
+  for ( unsigned i=0; i<rgb.size(); ++i ){
+    clahe->apply( rgb[0], rgb_eq[0] );
+  }
+  Mat rgb_rejoined;
+  cv::merge( &rgb_eq[0], 3, rgb_rejoined );
+
+  std::vector<cv::Mat> cmyk;
+  rgb2cmyk( rgb_rejoined, cmyk );
+
+
+  TH1D* red     = new TH1D("color_redeq"    ,"Red (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* green   = new TH1D("color_greeneq"  ,"Green (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* blue    = new TH1D("color_blueeq"   ,"Blue (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* cyan    = new TH1D("color_cyaneq"   ,"Cyan (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* magenta = new TH1D("color_magentaeq","Magenta (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* yellow  = new TH1D("color_yelloweq" ,"Yellow (equalized); intensity; pixel count",256,-0.5,255.5);
+  TH1D* K       = new TH1D("color_Keq"      ,"K (equalized); intensity; pixel count",256,-0.5,255.5);
+
+  std::vector< TH1D* > hrgb = {red, green, blue};
+  std::vector< TH1D* > hcmyk = {cyan, magenta, yellow, K};
+
+  for (unsigned icol=0; icol<rgb.size(); ++icol ){
+    const Mat& img = rgb_eq[ icol ];
+    
+    for (int i = 0; i < img.rows; i++) {
+      for (int j = 0; j < img.cols; j++) {
+	int intensity = img.at<uchar>(i, j);
+	hrgb[icol]->Fill( intensity );
+      }
+    }
+  }
+
+  for (unsigned icol=0; icol<cmyk.size(); ++icol ){
+    const Mat& img = cmyk[ icol ];
+    
+    for (int i = 0; i < img.rows; i++) {
+      for (int j = 0; j < img.cols; j++) {
+	int intensity = img.at<uchar>(i, j);
+	hcmyk[icol]->Fill( intensity );
+      }
+    }
+  }
+
+
+
+  std::vector< string > crgb{"redeq","greeneq","blueeq"};
+  std::vector< string > ccmyk{"cyaneq","magentaeq","yelloweq","Keq"};
+  
+  if (write_images){
+    {
+      string outputname = build_output_filename (infname, "color_equalized");
+      imwrite ( outputname, rgb_rejoined );
+    }
+
+    for ( unsigned i=0; i<rgb.size(); ++i ){
+      string outputname = build_output_filename (infname, crgb[i]);
+      imwrite ( outputname, rgb_eq[i] );
+    }
+    
+    for ( unsigned i=0; i<cmyk.size(); ++i ){
+      string outputname = build_output_filename (infname, ccmyk[i]);
+      imwrite ( outputname, cmyk[i] );
+    }
+  }
+
+  
+  return cmyk[3];
+}
+
+
+
+
 /// input is image_clahe (grayscale/bw image)
 /// draw blobs on blob_circles (an empty Mat object)
 /// writes image if write_images is set to false
@@ -189,7 +371,9 @@ Mat apply_canny_edge( const Mat& grad, bool write_image, const std::string& infn
   return img_can;
 }
 
-// equalize image
+
+
+// equalize image using clahe
 Mat apply_clahe( const Mat& img_can, bool write_image, const std::string& infname ){
   bool do_clahe = (bool)config::Get_int( "do_clahe" );
   Mat image_clahe;
@@ -216,11 +400,11 @@ Mat apply_clahe( const Mat& img_can, bool write_image, const std::string& infnam
   
 
 void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, bool write_image, const std::string& infname, const MedianTextData & mtd ){
-  int de_min_major = 90;//80;
-  int de_max_major = 120;//160;
-  int de_min_minor = 90;//80;
-  int de_max_minor = 120;//160;
-  int de_threshold = 4;//4;
+  int de_min_major = config::Get_int( "de_min_major" );//80;
+  int de_max_major = config::Get_int( "de_max_major" );//160;
+  int de_min_minor = config::Get_int( "de_min_minor" );//80;
+  int de_max_minor = config::Get_int( "de_max_minor" );//160;
+  int de_threshold = config::Get_int( "de_threshold" );//4;
   std::cout<<"before ellipse"<<std::endl;
 
   //Fast ellipse detection
@@ -279,9 +463,20 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
 
 
   //draw ellipses with line showing shortest distance from the point to the ellipse.
-  draw_ellipses(f_ellipses, image_ellipse );
+  //draw_ellipses(f_ellipses, image_ellipse );
+  for ( const PMTIdentified& her : f_ellipse_pmts ){
+    if ( her.bolts.size() < 9 ) continue;
+    Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
+    Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
+    ellipse( image_ellipse, center, axes, RADTODEG( her.circ.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
+    
+    Scalar my_color( 0, 0, 255 );
+    for ( const Vec3f& xyz : her.bolts ){
+      circle( image_ellipse, Point( xyz[0], xyz[1] ), 3, my_color, 1, 0 );
+      //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
+    }
+  }  
 	  
-
   // annotate with bolt numbers and angles
   overlay_bolt_angle_boltid( f_ellipse_pmts, image_ellipse );
 
@@ -311,9 +506,32 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
   bool do_ellipse_hough = (bool)config::Get_int( "do_ellipse_hough" );
   if ( do_ellipse_hough ){
 
+    unsigned nbins_bb = (unsigned)config::Get_int("ellipse_hough_nbins_bb");
+    unsigned nbins_ee = (unsigned)config::Get_int("ellipse_hough_nbins_ee");
+    unsigned nbins_phiphi = (unsigned)config::Get_int("ellipse_hough_nbins_phiphi");
+    unsigned nbins_x = (unsigned)config::Get_int("ellipse_hough_nbins_x");
+    unsigned nbins_y = (unsigned)config::Get_int("ellipse_hough_nbins_y");
+    //# above number of bins multiply as short (2 bytes per bin)
+    //# therefore eg. 2 x 40 x 10 x 10 x 2300 x 1300 = 23.8 GB !!!
+    float bbmin = (float)config::Get_double("ellipse_hough_bbmin");
+    float bbmax = (float)config::Get_double("ellipse_hough_bbmax");
+    float eemin = (float)config::Get_double("ellipse_hough_eemin");
+    float eemax = (float)config::Get_double("ellipse_hough_eemax");
+    float phiphimin = (float)config::Get_double("ellipse_hough_phphimin");
+    float phiphimax = (float)config::Get_double("ellipse_hough_phiphimax");
+    float xmin = (float)config::Get_double("ellipse_hough_xmin");
+    float xmax = (float)config::Get_double("ellipse_hough_xmax");
+    float ymin = (float)config::Get_double("ellipse_hough_ymin");
+    float ymax = (float)config::Get_double("ellipse_hough_ymax");
+
     ///===========================================================
     /// Begin ellipse hough transfrom stuff
-    EllipseHough h;
+    EllipseHough h ( nbins_bb, bbmin, bbmax, 
+		     nbins_ee, eemin, eemax,
+		     nbins_phiphi, phiphimin, phiphimax,
+		     nbins_x, xmin, xmax,
+		     nbins_y, ymin, ymax );
+
     std::vector< xypoint > data;
     for ( unsigned i=0 ; i < blobs.size(); ++i ){
       //float radius = blobs[i][2];
@@ -322,7 +540,6 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       data.push_back( xypoint( blobx , bloby ) );
     }
     HoughEllipseResults hers = h.find_ellipses( data );	  
-    //std::cout<< hers <<std::endl;
 	  
     /// take hough resutls and fill vector of PMTIdentified info
     std::vector< PMTIdentified > ellipse_pmts;
@@ -349,10 +566,44 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
     }
 
+    std::cout<<"========================== Before Pruning PMTS ===================================="<<std::endl;
+    for  (const PMTIdentified & pmt : ellipse_pmts) {
+      std::cout<<pmt<<std::endl;
+    }
+    if ( write_image ){
+      Mat image_before = image_houghellipse.clone();
+
+      for ( const PMTIdentified& her : ellipse_pmts ){
+	if ( her.bolts.size() < 9 ) continue;
+	Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
+	Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
+	ellipse( image_before, center, axes, RADTODEG( her.circ.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
+      
+	Scalar my_color( 0, 0, 255 );
+	for ( const Vec3f& xyz : her.bolts ){
+	  circle( image_before, Point( xyz[0], xyz[1] ), 3, my_color, 1, 0 );
+	  //image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
+	}
+      }
+
+      // annotate with bolt numbers and angles
+      overlay_bolt_angle_boltid( ellipse_pmts, image_before );	  
+
+      string outputname = build_output_filename ( infname , "houghellipse_before");
+      std::cout<<"Writing image "<<outputname<<std::endl;
+      imwrite (outputname, image_before );
+    }
+
     // look for duplicate bolts and keep only best matches
     prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
     prune_pmts( ellipse_pmts, 12, "ellipsehough" );
+    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
+
+    std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
+        for  (const PMTIdentified & pmt : ellipse_pmts) {
+      std::cout<<pmt<<std::endl;
+    }
 
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
@@ -403,7 +654,6 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
     }  
 	  
-
     // histogram PMT locations
     TH1D * hpmt_locx = new TH1D("hpmt_locx","PMT location ; x (pixels); counts/bin",120,0.,4000.);
     TH1D * hpmt_locy = new TH1D("hpmt_locy","PMT location ; y (pixels); counts/bin",90,0.,3000.);
@@ -428,14 +678,12 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     TH1D * hangboltel_cor = new TH1D ("hangboltel_cor", "Angles of bolts (hough ellipse corrected); angle (degrees)", 360, 0., 360.);
     TH1D * hdangboltel_cor = new TH1D ("hdangboltel_cor", "Angle of bolt from expected (hough ellipse corrected); #Delta angle (degrees)", 60, -15., 15.);
 
-
     //template will be {angles of one pmt bolt,-5, angles of next pmt bolts}
     //it's a way to identify which angle belong to which bolt and which pmt.
     //since final_PMTs and seral_final_bolts are in sync this approach work.
     //const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
     string outfilename = build_output_textfilename( infname, "he_bolts" ); 
     std::ofstream fang_out (outfilename);
-
 
     for  (const PMTIdentified & pmt : ellipse_pmts) {
       std::cout << pmt;
@@ -449,7 +697,6 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	hdangboltel_cor->Fill (dang -  hdangboltel->GetMean());
       }
     }
-
 
     // add the circles for the bolts after pruning
     for (const PMTIdentified & pmt : ellipse_pmts) {
@@ -566,7 +813,7 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   std::ostringstream osname1, ostitle1;
   osname1 << "hdangbolt_" << label;
   ostitle1 << "Angle of bolt from expected " << label <<" #Delta angle; counts/bin";
-  TH1D * hdangbolt = new TH1D (osname.str().c_str(), ostitle.str().c_str(), 60, -15., 15.);
+  TH1D * hdangbolt = new TH1D (osname1.str().c_str(), ostitle1.str().c_str(), 60, -15., 15.);
 
   for  (const PMTIdentified & pmt : final_pmts) {
     for ( const float &ang : pmt.angles) {
@@ -711,6 +958,8 @@ int main (int argc, char **argv) {
       /// build output image
       Mat image;
       cvtColor (image_color, image, COLOR_RGBA2GRAY);
+      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
+      Mat image2 = equalize_by_color( image_color, argv[1], false );
 
       // Open a root file to put histograms into
       TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
@@ -760,11 +1009,11 @@ int main (int argc, char **argv) {
 	  slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd ); 
 	
 	  // circle detection on canny image to find bolts
-	  Mat img_circles; // final image of locatad bolts
-	  vector< Vec3f > circles = circle_bolt_detection( img_can, image_color, img_circles, option[3], argv[1] );
+	  //Mat img_circles; // final image of locatad bolts
+	  //vector< Vec3f > circles = circle_bolt_detection( img_can, image_color, img_circles, option[3], argv[1] );
 
 	  // PMT circle detection on bolts found by circle_bolt_detection
-	  pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
+	  //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
 
 	  // PMT circle detection on bolts found by blob detection
 	  pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );

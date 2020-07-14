@@ -291,12 +291,12 @@ void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, c
       } else {
 	if ( dist < r1r2 && 
 	     pmt.bolts.size() < pmtb.bolts.size() ) {
-
+	  /*
 	  std::cout<<"hasfewerbolts i="<<i<<" j="<<j<<std::endl;
 	  std::cout<<"(x1,y1)= ("<<x1<<", "<<y1<< ") r1="<<r1
 		   <<" (x2,y2)="<<x2<<", "<<y2<< ") r2="<<r2
 		   <<" dist ="<<dist<<" r1r2="<<r1r2<<std::endl;
-
+	  */
 	  hasfewerbolts = true;
 	}
       }

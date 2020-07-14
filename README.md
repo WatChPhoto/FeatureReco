@@ -45,9 +45,19 @@ Output file names are:
 </pre>
 
 To do list:
-* Consider ellipse hough instead of circle to find the PMT rings of bolts?
-[Paper for hough ellipse][http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.1.8792&rep=rep1&type=pdf]
-* Cleanup / modularize code more?
+* Get it to work better for corner images
+  * Find some way to filter blobs that are inside of the ellipses of bolts
+  * Maybe could do a first hough transform on one of the layers (colors) or filetered image to find ellipses from dynode or edge of PMT    features that could help get rid of blobs inside the PMT ellipses
+  * Could try picking from candidate ellipses by looking at properties of contained blobs
+
+* For corner images, look for feature of edge of tank?  Could be used to separate PMTs on wall from those on bottom or top
+
+* Start reading in some of the drone distance to wall and pointing data to get range of possible PMT ellipse shapes
+    to tune the ellipse-hough parameters
+
+* Check that the output text files are working
+
+
 
 
 
