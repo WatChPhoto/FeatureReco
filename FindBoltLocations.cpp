@@ -532,6 +532,10 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 		     nbins_x, xmin, xmax,
 		     nbins_y, ymin, ymax );
 
+    h.set_minhits( config::Get_int("ellipse_hough_minhits") );
+    h.set_threshold( config::Get_int("ellipse_hough_threshold") );
+    h.set_minhits( config::Get_double("ellipse_hough_drscale") );
+
     std::vector< xypoint > data;
     for ( unsigned i=0 ; i < blobs.size(); ++i ){
       //float radius = blobs[i][2];
@@ -568,7 +572,8 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
     std::cout<<"========================== Before Pruning PMTS ===================================="<<std::endl;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
-      std::cout<<pmt<<std::endl;
+      print_pmt_ellipse( std::cout, pmt );
+      //std::cout<<pmt<<std::endl;
     }
     if ( write_image ){
       Mat image_before = image_houghellipse.clone();
@@ -597,13 +602,15 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     // look for duplicate bolts and keep only best matches
     prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
-    prune_pmts( ellipse_pmts, 12, "ellipsehough" );
+    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
     prune_pmts( ellipse_pmts, 9, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
-        for  (const PMTIdentified & pmt : ellipse_pmts) {
-      std::cout<<pmt<<std::endl;
+    for  (const PMTIdentified & pmt : ellipse_pmts) {
+      print_pmt_ellipse( std::cout, pmt );
+      //std::cout<<pmt<<std::endl;
     }
+
 
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
@@ -825,7 +832,8 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   }
 
   // look for duplicate bolts and keep only best matches
-  prune_bolts( final_pmts, hdangbolt->GetMean() );
+  prune_bolts_improved( final_pmts, hdangbolt->GetMean() );
+  //prune_bolts( final_pmts, hdangbolt->GetMean() );
   // remove pmts below threshold (12 bolts)
   prune_pmts( final_pmts, 12, label );
 	
@@ -958,8 +966,8 @@ int main (int argc, char **argv) {
       /// build output image
       Mat image;
       cvtColor (image_color, image, COLOR_RGBA2GRAY);
-      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
-      Mat image2 = equalize_by_color( image_color, argv[1], false );
+      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], true ); // K (intensity)
+      Mat image2 = equalize_by_color( image_color, argv[1], true );
 
       // Open a root file to put histograms into
       TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
