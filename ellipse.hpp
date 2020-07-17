@@ -44,6 +44,7 @@ struct ellipse_st {
 
   // find smallest distance from arbitrary point (px, py) to
   // a point on the ellipse.
+
   double dmin( xypoint p ) const;
 
   // faster method of finding smallest distnce-squared from point p 
