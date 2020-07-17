@@ -16,7 +16,7 @@ public:
   std::vector<cv::Point2i> query;
   std::vector<float> dist;
 
-  ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  );
+  ParametricEllipse(cv::Point2i centre, double a, int b, double alpha, int freq  );
 };
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index);

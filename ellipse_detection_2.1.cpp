@@ -28,7 +28,7 @@ double distance(cv::Point p1, cv::Point p2){
 
 
   //constructor 
-ParametricEllipse::ParametricEllipse(cv::Point2i centre, int a, int b, int alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
+ParametricEllipse::ParametricEllipse(cv::Point2i centre, double a, int b, double alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
   for(int i=0; i<bbins.size(); ++i){
