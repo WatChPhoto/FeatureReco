@@ -70,6 +70,9 @@ void find_candidate_bolts( const std::vector< cv::Vec3f >& blobs,
 /// Output operator to output the information about a PMTIdentified
 std::ostream& operator<<( std::ostream& os, const PMTIdentified& p );
 
+/// Output of information about the found PMT instead of bolts of operator<<
+std::ostream& print_pmt_ellipse( std::ostream& os, const PMTIdentified& p );
+
 /// Function to match bolts on PMTIdentfied objects to truth ones in text file
 void find_closest_matches( std::vector<PMTIdentified>& final_pmts, const MedianTextData & mtd );
 
@@ -85,6 +88,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
 
 /// look for duplicate bolts and keep only best matches
 void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset );
+void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset );
   
 /// remove bolts and PMTs from PMTs with fewer than some threshold bolts
 void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label );
