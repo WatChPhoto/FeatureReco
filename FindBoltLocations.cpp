@@ -552,8 +552,10 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       std::vector< Vec3f > boltlocs;
       std::vector< float > dists;
       for ( const xypoint& xy : her.data ){
+	//	if(her.e.dmin( xy )<5){
 	boltlocs.push_back( Vec3f( xy.x, xy.y, 3 ) );
 	dists.push_back( her.e.dmin( xy ) );
+	//	}
       }
       ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
     }
@@ -599,11 +601,15 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       imwrite (outputname, image_before );
     }
 
-    // look for duplicate bolts and keep only best matches
+
+    //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
+    //    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
     prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
+    // look for duplicate bolts and keep only best matches
+    //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
     prune_pmts( ellipse_pmts, 9, "ellipsehough" );
-    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
+    prune_pmts( ellipse_pmts, 11, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
@@ -950,6 +956,22 @@ int main (int argc, char **argv) {
       //bool have_truth = argc - 2;
       
       Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
+
+      //trial to find circles of pmt
+      /*      Mat tri;
+      cvtColor (image_color, tri, COLOR_RGBA2GRAY);
+      //     Mat magent =
+      cmyk[1].at<uchar>(i, j) = (1 - g - k) / (1 - k) * 255.;
+      Mat img_gaus;
+      //GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma)
+      GaussianBlur( tri, img_gaus, Size(5, 5), 6);
+      
+      imwrite("gausblur.jpg",img_gaus);
+
+      Mat image_can = img_gaus.clone();
+      Canny (img_gaus, image_can, 200, 230);
+      imwrite("canny.jpg",image_can);
+      */
       if (!image_color.data) {
 	printf ("No image data \n");
 	return -1;
