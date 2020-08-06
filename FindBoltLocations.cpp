@@ -206,7 +206,8 @@ Mat equalize_by_color( const cv::Mat& image, std::string infname, bool write_ima
 /// input is image_clahe (grayscale/bw image)
 /// draw blobs on blob_circles (an empty Mat object)
 /// writes image if write_images is set to false
-vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool write_images, const std::string& infname ){
+vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool write_images, const std::string& infname,   
+			     std::vector < KeyPoint >& keypoints ){
   //Blob detection
   Mat img_blob = image_clahe.clone ();
 
@@ -244,7 +245,6 @@ vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool wr
   Ptr < SimpleBlobDetector > detector = SimpleBlobDetector::create (params);
   
   // Detect blobs.                                                                                                                        
-  std::vector < KeyPoint > keypoints;
   detector->detect (img_blob, keypoints);
   
   //blob vector will contain x,y,r
@@ -946,6 +946,45 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
 }
 
 
+void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianTextData & mtd ){
+
+  /* class KeyPoint
+    Data structure for salient point detectors.
+    Point2f pt
+        coordinates of the keypoint
+    float size
+        diameter of the meaningful keypoint neighborhood
+    float angle
+        computed orientation of the keypoint
+	(-1 if not applicable). Its possible
+	values are in a range [0,360)
+	degrees. It is measured relative to
+	image coordinate system (y-axis is
+	directed downward), ie in clockwise.
+    float response
+        the response by which the most strong keypoints have been selected. Can be used for further sorting or subsampling
+    int octave
+	octave (pyramid layer) from which the keypoint has been extracted
+  */
+
+  TH2D* hblobsizeang = new TH2D("hblobsizeang", "Blob size vs angle; size; angle; counts/bin", 100, -0.5, 99.5, 100, 0., 360. );
+  TH1D* hblobresponse = new TH1D("hblobresponse", "Blob response; response; counts/bin", 100, 0., 1e6 );
+  TH1D* hbloboctave = new TH1D("hbloboctave", "Blob octave; octave; counts/bin", 100, -100., 100. );
+
+
+  TH2D* hblobsizeangbolt = new TH2D("hblobsizeangbolt", "Blob size vs angle of bolt; size; angle; counts/bin", 100, -0.5, 99.5, 100, 0., 360. );
+  TH1D* hblobresponsebolt = new TH1D("hblobresponsebolt", "Blob response of bolt; response; counts/bin", 100, 0., 1e6 );
+  TH1D* hbloboctavebolt = new TH1D("hbloboctavebolt", "Blob octave; octave of bolt; counts/bin", 100, -100., 100. );
+
+
+  
+
+
+}
+
+
+
+
 int main (int argc, char **argv) {
 
       if (argc != 2 && argc != 3) {
@@ -1019,11 +1058,14 @@ int main (int argc, char **argv) {
 
 	  // do blob detection
 	  Mat blob_circles;
-	  vector< Vec3f > blobs = blob_detect( image_clahe, blob_circles, option[3], argv[1] );
+	  std::vector < KeyPoint > keypoints;
+	  vector< Vec3f > blobs = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
 
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+
+	  histogram_blobs_bymtd( keypoints, mtd );
 
 	  //Debug information PMt
 	  if(verbose){
