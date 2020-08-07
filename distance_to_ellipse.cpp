@@ -62,11 +62,11 @@ double RobustLength(const double& v1, const double& v2){
   if(v1>v2){
     length = fabs(v1)*sqrt(1.0+std::pow((v2/v1),2));
   }
-
-  if(v2>v1){
+  
+  else if(v2>v1){
     length = fabs(v2)*sqrt(1.0+std::pow((v1/v2),2));
   }
-  if(v2==v1){
+  else{
     length = fabs(v2)*sqrt(2.0);
   }
 

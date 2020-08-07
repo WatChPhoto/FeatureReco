@@ -8,4 +8,7 @@ double dmin(cv::Point c, double e0, double e1, cv::Point p , cv::Point& q, doubl
 //c=centre, e0=a, e1=b, p=point, q=query point/closest point in ellipse, phi=angle made by major axis(a). 
 //q is a return value of closest point.
 double get_distance(const cv::Point& c, const double& a, const double& b, const cv::Point& p , cv::Point& q, const double& phi);
+
+double RobustLength(const double& v1, const double& v2);
+
 #endif
