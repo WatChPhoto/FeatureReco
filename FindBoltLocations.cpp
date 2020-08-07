@@ -15,15 +15,12 @@
 #include "hough_ellipse.hpp"
 
 #include "ellipse_detection_2.1.hpp" //ellipse detection fast
+
+
 using std::string;
 using std::vector;
 
 using namespace cv;
-
-
-
-
-
 
 // RGB to CMYK conversion
 void rgb2cmyk(const cv::Mat& img, std::vector<cv::Mat>& cmyk ) {
@@ -585,7 +582,8 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
 	Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
 	ellipse( image_before, center, axes, RADTODEG( her.circ.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
-      
+	
+
 	Scalar my_color( 0, 0, 255 );
 	for ( const Vec3f& xyz : her.bolts ){
 	  circle( image_before, Point( xyz[0], xyz[1] ), 3, my_color, 1, 0 );
@@ -603,8 +601,8 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
-    //    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
-    prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
+    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
+    //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // look for duplicate bolts and keep only best matches
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
@@ -629,28 +627,6 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
     }
 	
-    if ( mtd.size() > 0){ //have truth
-      //Find bolt matches between those we found and truth
-      find_closest_matches( ellipse_pmts, mtd );
-	    
-      //Draw line from truth to closest bolt found 
-      draw_line (ellipse_pmts, mtd, image_houghellipse);
-	    
-      //Distance histogram
-      TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
-						  "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
-						  51, -0.5, 49.5);
-      for ( const PMTIdentified & pmt : ellipse_pmts ){
-	for ( const float dist : pmt.dist_txt ) {
-	  if ( dist < bad_dmin ){
-	    ellipse_truth_dist->Fill( dist );
-	  }
-	}
-      }
-	    
-      draw_text_circles (image_houghellipse, mtd);
-    }
-
 
     /// draw all ellipses in her on image_ellipse and write
     ///for ( const HoughEllipseResult& her : hers ){
@@ -715,6 +691,29 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     for (const PMTIdentified & pmt : ellipse_pmts) {
       draw_circle_from_data (pmt.bolts, image_houghellipse,
 			     Scalar (255, 255, 255), 1);
+    }
+
+
+ if ( mtd.size() > 0){ //have truth
+      //Find bolt matches between those we found and truth
+      find_closest_matches( ellipse_pmts, mtd );
+	    
+      //Draw line from truth to closest bolt found 
+      draw_line (ellipse_pmts, mtd, image_houghellipse);
+	    
+      //Distance histogram
+      TH1D * ellipse_truth_dist = new TH1D ("ellipse_truth_dist",
+						  "Distance from true bolt loc to ellipse found bolt; distance (pixels); count/bin",
+						  51, -0.5, 49.5);
+      for ( const PMTIdentified & pmt : ellipse_pmts ){
+	for ( const float dist : pmt.dist_txt ) {
+	  if ( dist < bad_dmin ){
+	    ellipse_truth_dist->Fill( dist );
+	  }
+	}
+      }
+	    
+      draw_text_circles (image_houghellipse, mtd);
     }
 
     // annotate with bolt numbers and angles
@@ -967,21 +966,64 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 	octave (pyramid layer) from which the keypoint has been extracted
   */
 
-  TH2D* hblobsizeang = new TH2D("hblobsizeang", "Blob size vs angle; size; angle; counts/bin", 100, -0.5, 99.5, 100, 0., 360. );
-  TH1D* hblobresponse = new TH1D("hblobresponse", "Blob response; response; counts/bin", 100, 0., 1e6 );
-  TH1D* hbloboctave = new TH1D("hbloboctave", "Blob octave; octave; counts/bin", 100, -100., 100. );
+  TH2D* hblobsizeang = new TH2D("hblobsizeang", "Blob size vs angle; size; angle; counts/bin", 40, -0.5, 39.5, 40, -20.0, 20.0);//0., 360. );
+  TH1D* hblobresponse = new TH1D("hblobresponse", "Blob response; response; counts/bin", 200, 0., 400. );
+  TH1D* hbloboctave = new TH1D("hbloboctave", "Blob octave; octave; counts/bin", 40, -20., 20. );
 
 
-  TH2D* hblobsizeangbolt = new TH2D("hblobsizeangbolt", "Blob size vs angle of bolt; size; angle; counts/bin", 100, -0.5, 99.5, 100, 0., 360. );
-  TH1D* hblobresponsebolt = new TH1D("hblobresponsebolt", "Blob response of bolt; response; counts/bin", 100, 0., 1e6 );
-  TH1D* hbloboctavebolt = new TH1D("hbloboctavebolt", "Blob octave; octave of bolt; counts/bin", 100, -100., 100. );
+  TH2D* hblobsizeangbolt = new TH2D("hblobsizeangbolt", "Blob size vs angle of bolt; size; angle; counts/bin", 40, -0.5, 39.5, 40, -20.,20);//0., 360. );
+  TH1D* hblobresponsebolt = new TH1D("hblobresponsebolt", "Blob response of bolt; response; counts/bin", 200, 0., 400. );
+  TH1D* hbloboctavebolt = new TH1D("hbloboctavebolt", "Blob octave; octave of bolt; counts/bin", 40, -20., 20. );
 
+ 
+    
+  for( KeyPoint k: keypoints){
+    float  mind = 1000000;
+    for (const MedianTextRecord & rec : mtd ){
+      //for ( const cv::Vec3f & circ : circles ){
+      //float dist = std::sqrt( (k.pt.x - rec.x())*(k.pt.x - rec.x()) +
+      //                      (k.pt.y - rec.y())*(k.pt.y - rec.y()) );
+      float dist = RobustLength( fabs(k.pt.x - rec.x()),fabs(k.pt.y - rec.y()) );
+      if ( dist < mind ) {
+	bool reverse = true;
+	for(unsigned j=0; j<keypoints.size(); ++j){
+	  KeyPoint kp = keypoints[j];
+	  //float d1 = std::sqrt((kp.pt.x-rec.x())*(kp.pt.x-rec.x())+
+	  //                   (kp.pt.y-rec.y())*(kp.pt.y-rec.y()));
+          float d1 = RobustLength( fabs(kp.pt.x-rec.x()),fabs(kp.pt.y-rec.y()) );
+	  if(d1<dist){ reverse = false; break;}
+        }
 
-  
+        if(reverse){ mind = dist; }
+	
+      }
+    }
+    /*
+  for( KeyPoint k: keypoints){
+    float mind = 10000000;
+    for(const MedianTextRecord & r: mtd){
+      double d = RobustLength(r.x()-k.pt.x, r.y()-k.pt.y);
+      if(d<mind){ mind=d; }
+    } 
+    */
+    if(mind<3){
+      hblobsizeang->Fill(k.size,k.angle,1.0);
+      hblobresponse->Fill(k.response);
+      hbloboctave->Fill(k.octave);     
+    }
+    //    else if(mind==1000000){;}
+    else{
+      hblobsizeangbolt->Fill(k.size,k.angle,1.0);
+      hblobresponsebolt->Fill(k.response);
+      hbloboctavebolt->Fill(k.octave);
+    }
 
-
+  }
+    
+   
+    
 }
-
+  
 
 
 
@@ -996,6 +1038,7 @@ int main (int argc, char **argv) {
       
       Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
 
+      Mat image_line = image_color.clone(); //This image will have blobs, mtd and lines
       //trial to find circles of pmt
       /*      Mat tri;
       cvtColor (image_color, tri, COLOR_RGBA2GRAY);
@@ -1064,7 +1107,15 @@ int main (int argc, char **argv) {
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
-
+	  //drawing mdt in image
+	  draw_text_circles (image_line, mtd);
+	  draw_circle_from_data (blobs, image_line,
+				 Scalar (0, 0, 255), 1);
+	  TH1D *dis = new TH1D("distance of blob from truth","Distance of blob from truth;distance(px);counts/bin",1000,-0.5,999.5);
+	  make_bolt_dist_histogram_wrt_txt( blobs, mtd, dis, image_line );
+	  string outputname = build_output_filename (argv[1], "mapped");
+	  imwrite(outputname, image_line);
+	  
 	  histogram_blobs_bymtd( keypoints, mtd );
 
 	  //Debug information PMt
