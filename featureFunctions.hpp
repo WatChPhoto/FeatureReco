@@ -54,4 +54,9 @@ std::vector<bool> setup_verbosity(int option);
 //flags to turn on/off saving images
 std::vector < bool > setup_image_saveflags ();
 
+//make bolt distance histogram and draw line to closest point.
+void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, TH1D *&hist_dist, cv::Mat& imcol );
+
+float RobustLength( float v1,  float v2);
+
 #endif

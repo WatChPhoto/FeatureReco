@@ -3,6 +3,24 @@
 #include <opencv2/imgproc.hpp>
 #include "Configuration.hpp"
 
+
+float RobustLength( float v1, float v2){
+  double length;
+  if(v1>v2){
+    length = fabs(v1)*sqrt(1.0+std::pow((v2/v1),2));
+  }
+
+  else if(v2>v1){
+    length = fabs(v2)*sqrt(1.0+std::pow((v1/v2),2));
+  }
+  else{
+    length = fabs(v2)*sqrt(2.0);
+  }
+
+  return length;
+}
+
+
 std::string build_output_filename( const std::string& in, const std::string& tag ){
   std::string outputname;
   size_t idx = in.find_last_of("/");
@@ -176,6 +194,44 @@ void draw_line( const std::vector< PMTIdentified >& pmtsfound, const MedianTextD
     }
   }
 }
+
+void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, const MedianTextData& mtd, TH1D *&hist_dist, cv::Mat& imcol ){
+  //TH1D* hout1 = new TH1D("bolt_distance_wrt_text","Distance to closest bolt ; distance (pixels); Count/bin",501, -0.5, 500.5);
+  //hout1->SetAxisRange(0,501,"X");
+  //goal is if a is closest to b and b is closest to a then they are the map.
+  for (const MedianTextRecord & rec : mtd ){
+    float  mindist = 1000000;
+    int m_x = rec.x();
+    int m_y = rec.y();
+
+    int x,y;
+    for ( const cv::Vec3f & circ : circles ){
+      //float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+      //		      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+      float dist = RobustLength( fabs(circ[0] - rec.x()), fabs(circ[1] - rec.y()) );
+      if ( dist < mindist ) {
+	bool reverse = true;
+	for(unsigned j=0; j<mtd.size(); ++j){
+	  MedianTextRecord m = mtd[j];
+	  // float d1 = std::sqrt((circ[0]-m.x())*(circ[0]-m.x())+
+	 //		       (circ[1]-m.y())*(circ[1]-m.y()));
+	  float d1 = RobustLength( fabs(circ[0]-m.x()), fabs(circ[1]-m.y()) );
+	  if(d1<dist){ reverse = false; break;}
+	}
+	
+	if(reverse){ mindist = dist; x=circ[0]; y = circ[1]; }  
+	
+      }
+    }
+
+    if( mindist!=1000000){
+      line(imcol, cv::Point(rec.x(),rec.y()), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
+    
+    hist_dist->Fill( mindist );
+    }
+  }
+}
+
 
 //Make histogram of metric of inbetween points that aren't mapped to the circles from the text file
 /*
