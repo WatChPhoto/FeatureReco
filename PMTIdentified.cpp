@@ -210,6 +210,7 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
   }
 }
 
+
 void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
   float angle_between_bolts = 360.0 / 24; // 24 bolts
   float dang = angle_between_bolts/2;
@@ -286,13 +287,14 @@ void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_o
   
 }
 
+/*
 //trial for improving pruning bolt
 void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
   float angle_between_bolts = 360.0 / 24; // 24 bolts
   float dang = angle_between_bolts/2;
   
-  TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
-				     120, -15., 15. );
+  //  TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
+  //120, -15., 15. );
 
 
   for( PMTIdentified& pmt : final_pmts ){
@@ -316,7 +318,7 @@ void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_
 	  }
 	}
       }
-      hdangs_improved->Fill( -min_angle_minus );
+      hdangs_improved->Fill( min_angle_minus );
       hdangs_improved->Fill(  min_angle_plus  );
       //if ( min_angle_minus < 3.0 || min_angle_plus < 3.0 ){
       if ( ((int)min_angle_minus)%15 < 4 ||((int)min_angle_minus)%15 >11 || ((int)min_angle_plus)%15 < 4||((int)min_angle_plus)%15 > 11 ){
@@ -359,7 +361,8 @@ void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_
     }
    
     */
- // now remove bolts
+/* 
+// now remove bolts
     std::vector<cv::Vec3f> bolts; // bolts going with this PMT
     std::vector<float> dists; // distance of bolt from PMT circle 
     std::vector<float> angles; // angle of each bolt
@@ -396,9 +399,9 @@ void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_
     pmt.idx_txt = idx_txt;
     pmt.dist_txt = dist_txt;
   }
+*/
 
-
-
+/*
   for( unsigned k =0; k<final_pmts.size(); ++k ){
     PMTIdentified pmt = final_pmts[k];
     std::vector< unsigned > indices_to_remove;
@@ -470,7 +473,7 @@ void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_
     }
    
     */
- // now remove bolts
+/* // now remove bolts
     std::vector<cv::Vec3f> bolts; // bolts going with this PMT
     std::vector<float> dists; // distance of bolt from PMT circle 
     std::vector<float> angles; // angle of each bolt
@@ -511,14 +514,14 @@ void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_
 }
 }
 //trial end
-
+*/
 
 void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
   //float angle_between_bolts = 360.0 / 24; // 24 bolts
   // float dang = angle_between_bolts/2;
   
-  TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
-				     120, -15., 15. );
+  //  TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
+  //				     120, -15., 15. );
 
 
 for( PMTIdentified& pmt : final_pmts ){
@@ -666,7 +669,7 @@ void prune_bolts3( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
   for( PMTIdentified& pmt : final_pmts ){
     std::map<  unsigned, std::vector< unsigned > > boltmap; 
     for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
-     boltmap[ pmt.boltid[i] ].push_back( i );
+      boltmap[ pmt.boltid[i] ].push_back( i );
     }
     std::vector<unsigned> indices_to_remove;
     for ( const std::pair<const unsigned int, std::vector<unsigned int> >& key : boltmap ){
