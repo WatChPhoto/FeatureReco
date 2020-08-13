@@ -24,7 +24,7 @@ using namespace cv;
 
 // RGB to CMYK conversion
 void rgb2cmyk(const cv::Mat& img, std::vector<cv::Mat>& cmyk ) {
-  // Allocate cmyk to store 4 componets
+  // Allocate cmyk to store 4f componets
   for (int i = 0; i < 4; i++) {
     cmyk.push_back(cv::Mat(img.size(), CV_8UC1));
   }
@@ -198,8 +198,6 @@ Mat equalize_by_color( const cv::Mat& image, std::string infname, bool write_ima
 }
 
 
-
-
 /// input is image_clahe (grayscale/bw image)
 /// draw blobs on blob_circles (an empty Mat object)
 /// writes image if write_images is set to false
@@ -351,7 +349,7 @@ Mat apply_sobel_edge( const Mat& img_flt, bool write_image, const std::string& i
 
 
 Mat apply_canny_edge( const Mat& grad, bool write_image, const std::string& infname ){
-
+  
   bool do_canny = (bool) config::Get_int ("do_canny");
   int thresh_low = config::Get_int ("thresh_low");	//The gradient value below thresh_low will be discarded.                                  
   int thresh_high = config::Get_int ("thresh_high");	//The gradient value above thresh_high will be used. The inbetween gradient is kept if \the edge is connected.                                                                                                                        
@@ -1017,13 +1015,67 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
       hblobresponsebolt->Fill(k.response);
       hbloboctavebolt->Fill(k.octave);
     }
-
   }
-    
-   
-    
 }
-  
+
+
+//Removing the noise inside of PMT(Filtering blobs)
+void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
+  for(int j=0; j<blobs1.size(); ++j){
+    Vec3f bl = blobs1[j];
+    int x = bl[0];
+    int y = bl[1];
+    int ra = bl[2];
+    
+    Vec3f intensity = img.at<Vec3b>(y,x);
+    int r = intensity.val[2];
+    int g = intensity.val[1];
+    int b = intensity.val[0];
+    bool near = false;
+    int n=0;
+    float ang;
+    int ind;
+    for(int i=0; i<blobs1.size(); ++i){
+      if(i==j){continue;}
+      float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
+      if (dist<35){
+	n++;   //count number of blobs within 35 px
+	ind = i;
+	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
+	ang = RADTODEG( ang );
+	ang = (ang<0)?(ang+360):ang; //getting angle between 0-360
+      }
+      //if n=1 there is another blob within 300px that forms line with current bolt(bolt in which neighbourhood we are looking at), bolt corresponding to n=1, and current bolt then increase count. 
+      if( n==1 && dist <300 && i!=ind ){
+	float theta = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1]));; //getting angle with ^ axis wrt image  
+	theta = RADTODEG(theta);
+	theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
+	
+	float diff = fabs(theta-ang);
+	if(fabs(diff-180)<0.5 || diff<0.5 ){n++;
+	}
+      }
+      if(n>=2){
+	near = true; break;
+      }
+    }
+
+    //skip if color in centre is yellowish, or radius is greater than 15 or there are two blobs near current blob or there is line. 
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>15 || near)continue;
+    
+    blobs.push_back(bl);
+  }
+
+  //now overlaying all bolts and kept bolt in image
+  Mat blbs = img.clone();
+  draw_foundblobs( blobs1, blbs );
+  for ( const Vec3f& xyz : blobs ){
+    circle( blbs, Point( xyz[0], xyz[1] ), 3, Scalar(0,0,255), 2, 0 );
+
+  }  
+
+  imwrite("trimmmmm.jpg", blbs);
+}
 
 
 
@@ -1102,7 +1154,11 @@ int main (int argc, char **argv) {
 	  // do blob detection
 	  Mat blob_circles;
 	  std::vector < KeyPoint > keypoints;
-	  vector< Vec3f > blobs = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+
+	  vector < Vec3f > blobs;
+	  //remove yello blobs;
+	  rem_bolts(blobs1, blobs, image_color);
 
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
