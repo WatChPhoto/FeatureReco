@@ -599,13 +599,14 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
-    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
-    //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
+    //   prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
+    prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // look for duplicate bolts and keep only best matches
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
     prune_pmts( ellipse_pmts, 9, "ellipsehough" );
-    prune_pmts( ellipse_pmts, 11, "ellipsehough" );
+    //prune_pmts( ellipse_pmts, 11, "ellipsehough" );
+    prune_pmts( ellipse_pmts, 10, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
@@ -636,7 +637,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       
       Scalar my_color( 0, 0, 255 );
       for ( const Vec3f& xyz : her.bolts ){
-	circle( image_houghellipse, Point( xyz[0], xyz[1] ), 3, my_color, 1, 0 );
+	circle( image_houghellipse, Point( xyz[0], xyz[1] ), 3, my_color, 2, 0 );
 	//image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
       }
     }  
@@ -1038,7 +1039,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<35){
+      if (dist<35){//25){//35){
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1046,7 +1047,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
 	ang = (ang<0)?(ang+360):ang; //getting angle between 0-360
       }
       //if n=1 there is another blob within 300px that forms line with current bolt(bolt in which neighbourhood we are looking at), bolt corresponding to n=1, and current bolt then increase count. 
-      if( n==1 && dist <300 && i!=ind ){
+      if( 0){//n==1 && dist <300 && i!=ind ){
 	float theta = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1]));; //getting angle with ^ axis wrt image  
 	theta = RADTODEG(theta);
 	theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
@@ -1061,7 +1062,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     }
 
     //skip if color in centre is yellowish, or radius is greater than 15 or there are two blobs near current blob or there is line. 
-    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>15 || near)continue;
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>10 || near)continue;
     
     blobs.push_back(bl);
   }
@@ -1157,9 +1158,14 @@ int main (int argc, char **argv) {
 	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
 
 	  vector < Vec3f > blobs;
-	  //remove yello blobs;
+	  //Filtering closely packed blobs and yellowish blobs for corner image;
+	  bool corner = config::Get_int("corner");
+	  if(corner){
 	  rem_bolts(blobs1, blobs, image_color);
-
+	  }
+	  else{
+	    blobs = blobs1;
+	  }
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
