@@ -45,14 +45,14 @@ thresh_high = 230   #The gradient valu agreater than this will be kept.
 threshold = 0
 
 #Blob parameters
-blob_minThreshold = 100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
-blob_maxThreshold = 255 #150#200 #180#255 #max threshold of color to consider for blob 
+blob_minThreshold = 80#100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_maxThreshold = 255#255 #150#200 #180#255 #max threshold of color to consider for blob 
 blob_filterByArea = 1 #1 for true 0 for false
-blob_minArea = 5 #3 #4 #6      #Min area to consider as a blob
-blob_maxArea = 1000#70     #Max area to consider as a blob                                                                                  
+blob_minArea = 3#5 #3 #4 #6      #Min area to consider as a blob
+blob_maxArea = 70#1000#70     #Max area to consider as a blob                                                                                  
 blob_filterByCircularity = 0 #1 for true 0 for false
 blob_minCircularity = 0.003 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
-blob_minDistBetweenBlobs = 1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
+blob_minDistBetweenBlobs = 10#1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
 blob_filterByConvexity = 0  #1 for true 0 for false
 blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
 blob_filterByInertia = 0  #1 for true 0 for false
@@ -71,17 +71,17 @@ do_ellipse_hough = 1  # 1 for true, 0 for false
 ellipse_hough_minhits      =  9#12 #9   # minimum hits to keep ellipse
 ellipse_hough_threshold    = 27   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 2.0  # multiplier to pixel diagonal length to associate points 2 ellipse
-ellipse_hough_nbins_bb     =  80#60#40#40#35#30 #17  # bins along shorter axis half-length
-ellipse_hough_nbins_ee     =  16#13#10#17 #10  # bins in eccentricity
-ellipse_hough_nbins_phiphi =  15#11#19#17 #11  # bins in rotation of ellipse
-ellipse_hough_nbins_x      = 950#1900 # bins in center location
-ellipse_hough_nbins_y      = 700#1400 # of ellipse
+ellipse_hough_nbins_bb     =  17#40#80#60#40#40#35#30 #17  # bins along shorter axis half-length
+ellipse_hough_nbins_ee     =  10#10#16#13#10#17 #10  # bins in eccentricity
+ellipse_hough_nbins_phiphi =  11#11#15#11#19#17 #11  # bins in rotation of ellipse
+ellipse_hough_nbins_x      = 1900#950#1900#950#1900 # bins in center location
+ellipse_hough_nbins_y      = 1400#700#700#1400 # of ellipse
 # above number of bins multiply as short (2 bytes per bin)
 # therefore eg. 2 x 40 x 10 x 10 x 2300 x 1300 = 23.8 GB !!!
-ellipse_hough_bbmin        = 120#130#125 #86#130#86#125#86#140#86.0   
-ellipse_hough_bbmax        = 210#190#180 #126#170#126#190#126#190#170#126.0
-ellipse_hough_eemin        =   0.1
-ellipse_hough_eemax        =  0.7#0.7#0.9#0.8#0.7 # 0.7 #0.6#0.7#0.6
+ellipse_hough_bbmin        = 90#110#90#86#120#130#125 #86#130#86#125#86#140#86.0   
+ellipse_hough_bbmax        = 126#93#100#120#150#126#210#190#180 #126#170#126#190#126#190#170#126.0
+ellipse_hough_eemin        =   0.0
+ellipse_hough_eemax        =  0.35#0.7#0.7#0.9#0.8#0.7 # 0.7 #0.6#0.7#0.6
 ellipse_hough_phphimin     =   0.0 
 ellipse_hough_phiphimax    = 3.14159265359
 ellipse_hough_xmin         =  100
@@ -108,3 +108,6 @@ de_threshold = 4
 #Choose to make rsm histogram or mean histogram.
 do_avg = 1 #1 for true 0 for false
 do_rms = 0
+
+#Is the image corner image?
+corner = 0
