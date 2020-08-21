@@ -42,7 +42,14 @@ Output file names are:
 *  final.jpg 		      -- final image.
 *  FindBoltLocation.root      -- root histograms
 *  bolts[input-file-name].txt -- text file containing [pmtid(-1 for now) pmtx pmty pmtr boltid boltx bolty] 
+*  Config_files		      -- Directory contaning config files for different images.
+*houghellipse[file_number]    -- final ellipse found after pruning.
+*houghellipse_before[file_number]      -- ellipses found before pruning.
 </pre>
+
+<br>
+<img src="./Config_files/239/houghellipse239.jpg" height="500" width="500">
+<br>
 
 To do list:
 * Get it to work better for corner images
@@ -55,7 +62,7 @@ To do list:
 * Start reading in some of the drone distance to wall and pointing data to get range of possible PMT ellipse shapes
     to tune the ellipse-hough parameters
 
-* Check that the output text files are working
+
 
 
 
