@@ -47,8 +47,26 @@ Output file names are:
 *houghellipse_before[file_number]      -- ellipses found before pruning.
 </pre>
 
+<table style ="width:100%">
+<tr>
+<td>
+<img src="./Config_files/239/houghellipse239.jpg" height="30%" width="30%"> 
+</td>
+<td>
+<img src="./Config_files/379/houghellipse379.jpg" height="30%" width="30%"> 
+</td>
+</tr>
+<tr>
+<td>
+Side Image(houghellipse239.jpg)
+</td>
+<td>
+Corner Image(houghellipse379.jpg)
+</td>
+
+</tr>
 <br>
-<img src="./Config_files/239/houghellipse239.jpg" height="500" width="500">
+
 <br>
 
 To do list:
