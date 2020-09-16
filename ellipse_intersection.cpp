@@ -22,14 +22,16 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
   double a0 = e0.get_a();
   double b0 = e0.get_b();
   double ee0 = e0.get_e();
-  double phi0 = (ee0==0.0)?0.0:degree_to_Rad(e0.get_phi());
+  //double phi0 = (ee0==0.0)?0.0:degree_to_Rad(e0.get_phi()); //when input angle is in degree
+  double phi0 = (ee0==0.0)?0.0:e0.get_phi();//when angle is in radian
   xypoint cent0 = e0.get_xy();
   
   //Getting parameters for Second ellipse
   double a1 = e1.get_a();
   double b1 = e1.get_b();
   double ee1 = e1.get_e();
-  double phi1 = (ee1==0.0)?0.0:degree_to_Rad(e1.get_phi());
+  //double phi1 = (ee1==0.0)?0.0:degree_to_Rad(e1.get_phi());//when angle is in degree;
+  double phi1 = (ee1==0.0)?0.0:e1.get_phi();
   xypoint cent1 = e1.get_xy();
   
   //Ellipse equation is (X-K)^TM(X-K)=1

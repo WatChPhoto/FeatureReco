@@ -2,7 +2,9 @@
 #include <map>
 #include <TH1D.h>
 #include "Configuration.hpp"
-
+#include "ellipse_intersection.hpp"
+#include "featureFunctions.hpp"
+#include "xypoint.hpp"
 using namespace cv;
 using std::vector;
 
@@ -114,11 +116,23 @@ std::ostream& print_pmt_ellipse( std::ostream& os, const PMTIdentified& p ){
 void PMTIdentified::calculate_angles(){
   float a = circ[0];  //x and y at centre
   float b = circ[1];
-    
+  //  Matx22d R(cos(circ.get_phi()), -1.0*sin(circ.get_phi()),
+  //	   sin(circ.get_phi()), cos(circ.get_phi()));
+  
+
   for( Vec3f bolt : bolts ) {
+    // Matx22d DHalf(1.0/circ.get_a(),0.,
+    //		  0., 1.0/circ.get_b());
+//    Matx21d c(bolt[0]-a,
+//	      bolt[1]-b);
+//  Matx21d cpm = DHalf*R.t()*c;
+//  Matx21d cm = R*cpm;
     float x = bolt[0];
     float y = bolt[1];
-    float theta = atan2f((x-a),-(y-b)); //getting angle with ^ axis wrt image  
+//    float x = cm(0,0);
+//   float y = cm(1,0);
+    float theta = atan2f((x-a),-(y-b)); //getting angle with ^ axis wrt image
+    //float theta = atan2f(x,-y); //getting angle with ^ axis wrt image  
     theta = RADTODEG(theta);
     theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
     
@@ -149,7 +163,70 @@ void PMTIdentified::calculate_boltid(){
 /// without using any circle twice.  Also maybe reject bolts outside expected angle?
 //Returns index of circle, mtd and mindist.
 void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const MedianTextData & mtd ){
+  
+  // initialize idx_txt and dist_txt in PMTIdentifieds
+  for ( PMTIdentified & pmt : final_pmts ){
+    pmt.idx_txt.clear();
+    pmt.dist_txt.clear();
+    for ( unsigned i=0; i<pmt.bolts.size(); ++i ){
+      pmt.idx_txt.push_back( 0 );
+      pmt.dist_txt.push_back( -1 );
+    }
+    //assert( pmt.idx_txt.size() == pmt.bolts.size() );
+    // assert( pmt.dist_txt.size() == pmt.bolts.size() );
+  }  
 
+  //goal is if a is closest to b and b is closest to a then they are the map.
+  for(int i=0; i< final_pmts.size(); i++){
+    vector <cv::Vec3f> bolts = final_pmts[i].bolts;
+    int txt_ind;
+    for (int j=0; j<bolts.size(); j++){ 
+      const cv::Vec3f & b = bolts[j]; 
+      float  mindist = 1000000;
+      float b_x = b[0];
+      float b_y = b[1];
+      
+      int x,y;
+      for (int k=0; k< mtd.size(); k++){
+	const MedianTextRecord & rec =  mtd[k]; 
+	float m_x = rec.x();
+	float m_y = rec.y();
+
+	//float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
+	//      (circ[1] - rec.y())*(circ[1] - rec.y()) );
+	float dist = RobustLength( fabs(b_x - m_x), fabs(b_y - m_y) );
+	if ( dist < mindist ) {
+	  bool reverse = true;
+	  for(int j=0; j< final_pmts.size(); j++){
+	    vector <cv::Vec3f> bolts1 = final_pmts[j].bolts;
+	    for ( const cv::Vec3f & b1 : bolts1 ){
+	      
+	      //for(unsigned j=0; j<mtd.size(); ++j){
+	      // MedianTextRecord m = mtd[j];
+	      // float d1 = std::sqrt((circ[0]-m.x())*(circ[0]-m.x())+
+	      //       (circ[1]-m.y())*(circ[1]-m.y()));
+	      float d1 = RobustLength( fabs(b[0]-m_x), fabs(b[1]-m_y) );
+	      if(d1<dist){ reverse = false; break;}
+	    }
+	    if(!reverse){break;}
+	  }
+	    
+	  if(reverse){ mindist = dist; txt_ind=k;  }  
+	
+	}
+      }
+      
+      if( mindist!=1000000){
+	//line(imcol, cv::Point(rec.x(),rec.y()), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
+	final_pmts[ i ].idx_txt[ j ] = txt_ind;
+	final_pmts[ i ].dist_txt[ j ] = mindist;
+	
+	//hist_dist->Fill( mindist );
+      }
+    }
+  }
+
+  /*
   // initialize idx_txt and dist_txt in PMTIdentifieds
   for ( PMTIdentified & pmt : final_pmts ){
     pmt.idx_txt.clear();
@@ -197,6 +274,7 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
 
   // Now get rid of duplicates?
   // for now try with duplicates....
+ */
 }
 
 //Makes the histogram of minimum distance from the matched bolt from text to found bolt
@@ -208,6 +286,7 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
       }
     }
   }
+ 
 }
 
 
@@ -552,6 +631,127 @@ void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
 }
 
 
+void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label ){
+
+  /*  
+      for ( unsigned i = 0; i < final_pmts.size(); i++ ){ 
+      if(final_pmts[i].bolts.size()>8){
+      not_pruned_pmts.push_back(final_pmts[i]);
+      }
+      }
+      
+      final_pmts.clear();
+      final_pmts = not_pruned_pmts;
+      pruned_indx.clear();
+      not_pruned_pmts.clear();
+  */
+  int size_prev = final_pmts.size();
+  int size_cur = final_pmts.size()-1;
+  int count =0;
+  while(size_prev!=size_cur){
+    size_prev = final_pmts.size();
+    std::vector< PMTIdentified > not_pruned_pmts;
+    std::vector<int> pruned_indx;
+    
+    for ( unsigned i = 0; i < final_pmts.size(); ++i ){ 
+      PMTIdentified pmt = final_pmts[i];
+      double x0 = pmt.circ.get_xy().x;
+      double y0 = pmt.circ.get_xy().y;
+      double a0 = pmt.circ.get_a();
+      for(int j = 0; j< final_pmts.size(); ++j){
+	if(i==j){continue;}
+	PMTIdentified pmt1 = final_pmts[j];
+	double x1 = pmt1.circ.get_xy().x;
+	double y1 = pmt1.circ.get_xy().y;
+	double a1 = pmt1.circ.get_a();
+	double dist = std::sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0));//RobustLength(x1-x0, y1-y0);
+	if(dist<=a0+a1){
+	  EllipseIntersect E;
+	  int category = E.intersect(pmt.circ, pmt1.circ);
+	  //if(){pruned_indx.push_back(i); break;}
+	  if(category==ELLIPSE1_STRICTLY_CONTAINS_ELLIPSE0||category == ELLIPSE1_CONTAINS_ELLIPSE0_BUT_TANGENT||category == ELLIPSES_OVERLAP||category == ELLIPSE0_OUTSIDE_ELLIPSE1_BUT_TANGENT){
+	    if(pmt1.bolts.size()>pmt.bolts.size()){
+	      pruned_indx.push_back(i); break;
+	    }
+	  }
+	}
+      }
+     
+    }
+    	 
+ 
+    for ( int c = 0; c < final_pmts.size(); c++ ){ 
+      bool skip=false;
+      for(int k=0; k< pruned_indx.size();k++){
+	int val = pruned_indx[k];
+	if(val==c){skip=true; break;}
+      }
+      if(!skip){
+	not_pruned_pmts.push_back(final_pmts[c]);
+      }
+    }
+    final_pmts.clear();
+    final_pmts = not_pruned_pmts;
+    // pruned_indx.clear();
+    //not_pruned_pmts.clear();
+    size_cur = final_pmts.size();
+
+    std::cout<<"loop number= "<<count<<std::endl;
+    count++;
+  }
+
+
+  //Now removing PMTs that doesn't have atleast three bolts that have another bolts within 15+-3 degree.
+  std::vector< PMTIdentified > not_pruned_pmts;
+  std::vector<int> pruned_indx;
+    
+  for (int j=0; j< final_pmts.size(); j++){
+    //const PMTIdentified &p = final_pmts[j];
+    float a0 = final_pmts[j].circ.get_xy().x;
+    float a1 = final_pmts[j].circ.get_xy().y;
+    
+    float num15=0; //number of bolts that has another bolt within 15+-3 deg
+    // PMTIdentified pmt = final_pmts[i];
+    for(int i=0; i<final_pmts[j].bolts.size(); i++){
+      float x0 = final_pmts[j].bolts[i][0];
+      float y0 = final_pmts[j].bolts[i][1];
+      for(int k=0; k<final_pmts[j].bolts.size(); k++){
+	if(i==k){continue;}
+	float x1 = final_pmts[j].bolts[k][0];
+	float y1 = final_pmts[j].bolts[k][1];
+	
+	float theta = acos(((x0-a0)*(x1-a0)+(y0-a1)*(y1-a1))/(std::sqrt((x0-a0)*(x0-a0)+(y0-a1)*(y0-a1))*std::sqrt((x1-a0)*(x1-a0)+(y1-a1)*(y1-a1))));
+	theta = RADTODEG(theta);
+	if(float(theta-15.0)<3){
+	  num15++;
+	}
+      }
+    }
+    
+    if(num15<6 && num15>0){
+      pruned_indx.push_back(j);
+    }
+    
+  } 
+  
+  for ( int c = 0; c < final_pmts.size(); c++ ){ 
+    bool skip=false;
+    for(int k=0; k< pruned_indx.size(); k++){
+      int val = pruned_indx[k];
+      if(val==c){skip=true; break;}
+    }
+    if(!skip){
+      not_pruned_pmts.push_back(final_pmts[c]);
+    }
+  }
+
+  final_pmts.clear();
+  final_pmts = not_pruned_pmts;
+  //remove the pmt if it's neighbouring (3 closest PMT's size is 
+
+}
+
+
 void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label ){
 
   std::vector< PMTIdentified > not_pruned_pmts;
@@ -641,6 +841,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
   for( const PMTIdentified& pmt : final_pmts ){
     float a = pmt.circ[0]; //x-coordinate of centre of pmt
     float b = pmt.circ[1];
+    cv::putText( image_final,std::to_string(pmt.circ.get_phi()*180.0/PI) , cv::Point(a,b), FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
     for(int i=0; i<pmt.bolts.size();i++){
       std::string txt = std::to_string((int)pmt.angles[i]);
       // A(x1,y1)         P(x,y)            B(x2,y2) 
@@ -654,7 +855,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
 
       //writing bolt angle from ^ in image 
       cv::putText( image_final, txt, text_at, FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
-
+      
       txt = std::to_string((int)pmt.boltid[i]);
       m = 3;
       n =2;
@@ -667,4 +868,5 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
     }
   }
 }
+
 
