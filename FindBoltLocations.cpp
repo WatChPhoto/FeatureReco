@@ -576,7 +576,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       Mat image_before = image_houghellipse.clone();
 
       for ( const PMTIdentified& her : ellipse_pmts ){
-	if ( her.bolts.size() < 9 ) continue;
+	//if ( her.bolts.size() < 9 ) continue;
 	Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
 	Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
 	ellipse( image_before, center, axes, RADTODEG( her.circ.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
@@ -604,9 +604,9 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     // look for duplicate bolts and keep only best matches
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // remove pmts below threshold (9 bolts)
-    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
-    //prune_pmts( ellipse_pmts, 11, "ellipsehough" );
-    prune_pmts( ellipse_pmts, 10, "ellipsehough" );
+    //    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
+    //prune_pmts( ellipse_pmts, 9, "ellipsehough" );
+    prune_pmts_improved( ellipse_pmts, 10, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
@@ -622,6 +622,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	  
     for (const PMTIdentified & pmt : ellipse_pmts) {
       for (const float dist : pmt.dists) {
+	if(dist<0){continue;}
 	ellipse_dist->Fill (dist);
       }
     }
@@ -630,7 +631,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     /// draw all ellipses in her on image_ellipse and write
     ///for ( const HoughEllipseResult& her : hers ){
     for ( const PMTIdentified& her : ellipse_pmts ){
-      if ( her.bolts.size() < 9 ) continue;
+      //if ( her.bolts.size() < 9 ) continue;
       Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
       Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
       ellipse( image_houghellipse, center, axes, RADTODEG( her.circ.get_phi() ), 0., 360,  Scalar (255, 102, 255), 2 );
@@ -1047,7 +1048,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
 	ang = (ang<0)?(ang+360):ang; //getting angle between 0-360
       }
       //if n=1 there is another blob within 300px that forms line with current bolt(bolt in which neighbourhood we are looking at), bolt corresponding to n=1, and current bolt then increase count. 
-      if( 0){//n==1 && dist <300 && i!=ind ){
+      if(0 ){//n==1 && dist <300 && i!=ind ){
 	float theta = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1]));; //getting angle with ^ axis wrt image  
 	theta = RADTODEG(theta);
 	theta = (theta<0)?(theta+360):theta; //getting angle between 0-360
