@@ -710,25 +710,28 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned nu
     float a0 = final_pmts[j].circ.get_xy().x;
     float a1 = final_pmts[j].circ.get_xy().y;
     
-    float num15=0; //number of bolts that has another bolt within 15+-3 deg
+    int num15=0; //number of bolts that has another bolt within 15+-3 deg
     // PMTIdentified pmt = final_pmts[i];
     for(int i=0; i<final_pmts[j].bolts.size(); i++){
       float x0 = final_pmts[j].bolts[i][0];
       float y0 = final_pmts[j].bolts[i][1];
       for(int k=0; k<final_pmts[j].bolts.size(); k++){
-	if(i==k){continue;}
-	float x1 = final_pmts[j].bolts[k][0];
-	float y1 = final_pmts[j].bolts[k][1];
-	
-	float theta = acos(((x0-a0)*(x1-a0)+(y0-a1)*(y1-a1))/(std::sqrt((x0-a0)*(x0-a0)+(y0-a1)*(y0-a1))*std::sqrt((x1-a0)*(x1-a0)+(y1-a1)*(y1-a1))));
-	theta = RADTODEG(theta);
-	if(float(theta-15.0)<3){
-	  num15++;
+	if(i!=k){
+	  float x1 = final_pmts[j].bolts[k][0];
+	  float y1 = final_pmts[j].bolts[k][1];
+	  
+	  //cos(theta) = a.b/|a||b|
+	  float theta = acos(((x0-a0)*(x1-a0)+(y0-a1)*(y1-a1))/(std::sqrt((x0-a0)*(x0-a0)+(y0-a1)*(y0-a1))*std::sqrt((x1-a0)*(x1-a0)+(y1-a1)*(y1-a1))));
+	//float theta = fabs(final_pmts[j].angles[k]-final_pmts[j].angles[i]
+	  theta = RADTODEG(theta);
+	  if(fabs(theta-15.0)<3){
+	    num15++; break;
+	  }
 	}
       }
     }
     
-    if(num15<6 && num15>0){
+    if(num15<4){
       pruned_indx.push_back(j);
     }
     
@@ -842,6 +845,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
     float a = pmt.circ[0]; //x-coordinate of centre of pmt
     float b = pmt.circ[1];
     cv::putText( image_final,std::to_string(pmt.circ.get_phi()*180.0/PI) , cv::Point(a,b), FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
+    cv::putText( image_final,std::to_string(pmt.circ.get_a()*pmt.circ.get_b()) , cv::Point(a,b+50), FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,255),1);
     for(int i=0; i<pmt.bolts.size();i++){
       std::string txt = std::to_string((int)pmt.angles[i]);
       // A(x1,y1)         P(x,y)            B(x2,y2) 
