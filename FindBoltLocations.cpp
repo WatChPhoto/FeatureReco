@@ -614,6 +614,9 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       //std::cout<<pmt<<std::endl;
     }
 
+    //making histogram of angle of ellipse wrt y-axis and size
+    //TH2D *ellipse_feature = new TH2D("Ellipse feature", "Ellipse feature; y-value;phi(degree);size; count); 
+
 
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
