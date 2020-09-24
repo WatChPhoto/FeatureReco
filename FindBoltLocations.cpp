@@ -432,7 +432,7 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
     std::vector< Vec3f > boltlocs = ellipses.bolts;
     std::vector< float > dists = ellipses.dist;
     
-    f_ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
+    f_ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, 0 ) );
   }
 	 
 
@@ -495,6 +495,68 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
 }
 
 
+void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts, const std::string & tag  ){
+
+  // histogram PMT ellipse parameters
+  TH1D * hpmt_locx = new TH1D( (tag+"hpmt_locx").c_str(),"PMT location ; x (pixels); counts/bin",120,0.,4000.);
+  TH1D * hpmt_locy = new TH1D( (tag+"hpmt_locy").c_str(),"PMT location ; y (pixels); counts/bin",90,0.,3000.);
+  TH1D * hpmt_a    = new TH1D( (tag+"hpmt_a").c_str(),"PMT a ; a (pixels); counts/bin",100,0,300);
+  TH1D * hpmt_b    = new TH1D( (tag+"hpmt_b").c_str(),"PMT b ; b (pixels); counts/bin",100,0,300);
+  TH1D * hpmt_area = new TH1D( (tag+"hpmt_area").c_str(),"PMT area ; area (px^2); counts/bin",200,0,200000);
+  TH1D * hpmt_phi  = new TH1D( (tag+"hpmt_phi").c_str(),"PMT phi ; phi (radians); counts/bin",100, 0, 2*pi );
+  TH1D * hpmt_e    = new TH1D( (tag+"hpmt_e").c_str(),"PMT e ; eccentricity; counts/bin",100, 0, 1.0 );
+  TH1D * hpmt_pkval= new TH1D( (tag+"hpmt_pkval").c_str(),"PMT peakval ; peakval; counts/bin",256, -0.5, 255.5 );
+
+  // histogram PMT phi as function of locations
+  TH2D * hpmt_phixy = new TH2D( (tag+"hpmt_phixy").c_str(),"PMT ellipse angle ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_axy = new TH2D( (tag+"hpmt_axy").c_str(),"PMT ellipse a ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_bxy = new TH2D( (tag+"hpmt_bxy").c_str(),"PMT ellipse b ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_areaxy = new TH2D( (tag+"hpmt_areaxy").c_str(),"PMT ellipse area ; x (px^2); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_exy = new TH2D( (tag+"hpmt_exy").c_str(),"PMT ellipse e ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_houghpk = new TH2D( (tag+"hpmt_houghpk").c_str(),"PMT hough peak ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  
+
+
+  // histogram of area as function of radius from center of image
+  TH2D * havsr = new TH2D( (tag+"hpmt_avsr").c_str(),"PMT area vs distance from center of image; r (pixels); area (px^2)", 200, 0., 4000., 200, 0., 1000000. );
+
+
+  
+
+
+  for ( const PMTIdentified& her : ellipse_pmts ){
+    float x = her.circ.get_xy().x ;
+    float y = her.circ.get_xy().y ;
+    float aa = her.circ.get_a();
+    float bb = her.circ.get_b();
+    float ee = her.circ.get_e();
+    float area = aa*bb*pi;
+    float phi = her.circ.get_phi();
+    hpmt_pkval->Fill( her.peakval );
+    hpmt_houghpk->Fill( x, y, her.peakval );
+    hpmt_locx->Fill( x );
+    hpmt_locy->Fill( y );
+    hpmt_a->Fill( aa );
+    hpmt_b->Fill( bb );
+    hpmt_area->Fill( area );
+    hpmt_phi->Fill( phi );
+    hpmt_e->Fill( ee );
+    
+    hpmt_phixy->Fill( x, y, phi );
+    hpmt_axy->Fill( x, y, aa );
+    hpmt_bxy->Fill( x, y, bb );
+    hpmt_areaxy->Fill( x, y, area );
+    hpmt_exy->Fill( x, y, ee );
+      
+    // distance from center of image?
+    float r = std::sqrt(  (x-2000)*(x-2000) + (y-1375)*(y-1375) );
+    havsr->Fill( r, area );
+  }
+}
+
+
+
+
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
 			     bool write_image, const std::string& infname, const MedianTextData & mtd ){ 
 
@@ -552,7 +614,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	dists.push_back( her.e.dmin( xy ) );
 	//	}
       }
-      ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists ) );
+      ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, her.peakval ) );
     }
 
     TH1D * hangboltel = new TH1D ("hangboltel", "Angles of bolts (hough ellipse); angle (deg)", 360, 0., 360.);
@@ -596,6 +658,11 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       std::cout<<"Writing image "<<outputname<<std::endl;
       imwrite (outputname, image_before );
     }
+
+
+
+    // histogram PMT locations before pruning	  
+    pmtidentified_histograms( ellipse_pmts, "preprune" );
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
@@ -645,27 +712,10 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	//image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
       }
     }  
-	  
-    // histogram PMT locations
-    TH1D * hpmt_locx = new TH1D("hpmt_locx","PMT location ; x (pixels); counts/bin",120,0.,4000.);
-    TH1D * hpmt_locy = new TH1D("hpmt_locy","PMT location ; y (pixels); counts/bin",90,0.,3000.);
-    TH1D * hpmt_b    = new TH1D("hpmt_b","PMT b ; b (pixels); counts/bin",80,80,140);
-    // histogram PMT phi as function of locations
-    TH2D * hpmt_phixy = new TH2D("hpmt_phixy","PMT ellipse angle ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
-    TH2D * hpmt_bxy = new TH2D("hpmt_bxy","PMT ellipse b ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
-    TH2D * hpmt_exy = new TH2D("hpmt_exy","PMT ellipse e ; x (pixels); y (pixels)",120,0.,4000.,90,0.,3000.);
 
-    for ( const PMTIdentified& her : ellipse_pmts ){
-      float x = her.circ.get_xy().x ;
-      float y = her.circ.get_xy().y ;
-      hpmt_locx->Fill( x );
-      hpmt_locy->Fill( y );
-      hpmt_b->Fill( her.circ.get_b() );
-      hpmt_phixy->Fill( x, y, her.circ.get_phi() );
-      hpmt_bxy->Fill( x, y, her.circ.get_b() );
-      hpmt_exy->Fill( x, y, her.circ.get_e() );
-    }
-
+    // histogram PMT locations	  
+    pmtidentified_histograms( ellipse_pmts, "final" );
+    
     // histograms after pruning
     TH1D * hangboltel_cor = new TH1D ("hangboltel_cor", "Angles of bolts (hough ellipse corrected); angle (degrees)", 360, 0., 360.);
     TH1D * hdangboltel_cor = new TH1D ("hdangboltel_cor", "Angle of bolt from expected (hough ellipse corrected); #Delta angle (degrees)", 60, -15., 15.);

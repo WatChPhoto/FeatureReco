@@ -28,21 +28,24 @@ struct PMTIdentified {
   std::vector<int>   idx_txt; // index of medianTextReader
   std::vector<float> dist_txt; // distance to closest matching bolt
 
+  // include hough ellipse info
+  float peakval; // peak in hough space
+
   PMTIdentified() : pmtid(-1) { }
-  PMTIdentified( const cv::Vec3f& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists ) : 
-    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
+  PMTIdentified( const cv::Vec3f& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists, const float pkval ) : 
+    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ), peakval( pkval ) {
     calculate_angles();
     calculate_boltid();
   }
-  PMTIdentified( const ellipse_st& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists ) : 
-    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ) {
+  PMTIdentified( const ellipse_st& pmtloc, const std::vector< cv::Vec3f >& boltlocs, const std::vector< float > final_dists, const float pkval ) : 
+    pmtid(-1), circ( pmtloc ), bolts( boltlocs ), dists( final_dists ), peakval(pkval) {
     calculate_angles();
     calculate_boltid();
   }
   PMTIdentified( const PMTIdentified& pmt ) :
     pmtid(-1), circ( pmt.circ ), bolts( pmt.bolts ), dists( pmt.dists ),
     angles( pmt.angles ), dangs( pmt.dangs ), boltid( pmt.boltid ),
-    idx_txt( pmt.idx_txt ), dist_txt( pmt.dist_txt ) {}
+    idx_txt( pmt.idx_txt ), dist_txt( pmt.dist_txt ), peakval( pmt.peakval ) {}
 
 private:
 

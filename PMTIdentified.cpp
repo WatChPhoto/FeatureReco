@@ -70,7 +70,7 @@ void find_candidate_bolts( const std::vector< Vec3f >& blobs,
     
     // add bolts_on_this_pmt to final_bolts if > some number (5?) of bolts match?
     if (bolts_on_this_pmt.size () > 9) {
-      pmts_found.push_back( PMTIdentified( pmtloc, bolts_on_this_pmt, final_dists ));   
+      pmts_found.push_back( PMTIdentified( pmtloc, bolts_on_this_pmt, final_dists, 0 ));   
     }
   }
 }
