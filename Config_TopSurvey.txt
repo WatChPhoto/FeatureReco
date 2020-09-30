@@ -11,23 +11,22 @@ text_file_mode = 1 # zero means our usual format, and 1 means format for reprojr
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-#save_option = 11111
-save_option =  00001
+save_option = 00001
 
 # Contrast Limited Adaptive Histogram Equalization
-do_clahe = 0 # 0 off, 1 on
+do_clahe = 1 # 0 off, 1 on
 clahe_gridsize = 16 # size of box to equalize in
-clahe_cliplimit = 4 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
+clahe_cliplimit = 2 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
 clahe_write = 0 # 1 to write image, 0 not
 
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
-blurpixels = 23 #11 #size of kernal in pixels (must be odd) |5X5 for canny
-blursigma = 40  #10.0  #sigma of gaussian in pixels
+blurpixels = 5 #11 #size of kernal in pixels (must be odd) |5X5 for canny
+blursigma = 10  #10.0  #sigma of gaussian in pixels
 
 #Bilateral filter
 do_bifilter = 1 # 0 for off, any other number for on
-d           = 5 #5  #value 5-9 distance around each pixels to filter(must be odd)
+d           = 7 #5  #value 5-9 distance around each pixels to filter(must be odd)
 sigColor    = 2   # gausian range in color to filter over
 sigSpace    = 50  # gaussian sigma in distance for filtering over
 
@@ -46,14 +45,14 @@ thresh_high = 230   #The gradient valu agreater than this will be kept.
 threshold = 0
 
 #Blob parameters
-blob_minThreshold = 80#100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_minThreshold = 100 #100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
 blob_maxThreshold = 255#255 #150#200 #180#255 #max threshold of color to consider for blob 
 blob_filterByArea = 1 #1 for true 0 for false
-blob_minArea = 3#5 #3 #4 #6      #Min area to consider as a blob
-blob_maxArea = 70#1000#70     #Max area to consider as a blob                                                                                  
-blob_filterByCircularity = 0 #1 for true 0 for false
-blob_minCircularity = 0.003 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
-blob_minDistBetweenBlobs = 10#1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
+blob_minArea = 20 # 3
+blob_maxArea = 200 # 70
+blob_filterByCircularity = 1 #1 for true 0 for false
+blob_minCircularity = 0.03 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
+blob_minDistBetweenBlobs = 15 #1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
 blob_filterByConvexity = 0  #1 for true 0 for false
 blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
 blob_filterByInertia = 0  #1 for true 0 for false
@@ -70,17 +69,17 @@ hough_maxR = 6 #10 # maximum radius in pixels
 # Ellipse hough transform
 do_ellipse_hough = 1  # 1 for true, 0 for false
 ellipse_hough_minhits      =  9
-ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
+ellipse_hough_threshold    = 130   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
-ellipse_hough_nbins_bb     =  50  
-ellipse_hough_nbins_ee     =  10  
+ellipse_hough_nbins_bb     =  30 #50  
+ellipse_hough_nbins_ee     =  15  
 ellipse_hough_nbins_phiphi =  11  
 ellipse_hough_nbins_x      = 975
 ellipse_hough_nbins_y      = 700
-ellipse_hough_bbmin        = 70  
-ellipse_hough_bbmax        = 110 
+ellipse_hough_bbmin        = 180  #120
+ellipse_hough_bbmax        = 210 
 ellipse_hough_eemin        =   0.0
-ellipse_hough_eemax        =  0.35
+ellipse_hough_eemax        =  0.30
 ellipse_hough_phphimin     =   0.0 
 ellipse_hough_phiphimax    = 3.14159265359
 ellipse_hough_xmin         =  100

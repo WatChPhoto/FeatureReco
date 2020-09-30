@@ -245,8 +245,8 @@ const HoughEllipseResults& EllipseHough::find_ellipses( const std::vector< xypoi
       
       
       fresults.push_back( hr );
-      save_hough_histo( fresults.size(), hr );
-      plot_candidate( fresults.size(), hr );
+      //save_hough_histo( fresults.size(), hr );
+      //plot_candidate( fresults.size(), hr );
     }
     
     if ( nfound == 0 ) done = true;
@@ -426,7 +426,7 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
   }
 
   for ( unsigned islice=0; islice<slices.size(); ++islice ){
-    std::cout<<"find_maximum: starting thread "<<islice<<std::endl;
+    //std::cout<<"find_maximum: starting thread "<<islice<<std::endl;
     unsigned ixmin = slices[islice].first.x;
     unsigned iymin = slices[islice].first.y;
     unsigned ixmax = slices[islice].second.x;
@@ -436,11 +436,11 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
 
     if ( islice % 10 == 9 ){
       for ( unsigned i=0; i<slice_threads.size(); ++i ){
-	std::cout<<"waiting for thread...."<<std::endl;
+	//std::cout<<"waiting for thread...."<<std::endl;
 	slice_threads[i].join();
       }
       slice_threads.clear();
-      std::cout<<"threads up to "<<islice<<" done."<<std::endl;
+      //std::cout<<"threads up to "<<islice<<" done."<<std::endl;
     }
     //find_maximum_phibin( std::ref(*this), iphi, std::ref( passed_threshold[iphi]) );
     //std::cout<<"find_maximum: thread "<<iphi<<" started "<<std::endl;
@@ -448,11 +448,11 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
 
 
   for ( unsigned i=0; i<slice_threads.size(); ++i ){
-    std::cout<<"waiting for thread...."<<std::endl;
+    //std::cout<<"waiting for thread...."<<std::endl;
     slice_threads[i].join();
   }
   slice_threads.clear();
-  std::cout<<"threads up to "<<slices.size()<<" done."<<std::endl;
+  //std::cout<<"threads up to "<<slices.size()<<" done."<<std::endl;
 
  
   // find the hits that are associated with the ellipse and add them

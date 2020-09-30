@@ -5,19 +5,19 @@
 #format is [variable] = [value]
 
 #Textfile saving mode
-text_file_mode = 0 # zero means our usual format, and 1 means format for reprojrection that everyone follows. 
+text_file_mode = 1 # zero means our usual format, and 1 means format for reprojrection that everyone follows. 
 
 #verbosity
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-save_option = 11111
+save_option = 00001
 
 # Contrast Limited Adaptive Histogram Equalization
 do_clahe = 0 # 0 off, 1 on
 clahe_gridsize = 16 # size of box to equalize in
 clahe_cliplimit = 4 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
-clahe_write = 1 # 1 to write image, 0 not
+clahe_write = 0 # 1 to write image, 0 not
 
 #Gaussian blur
 do_gaus_blur = 0 # 0 for off, any other number for on
