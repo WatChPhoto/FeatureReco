@@ -495,7 +495,7 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
 }
 
 
-void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts, const std::string & tag  ){
+void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts, const std::string & tag, const float& nrows, const float& ncols  ){
 
   // histogram PMT ellipse parameters
   TH1D * hpmt_locx = new TH1D( (tag+"hpmt_locx").c_str(),"PMT location ; x (pixels); counts/bin",120,0.,4000.);
@@ -509,6 +509,7 @@ void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts
 
   // histogram PMT phi as function of locations
   TH2D * hpmt_phixy = new TH2D( (tag+"hpmt_phixy").c_str(),"PMT ellipse angle ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
+  TH2D * hpmt_phixy0to90 = new TH2D( (tag+"hpmt_phixy0to90").c_str(),"PMT ellipse angle(0-90) ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
   TH2D * hpmt_axy = new TH2D( (tag+"hpmt_axy").c_str(),"PMT ellipse a ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
   TH2D * hpmt_bxy = new TH2D( (tag+"hpmt_bxy").c_str(),"PMT ellipse b ; x (pixels); y (pixels)",100,0.,4000.,75,0.,3000.);
   TH2D * hpmt_areaxy = new TH2D( (tag+"hpmt_areaxy").c_str(),"PMT ellipse area ; x (px^2); y (pixels)",100,0.,4000.,75,0.,3000.);
@@ -523,10 +524,10 @@ void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts
 
   
 
-
+  
   for ( const PMTIdentified& her : ellipse_pmts ){
     float x = her.circ.get_xy().x ;
-    float y = her.circ.get_xy().y ;
+    float y = nrows - her.circ.get_xy().y ; // axis start from left bottom corner y^->x
     float aa = her.circ.get_a();
     float bb = her.circ.get_b();
     float ee = her.circ.get_e();
@@ -543,13 +544,15 @@ void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts
     hpmt_e->Fill( ee );
     
     hpmt_phixy->Fill( x, y, phi );
+    float theta = (theta>90)?180.0-phi:phi;
+    hpmt_phixy0to90->Fill(x,y,theta);
     hpmt_axy->Fill( x, y, aa );
     hpmt_bxy->Fill( x, y, bb );
     hpmt_areaxy->Fill( x, y, area );
     hpmt_exy->Fill( x, y, ee );
       
     // distance from center of image?
-    float r = std::sqrt(  (x-2000)*(x-2000) + (y-1375)*(y-1375) );
+    float r = std::sqrt(  (x-ncols/2.0)*(x-ncols/2.0) + (y-nrows/2.0)*(y-nrows/2.0) );
     havsr->Fill( r, area );
   }
 }
@@ -662,7 +665,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
 
     // histogram PMT locations before pruning	  
-    pmtidentified_histograms( ellipse_pmts, "preprune" );
+    pmtidentified_histograms( ellipse_pmts, "preprune",image_houghellipse.rows, image_houghellipse.cols );
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
@@ -714,7 +717,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     }  
 
     // histogram PMT locations	  
-    pmtidentified_histograms( ellipse_pmts, "final" );
+    pmtidentified_histograms( ellipse_pmts, "final",image_houghellipse.rows, image_houghellipse.cols  );
     
     // histograms after pruning
     TH1D * hangboltel_cor = new TH1D ("hangboltel_cor", "Angles of bolts (hough ellipse corrected); angle (degrees)", 360, 0., 360.);
@@ -1076,6 +1079,13 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 //Removing the noise inside of PMT(Filtering blobs)
 void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
+  Mat blbs_yellow = img.clone();
+  Mat blbs_size = img.clone();
+  Mat blbs_near = img.clone();
+  draw_foundblobs( blobs1, blbs_yellow );
+  draw_foundblobs( blobs1, blbs_near );
+  draw_foundblobs( blobs1, blbs_size );
+
   for(int j=0; j<blobs1.size(); ++j){
     Vec3f bl = blobs1[j];
     int x = bl[0];
@@ -1116,20 +1126,34 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     }
 
     //skip if color in centre is yellowish, or radius is greater than 15 or there are two blobs near current blob or there is line. 
-    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>10 || near)continue;
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)){
+      circle( blbs_yellow, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
+    }
+    
+    if(near){
+      circle( blbs_near, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
+    }
+    if(ra>7){
+      circle( blbs_size, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
+    }
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>7 || near)continue;
     
     blobs.push_back(bl);
   }
 
   //now overlaying all bolts and kept bolt in image
-  Mat blbs = img.clone();
-  draw_foundblobs( blobs1, blbs );
+ 
+  
   for ( const Vec3f& xyz : blobs ){
-    circle( blbs, Point( xyz[0], xyz[1] ), 3, Scalar(0,0,255), 2, 0 );
+    circle( blbs_yellow, Point( xyz[0], xyz[1] ), 3, Scalar(0,0,255), 2, 0 );
+    circle( blbs_near, Point( xyz[0], xyz[1] ), 3, Scalar(0,0,255), 2, 0 );
+    circle( blbs_size, Point( xyz[0], xyz[1] ), 3, Scalar(0,0,255), 2, 0 );
 
   }  
 
-  imwrite("trimmmmm.jpg", blbs);
+  imwrite("rem_yellow.jpg", blbs_yellow);
+  imwrite("rem_near.jpg", blbs_near);
+  imwrite("rem_size.jpg", blbs_size);
 }
 
 
