@@ -1151,9 +1151,13 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
 
   }  
 
-  imwrite("rem_yellow.jpg", blbs_yellow);
-  imwrite("rem_near.jpg", blbs_near);
-  imwrite("rem_size.jpg", blbs_size);
+
+  //imwrite("rem_yellow.jpg", blbs_yellow);
+  //imwrite("rem_near.jpg", blbs_near);
+  // imwrite("rem_size.jpg", blbs_size);
+
+  //imwrite("trimmmmm.jpg", blbs);
+
 }
 
 
@@ -1201,8 +1205,8 @@ int main (int argc, char **argv) {
       /// build output image
       Mat image;
       cvtColor (image_color, image, COLOR_RGBA2GRAY);
-      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], true ); // K (intensity)
-      Mat image2 = equalize_by_color( image_color, argv[1], true );
+      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
+      Mat image2 = equalize_by_color( image_color, argv[1], false );
 
       // Open a root file to put histograms into
       TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
@@ -1239,7 +1243,7 @@ int main (int argc, char **argv) {
 	  //Filtering closely packed blobs and yellowish blobs for corner image;
 	  bool corner = config::Get_int("corner");
 	  if(corner){
-	  rem_bolts(blobs1, blobs, image_color);
+	    rem_bolts(blobs1, blobs, image_color);
 	  }
 	  else{
 	    blobs = blobs1;
@@ -1253,8 +1257,8 @@ int main (int argc, char **argv) {
 				 Scalar (0, 0, 255), 1);
 	  TH1D *dis = new TH1D("distance of blob from truth","Distance of blob from truth;distance(px);counts/bin",1000,-0.5,999.5);
 	  make_bolt_dist_histogram_wrt_txt( blobs, mtd, dis, image_line );
-	  string outputname = build_output_filename (argv[1], "mapped");
-	  imwrite(outputname, image_line);
+	  //string outputname = build_output_filename (argv[1], "mapped");
+	  //imwrite(outputname, image_line);
 	  
 	  histogram_blobs_bymtd( keypoints, mtd );
 
@@ -1266,7 +1270,7 @@ int main (int argc, char **argv) {
 	  }
 
 	  // fast ellipse detection
-	  fast_ellipse_detection( blobs, image_ellipse, true, argv[1], mtd );
+	  //fast_ellipse_detection( blobs, image_ellipse, true, argv[1], mtd );
 
 	  // slow ellipse detection (hough_ellipse.hpp)
 	  slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd ); 
@@ -1279,7 +1283,7 @@ int main (int argc, char **argv) {
 	  //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
 
 	  // PMT circle detection on bolts found by blob detection
-	  pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );
+	  //pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );
 
 
 
