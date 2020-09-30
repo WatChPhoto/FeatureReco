@@ -178,7 +178,10 @@ void make_bolt_metric_histograms( const std::vector< PMTIdentified > &pmtsfound,
 void draw_line( const std::vector< PMTIdentified >& pmtsfound, const MedianTextData& mtd, cv::Mat &imcol ){
   for ( const PMTIdentified & pmtid : pmtsfound ){
     for ( unsigned boltidx = 0; boltidx < pmtid.bolts.size(); ++boltidx ){
-      if ( pmtid.dist_txt[ boltidx ] >= bad_dmin ) continue;
+      //if we need to hide some bad ones but it doesn't seem like we do.
+      //      std::cout<<"dist_txt = "<<pmtid.dist_txt[boltidx]<<std::endl;
+      //  if ( pmtid.dist_txt[ boltidx ] >= bad_dmin ) continue;
+     
       int in = pmtid.idx_txt[ boltidx ];
       int m_x= mtd[in].x();
       int m_y= mtd[in].y();
@@ -186,8 +189,9 @@ void draw_line( const std::vector< PMTIdentified >& pmtsfound, const MedianTextD
       int x= pmtid.bolts[ boltidx ][0];
       int y= pmtid.bolts[ boltidx ][1];
       
-      float dist=std::sqrt( (m_x-x)*(m_x-x) + (m_x-y)*(m_x-y) );
-      if ( dist > 20 ) continue;
+      float dist = std::sqrt( (m_x-x)*(m_x-x) + (m_y-y)*(m_y-y) );
+      // std::cout<<"dist = "<<dist<<std::endl;
+      // if ( dist > 20 ) continue;
 
       //line(Mat& img, Point pt1, Point pt2, const Scalar& color, int thickness=1, int lineType=8, int shift=0)
       line(imcol, cv::Point(m_x,m_y), cv::Point(x,y), cv::Scalar(0,0,0), 2, 8,0);
