@@ -169,7 +169,7 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
     pmt.idx_txt.clear();
     pmt.dist_txt.clear();
     for ( unsigned i=0; i<pmt.bolts.size(); ++i ){
-      pmt.idx_txt.push_back( 0 );
+      pmt.idx_txt.push_back( -1 );
       pmt.dist_txt.push_back( -1 );
     }
     //assert( pmt.idx_txt.size() == pmt.bolts.size() );
@@ -179,10 +179,11 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
   //goal is if a is closest to b and b is closest to a then they are the map.
   for(int i=0; i< final_pmts.size(); i++){
     vector <cv::Vec3f> bolts = final_pmts[i].bolts;
-    int txt_ind;
+    
     for (int j=0; j<bolts.size(); j++){ 
       const cv::Vec3f & b = bolts[j]; 
       float  mindist = 1000000;
+      int txt_ind=-1;
       float b_x = b[0];
       float b_y = b[1];
       
@@ -194,18 +195,20 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
 
 	//float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
 	//      (circ[1] - rec.y())*(circ[1] - rec.y()) );
-	float dist = RobustLength( fabs(b_x - m_x), fabs(b_y - m_y) );
+	//float dist = RobustLength( fabs(b_x - m_x), fabs(b_y - m_y) );
+	float dist = std::sqrt((b_x - m_x)*(b_x - m_x)+ (b_y - m_y)*(b_y - m_y) );
 	if ( dist < mindist ) {
 	  bool reverse = true;
-	  for(int j=0; j< final_pmts.size(); j++){
-	    vector <cv::Vec3f> bolts1 = final_pmts[j].bolts;
+	  for(int m=0; m< final_pmts.size(); m++){
+	    vector <cv::Vec3f> bolts1 = final_pmts[m].bolts;
 	    for ( const cv::Vec3f & b1 : bolts1 ){
 	      
 	      //for(unsigned j=0; j<mtd.size(); ++j){
 	      // MedianTextRecord m = mtd[j];
 	      // float d1 = std::sqrt((circ[0]-m.x())*(circ[0]-m.x())+
 	      //       (circ[1]-m.y())*(circ[1]-m.y()));
-	      float d1 = RobustLength( fabs(b[0]-m_x), fabs(b[1]-m_y) );
+	      //float d1 = RobustLength( fabs(b1[0]-m_x), fabs(b1[1]-m_y) );
+	      float d1 = std::sqrt((b1[0]-m_x)*(b1[0]-m_x)+ (b1[1]-m_y)*(b1[1]-m_y) );
 	      if(d1<dist){ reverse = false; break;}
 	    }
 	    if(!reverse){break;}
