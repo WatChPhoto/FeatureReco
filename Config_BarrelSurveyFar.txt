@@ -11,7 +11,8 @@ text_file_mode = 1 # zero means our usual format, and 1 means format for reprojr
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-save_option = 00001
+#save_option = 11111
+save_option =  00001
 
 # Contrast Limited Adaptive Histogram Equalization
 do_clahe = 0 # 0 off, 1 on
@@ -71,12 +72,12 @@ do_ellipse_hough = 1  # 1 for true, 0 for false
 ellipse_hough_minhits      =  9
 ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
-ellipse_hough_nbins_bb     =  40  
+ellipse_hough_nbins_bb     =  50  
 ellipse_hough_nbins_ee     =  10  
 ellipse_hough_nbins_phiphi =  11  
 ellipse_hough_nbins_x      = 975
 ellipse_hough_nbins_y      = 700
-ellipse_hough_bbmin        = 80  
+ellipse_hough_bbmin        = 70  
 ellipse_hough_bbmax        = 110 
 ellipse_hough_eemin        =   0.0
 ellipse_hough_eemax        =  0.35
