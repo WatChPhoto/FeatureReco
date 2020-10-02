@@ -44,6 +44,10 @@ string config::find_name(const string &line){
 double config::Get_double(string key){
 
   ifstream Load("Config.txt");   //loading the data file
+    if ( !Load.is_open() ){
+	std::cout<<"Could not open Config.txt"<<std::endl;
+	exit(0);
+  }
     string line;
     if(key.length()>1){ trim(key);}
     tolower(key);
@@ -89,6 +93,11 @@ double config::Get_double(string key){
 int config::Get_int(string key){
 
   ifstream Load("Config.txt");   //loading the data file
+  if ( !Load.is_open() ){
+	std::cout<<"Could not open Config.txt"<<std::endl;
+	exit(0);
+  }
+
     string line;
     if(key.length()>1){ trim(key);}
     tolower(key);
