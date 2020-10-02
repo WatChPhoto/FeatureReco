@@ -699,11 +699,15 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	ellipse_dist->Fill (dist);
       }
     }
-	
+
+    string outfilename = build_output_textfilename( infname, "he_pmts" ); 
+    std::ofstream fpmt_out (outfilename);
 
     /// draw all ellipses in her on image_ellipse and write
     ///for ( const HoughEllipseResult& her : hers ){
+    unsigned count_pmts=0;
     for ( const PMTIdentified& her : ellipse_pmts ){
+      ++count_pmts;
       //if ( her.bolts.size() < 9 ) continue;
       Size axes(  int(her.circ.get_a()), int(her.circ.get_b()) );
       Point center( int(her.circ.get_xy().x), int(her.circ.get_xy().y) );
@@ -714,7 +718,16 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	circle( image_houghellipse, Point( xyz[0], xyz[1] ), 3, my_color, 2, 0 );
 	//image_ellipse.at<Scalar>( xy.x, xy.y ) = my_color;
       }
-    }  
+
+      fpmt_out<<count_pmts<<"\t"
+	      <<her.circ.get_xy().x<<"\t"
+	      <<her.circ.get_xy().y<<"\t"
+	      <<her.circ.get_b()<<"\t"
+	      <<her.circ.get_e()<<"\t"
+	      <<her.circ.get_phi()<<std::endl;
+
+    }
+    fpmt_out.close();
 
     // histogram PMT locations	  
     pmtidentified_histograms( ellipse_pmts, "final",image_houghellipse.rows, image_houghellipse.cols  );
@@ -727,10 +740,13 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     //it's a way to identify which angle belong to which bolt and which pmt.
     //since final_PMTs and seral_final_bolts are in sync this approach work.
     //const vector<float>& angles = get_angles( final_PMTs, serial_final_bolts );
-    string outfilename = build_output_textfilename( infname, "he_bolts" ); 
+    outfilename = build_output_textfilename( infname, "he_bolts" ); 
     std::ofstream fang_out (outfilename);
 
+    count_pmts=0;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
+      ++count_pmts;
+      fang_out<<count_pmts<<"\t";
       std::cout << pmt;
       fang_out << pmt;
       for ( const float &ang : pmt.angles) {
@@ -1170,9 +1186,12 @@ int main (int argc, char **argv) {
       }
       //have_truth == 0 means 2 argument mode without true bolt information provided
       //bool have_truth = argc - 2;
+
+      std::cout<<"Processing image "<<argv[1]<<std::endl;
       
       Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
 
+      
       Mat image_line = image_color.clone(); //This image will have blobs, mtd and lines
       //trial to find circles of pmt
       /*      Mat tri;
@@ -1193,50 +1212,68 @@ int main (int argc, char **argv) {
 	printf ("No image data \n");
 	return -1;
       }
+
+      //std::cout<<"Image opened"<<std::endl;
+
       
       //option has final, text, candidate, circled, filters
-      const vector < bool > & option = setup_image_saveflags ();
-      
-      Mat image_final = image_color.clone ();
-      Mat image_ellipse = image_color.clone();
+      vector < bool > option = setup_image_saveflags();
+
+      //      std::cout<<"Got the Config file fine."<<std::endl;
+					      
+      Mat image_final = image_color.clone();
+      //Mat image_ellipse = image_color.clone();
       Mat image_houghellipse = image_color.clone();
       Mat img_blob_map = image_color.clone();
-      
+
+      //std::cout<<"Clone complete"<<std::endl;
+					      
       /// build output image
-      Mat image;
+      Mat image;				  
       cvtColor (image_color, image, COLOR_RGBA2GRAY);
-      Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
-      Mat image2 = equalize_by_color( image_color, argv[1], false );
+      //Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
+      //Mat image2 = equalize_by_color( image_color, argv[1], false );
+
+      //std::cout<<"Image converted to grayscale"<<std::endl;
 
       // Open a root file to put histograms into
       TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
+
+      //std::cout<<"Prepared FindBoltLocation.root"<<std::endl;
 
 
       try
 	{
 	  bool verbose = config::Get_int("verbosity");
-      
+
 	  // Gaussian blur
+	  //std::cout<<"Calling gaussian blur"<<std::endl;
 	  Mat img_blur = apply_gaussian_blur( image, option[4], argv[1] );
 
 	  // Bilateral filter
+	  //std::cout<<"Calling bilateral filter"<<std::endl;
 	  Mat img_flt = apply_bilateral_filter( img_blur, option[4], argv[1] );
 
 	  // Sobel edge detection
+	  //std::cout<<"Calling sobel"<<std::endl;
 	  Mat grad = apply_sobel_edge( img_flt, option[4], argv[1] );
 
 	  //Canny edge detector.
+	  //std::cout<<"Calling canny"<<std::endl;
 	  Mat img_can = apply_canny_edge( grad, option[ option.size()-1 ], argv[1] );
 
 	  // equalize image
+	  //std::cout<<"Calling clahe"<<std::endl;
 	  Mat image_clahe = apply_clahe( img_can, (bool)config::Get_int("clahe_write"), argv[1] );
     
 	  // threshold cut
+	  //std::cout<<"Apply threshold cut"<<std::endl;
 	  apply_image_threshold (image_clahe, config::Get_int ("threshold") );
 
 	  // do blob detection
 	  Mat blob_circles;
 	  std::vector < KeyPoint > keypoints;
+	  //std::cout<<"Detecting blobs"<<std::endl;
 	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
 
 	  vector < Vec3f > blobs;
@@ -1250,6 +1287,7 @@ int main (int argc, char **argv) {
 	  }
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
+	  //std::cout<<"Looking for the truth"<<std::endl;
 	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
 	  //drawing mdt in image
 	  draw_text_circles (image_line, mtd);
@@ -1259,7 +1297,8 @@ int main (int argc, char **argv) {
 	  make_bolt_dist_histogram_wrt_txt( blobs, mtd, dis, image_line );
 	  //string outputname = build_output_filename (argv[1], "mapped");
 	  //imwrite(outputname, image_line);
-	  
+
+	  //std::cout<<"Histogramming truth"<<std::endl;	    
 	  histogram_blobs_bymtd( keypoints, mtd );
 
 	  //Debug information PMt
@@ -1273,8 +1312,11 @@ int main (int argc, char **argv) {
 	  //fast_ellipse_detection( blobs, image_ellipse, true, argv[1], mtd );
 
 	  // slow ellipse detection (hough_ellipse.hpp)
+	  //std::cout<<"Callign slow_ellipse_detection"<<std::endl;
+
 	  slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd ); 
-	
+
+	  //std::cout<<"Done slow_ellipse_detection"<<std::endl;
 	  // circle detection on canny image to find bolts
 	  //Mat img_circles; // final image of locatad bolts
 	  //vector< Vec3f > circles = circle_bolt_detection( img_can, image_color, img_circles, option[3], argv[1] );
