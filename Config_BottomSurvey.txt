@@ -11,7 +11,7 @@ text_file_mode = 1 # zero means our usual format, and 1 means format for reprojr
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
 #filters, circled, Candidate, text, final
-save_option = 11111
+save_option = 00001
 
 # Contrast Limited Adaptive Histogram Equalization
 do_clahe = 0 # 0 off, 1 on
