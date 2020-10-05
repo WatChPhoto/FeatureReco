@@ -1,0 +1,111 @@
+#comment with # are ignored.
+                      #               isn't case sensative.
+            #whitespace insensative.
+
+#format is [variable] = [value]
+
+#Textfile saving mode
+text_file_mode = 1 # zero means our usual format, and 1 means format for reprojrection that everyone follows. 
+
+#verbosity
+verbosity = 0 # 0 for not verbose, 1 for verbose
+
+#filters, circled, Candidate, text, final
+save_option = 11111
+
+# Contrast Limited Adaptive Histogram Equalization
+do_clahe = 0 # 0 off, 1 on
+clahe_gridsize = 16 # size of box to equalize in
+clahe_cliplimit = 4 # CLAHE limits the amplification by clipping the histogram at a predefined value (called clip limit)
+clahe_write = 0 # 1 to write image, 0 not
+
+#Gaussian blur
+do_gaus_blur = 0 # 0 for off, any other number for on
+blurpixels = 23 #11 #size of kernal in pixels (must be odd) |5X5 for canny
+blursigma = 40  #10.0  #sigma of gaussian in pixels
+
+#Bilateral filter
+do_bifilter = 1 # 0 for off, any other number for on
+d           = 5 #5  #value 5-9 distance around each pixels to filter(must be odd)
+sigColor    = 2   # gausian range in color to filter over
+sigSpace    = 50  # gaussian sigma in distance for filtering over
+
+#Sobel edge detection
+do_sobel = 0 # 0 for off, any other number for on
+scale = 1 #Scalar to multiply the gradient 
+delta = 15 #0
+
+Canny edge detector parameters.
+do_canny = 0 # 0 for off, any other number for on
+thresh_low = 200     #The gradient value below this will be discarded.
+thresh_high = 230   #The gradient valu agreater than this will be kept.
+                     #The gradient value inbetween is kept if the line is connected else discarded.
+
+#Threshold applied to image
+threshold = 0
+
+#Blob parameters
+blob_minThreshold = 80#100 #80#90#80 #160  #100 #30 #80 #90  #min threshold of color to consider for blob
+blob_maxThreshold = 255#255 #150#200 #180#255 #max threshold of color to consider for blob 
+blob_filterByArea = 1 #1 for true 0 for false
+blob_minArea = 3#5 #3 #4 #6      #Min area to consider as a blob
+blob_maxArea = 70#1000#70     #Max area to consider as a blob                                                                                  
+blob_filterByCircularity = 1 #1 for true 0 for false
+blob_minCircularity = 0.03 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
+blob_minDistBetweenBlobs = 10#1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
+blob_filterByConvexity = 0  #1 for true 0 for false
+blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
+blob_filterByInertia = 0  #1 for true 0 for false
+blob_minInertiaRatio = 0.00001   #It can be thought as essentricity of ellipse
+
+#Hough transform parameters
+hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
+hough_minDist = 20 #25 #20 #35 # min distance between circles
+hough_param1 = 150 #100 # threshold placed on image| Minimum brightness to use for hough space
+hough_param2 = 9 #7  # minimum accumulator value to call it a circle
+hough_minR = 3 #5 # minimum radius in pixels
+hough_maxR = 6 #10 # maximum radius in pixels
+
+# Ellipse hough transform
+do_ellipse_hough = 1  # 1 for true, 0 for false
+ellipse_hough_minhits      =  9
+ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
+ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
+ellipse_hough_nbins_bb     =  35  
+ellipse_hough_nbins_ee     =  25  
+ellipse_hough_nbins_phiphi =  11  
+ellipse_hough_nbins_x      = 975
+ellipse_hough_nbins_y      = 700
+ellipse_hough_bbmin        = 140  
+ellipse_hough_bbmax        = 175 
+ellipse_hough_eemin        =   0.0
+ellipse_hough_eemax        =  0.5
+ellipse_hough_phphimin     =   0.0 
+ellipse_hough_phiphimax    = 3.14159265359
+ellipse_hough_xmin         =  100
+ellipse_hough_xmax         =  3900
+ellipse_hough_ymin         = 100
+ellipse_hough_ymax         = 2900
+
+#Second Hough transform parameters
+sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
+sec_hough_minDist = 216 #210 # min distance between circles
+sec_hough_param1 = 1 # threshold placed on image| Minimum brightness to use for hough space
+sec_hough_param2 = 3 #5  # minimum accumulator value to call it a circle
+sec_hough_minR = 80 #80 # minimum radius in pixels
+sec_hough_maxR = 140 #120 # maximum radius in pixels
+
+#Fast ellipse detection parameters
+de_min_major = 120#90 
+de_max_major = 230#120
+de_min_minor = 120#90
+de_max_minor = 230#120
+de_threshold = 4
+
+
+#Choose to make rsm histogram or mean histogram.
+do_avg = 1 #1 for true 0 for false
+do_rms = 0
+
+#Is the image corner image?
+corner = 0
