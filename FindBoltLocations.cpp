@@ -560,6 +560,25 @@ void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts
 
 
 
+void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
+  std::ostringstream hname;
+  hname << tag << "_blob_size";
+  TH1D* hblobsize = new TH1D( hname.str().c_str(), " ; Blob size; counts/bin", 500, 0.5, 500.5 );
+  hname << "_xy";
+  TH2D* hblobsizexy = new TH2D( hname.str().c_str(), "Blob size; X; Y", 1000, 0., 4000., 750,0.,3000.);
+ 
+    
+  for( const Vec3f& b: blobs){
+    float x = b[0];
+    float y = 3000 - b[1];
+    float sz = b[2] * b[2] *  pi; 
+    hblobsize->Fill( sz );
+    hblobsizexy->Fill( x, y, sz );
+  }
+}
+
+
+
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
 			     bool write_image, const std::string& infname, const MedianTextData & mtd ){ 
 
@@ -612,13 +631,25 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       std::vector< Vec3f > boltlocs;
       std::vector< float > dists;
       for ( const xypoint& xy : her.data ){
-	//	if(her.e.dmin( xy )<5){
 	boltlocs.push_back( Vec3f( xy.x, xy.y, 3 ) );
 	dists.push_back( her.e.dmin( xy ) );
-	//	}
       }
       ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, her.peakval ) );
     }
+
+    /// collect blobs that were put onto PMTs
+    std::vector< Vec3f > blobs_on_pmts;
+    for ( const HoughEllipseResult& her : hers ){
+      for ( const xypoint& xy : her.data ){
+	for ( const Vec3f& b : blobs ){
+	  if ( fabs( b[0]-xy.x )< 1.0 && fabs( b[1]-xy.y ) < 1.0 ){
+	    blobs_on_pmts.push_back( b );
+	    break;
+	  }
+	}
+      }
+    }
+    histogram_blobs( blobs_on_pmts, "_preprune" );
 
     TH1D * hangboltel = new TH1D ("hangboltel", "Angles of bolts (hough ellipse); angle (deg)", 360, 0., 360.);
     TH1D * hdangboltel = new TH1D ("hdangboltel", "Angle of bolt from expected (hough ellipse); #Delta angle (deg)", 60, -15., 15.);
@@ -699,6 +730,21 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 	ellipse_dist->Fill (dist);
       }
     }
+
+    /// collect remaining blobs that were put onto PMTs after pruning
+    std::vector< Vec3f > blobs_afterprune;
+    for ( const PMTIdentified& her : ellipse_pmts ){
+      for ( const Vec3f& xy : her.bolts ){
+	for ( const Vec3f& b : blobs ){
+	  if ( fabs( b[0]-xy[0] )< 1.0 && fabs( b[1]-xy[1] ) < 1.0 ){
+	    blobs_on_pmts.push_back( b );
+	    break;
+	  }
+	}
+      }
+    }
+    histogram_blobs( blobs_afterprune, "_final" );
+
 
     string outfilename = build_output_textfilename( infname, "he_pmts" ); 
     std::ofstream fpmt_out (outfilename);
@@ -1094,6 +1140,11 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 }
 
 
+
+
+
+
+
 //Removing the noise inside of PMT(Filtering blobs)
 void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
   TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
@@ -1313,6 +1364,8 @@ int main (int argc, char **argv) {
 	  //std::cout<<"Detecting blobs"<<std::endl;
 	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
 
+	  histogram_blobs( blobs1, "all" );
+
 	  vector < Vec3f > blobs;
 	  //Filtering closely packed blobs and yellowish blobs for corner image;
 	  bool corner = config::Get_int("corner");
@@ -1322,6 +1375,9 @@ int main (int argc, char **argv) {
 	  else{
 	    blobs = blobs1;
 	  }
+
+	  histogram_blobs( blobs, "rem_bolts" );
+
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  //std::cout<<"Looking for the truth"<<std::endl;
