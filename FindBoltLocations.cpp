@@ -1045,6 +1045,7 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
   TH2D* hblobsizeangbolt = new TH2D("hblobsizeangbolt", "Blob size vs angle of bolt; size; angle; counts/bin", 40, -0.5, 39.5, 40, -20.,20);//0., 360. );
   TH1D* hblobresponsebolt = new TH1D("hblobresponsebolt", "Blob response of bolt; response; counts/bin", 200, 0., 400. );
+  
   TH1D* hbloboctavebolt = new TH1D("hbloboctavebolt", "Blob octave; octave of bolt; counts/bin", 40, -20., 20. );
 
  
@@ -1095,6 +1096,39 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 //Removing the noise inside of PMT(Filtering blobs)
 void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
+  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
+  TH1D* blobsdistance = new TH1D("Mindistance betn blobs", "Min distance between blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
+  int ab=0;
+  for(Vec3f blb: blobs1){
+    blobsize->Fill(blb[2]);
+    double mindist = 10000000;
+    for(int i=0; i<blobs1.size(); i++){
+      if(i==ab)continue;
+      double dist = sqrt((blobs1[i][0]-blb[0])*(blobs1[i][0]-blb[0])+(blobs1[i][1]-blb[1])*(blobs1[i][1]-blb[1]));
+      if(dist<mindist){mindist = dist;}
+    }
+
+    if(mindist!=10000000){  blobsdistance->Fill(mindist);}
+    ab++;
+  }
+
+
+ double x, q;
+ q = 3./4.;//third quartile
+ blobsize->GetQuantiles(1,&x, &q);
+ std::cout<<"Q3 value = "<<x<<std::endl;
+
+ double x_1, q_1,q_2,q_3,x_2, x_3; //quartile
+ q_1 = 1./4.;//first quartile
+ q_2 = 2./4.;//second quartile
+ q_3 = 3./4.;//third quartile
+ blobsdistance->GetQuantiles(1,&x_1, &q_1);
+ blobsdistance->GetQuantiles(1,&x_2, &q_2);
+ blobsdistance->GetQuantiles(1,&x_3, &q_3);
+ std::cout<<"Q1 value = "<<x_1<<std::endl;
+ std::cout<<"Q2 value = "<<x_2<<std::endl;
+ std::cout<<"Q3 value = "<<x_3<<std::endl;
+
   Mat blbs_yellow = img.clone();
   Mat blbs_size = img.clone();
   Mat blbs_near = img.clone();
@@ -1119,7 +1153,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<35){//25){//35){
+      if (dist<x_3){//35){//25){//35){ 
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1140,8 +1174,9 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
 	near = true; break;
       }
     }
-
+   
     //skip if color in centre is yellowish, or radius is greater than 15 or there are two blobs near current blob or there is line. 
+    //Just for seeing it
     if((abs(r-g)<70 && g>50 && abs(g-b)>100)){
       circle( blbs_yellow, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
@@ -1149,10 +1184,12 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     if(near){
       circle( blbs_near, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
-    if(ra>7){
+    if(ra>x){
       circle( blbs_size, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
-    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>7 || near)continue;
+
+
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>x || near)continue;//10 || near)continue;
     
     blobs.push_back(bl);
   }
@@ -1168,9 +1205,9 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
   }  
 
 
-  //imwrite("rem_yellow.jpg", blbs_yellow);
-  //imwrite("rem_near.jpg", blbs_near);
-  // imwrite("rem_size.jpg", blbs_size);
+  imwrite("rem_yellow.jpg", blbs_yellow);
+  imwrite("rem_near.jpg", blbs_near);
+   imwrite("rem_size.jpg", blbs_size);
 
   //imwrite("trimmmmm.jpg", blbs);
 
