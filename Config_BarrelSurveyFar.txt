@@ -109,4 +109,5 @@ do_avg = 1 #1 for true 0 for false
 do_rms = 0
 
 #Is the image corner image?
-corner = 0
+corner = 1
+corner_blobcutval = 15 # 35 for corner images
