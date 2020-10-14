@@ -564,7 +564,7 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
   std::ostringstream hname;
   hname << tag << "_blob_size";
   TH1D* hblobsize = new TH1D( hname.str().c_str(), " ; Blob size; counts/bin", 500, 0.5, 500.5 );
-  hname << "_xy";
+  hname <<tag<< "_xy";
   TH2D* hblobsizexy = new TH2D( hname.str().c_str(), "Blob size; X; Y", 1000, 0., 4000., 750,0.,3000.);
  
     
@@ -575,6 +575,38 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
     hblobsize->Fill( sz );
     hblobsizexy->Fill( x, y, sz );
   }
+  hname.clear();
+  hname<<tag << "blob_radii";
+  TH1D* blobsize = new TH1D(hname.str().c_str(), "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );
+
+  TH1D* blobsdistance1 = new TH1D((tag+"_First_Blob_Dist").c_str(), "Min distance with closest(first) blob; dist; counts/bin",5000. , -0.5, 4999.5 );
+
+  TH1D* blobsdistance2 = new TH1D((tag+"_Second_Blob_Dist").c_str(), "Min distance with second closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
+
+
+  int ab=0; //for recording index of first loop
+  int k=-1; //for recording index of first min distance blob
+  for(Vec3f blb: blobs){
+    blobsize->Fill(blb[2]);
+    double mindist = 10000000;
+    double mindist2 = 10000000;
+    for(int i=0; i<blobs.size(); i++){
+      if(i==ab)continue;
+      double dist = sqrt((blobs[i][0]-blb[0])*(blobs[i][0]-blb[0])+(blobs[i][1]-blb[1])*(blobs[i][1]-blb[1]));
+      if(dist<mindist){mindist = dist; k=i;}
+    }
+   
+    for(int j=0; j<blobs.size(); j++){
+      if(j==ab || j==k)continue;
+      double dist2 = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
+      if(dist2<mindist2){mindist2 = dist2; }
+    }
+
+    if(mindist!=10000000){  blobsdistance1->Fill(mindist);}
+    if(mindist2!=10000000){  blobsdistance2->Fill(mindist2);}
+    ab++;
+  }
+
 }
 
 
@@ -737,7 +769,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       for ( const Vec3f& xy : her.bolts ){
 	for ( const Vec3f& b : blobs ){
 	  if ( fabs( b[0]-xy[0] )< 1.0 && fabs( b[1]-xy[1] ) < 1.0 ){
-	    blobs_on_pmts.push_back( b );
+	    blobs_afterprune.push_back( b );
 	    break;
 	  }
 	}
@@ -1147,7 +1179,7 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 //Removing the noise inside of PMT(Filtering blobs)
 void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
-  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
+  /*  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
   TH1D* blobsdistance = new TH1D("Mindistance betn blobs", "Min distance between blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
   int ab=0;
   for(Vec3f blb: blobs1){
@@ -1179,7 +1211,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
  std::cout<<"Q1 value = "<<x_1<<std::endl;
  std::cout<<"Q2 value = "<<x_2<<std::endl;
  std::cout<<"Q3 value = "<<x_3<<std::endl;
-
+  */
   Mat blbs_yellow = img.clone();
   Mat blbs_size = img.clone();
   Mat blbs_near = img.clone();
@@ -1204,7 +1236,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<x_3){//35){//25){//35){ 
+      if (dist<35){//25){//35){ 
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1235,12 +1267,12 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     if(near){
       circle( blbs_near, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
-    if(ra>x){
+    if(ra>10){
       circle( blbs_size, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
 
 
-    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>x || near)continue;//10 || near)continue;
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>10 || near)continue;//10 || near)continue;
     
     blobs.push_back(bl);
   }
