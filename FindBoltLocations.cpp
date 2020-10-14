@@ -1186,7 +1186,7 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 
 //Removing the noise inside of PMT(Filtering blobs)
-void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
+void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img, const float blobcutlen=35){
   /*  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
   TH1D* blobsdistance = new TH1D("Mindistance betn blobs", "Min distance between blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
   int ab=0;
@@ -1244,7 +1244,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<35){//25){//35){ 
+      if (dist<blobcutlen){//25){//35){ 
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1409,8 +1409,9 @@ int main (int argc, char **argv) {
 	  vector < Vec3f > blobs;
 	  //Filtering closely packed blobs and yellowish blobs for corner image;
 	  bool corner = config::Get_int("corner");
+	  int blobcutval = config::Get_int("corner_blobcutval");
 	  if(corner){
-	    rem_bolts(blobs1, blobs, image_color);
+	    rem_bolts(blobs1, blobs, image_color, blobcutval);
 	  }
 	  else{
 	    blobs = blobs1;
