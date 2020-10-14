@@ -111,3 +111,4 @@ do_rms = 0
 
 #Is the image corner image?
 corner = 1
+corner_blobcutval = 35
