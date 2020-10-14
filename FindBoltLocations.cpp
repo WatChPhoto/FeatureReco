@@ -544,7 +544,7 @@ void pmtidentified_histograms( const std::vector< PMTIdentified > & ellipse_pmts
     hpmt_e->Fill( ee );
     
     hpmt_phixy->Fill( x, y, phi );
-    float theta = (theta>90)?180.0-phi:phi;
+    float theta = (phi>90)?180.0-phi:phi;
     hpmt_phixy0to90->Fill(x,y,theta);
     hpmt_axy->Fill( x, y, aa );
     hpmt_bxy->Fill( x, y, bb );
@@ -575,36 +575,44 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
     hblobsize->Fill( sz );
     hblobsizexy->Fill( x, y, sz );
   }
-  hname.clear();
-  hname<<tag << "blob_radii";
-  TH1D* blobsize = new TH1D(hname.str().c_str(), "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );
+  
+  TH1D* blobsize = new TH1D((tag+"_Blob_radii").c_str(), "Size of Blob; Size; counts/bin", 500, -0.5, 49.5 );
 
   TH1D* blobsdistance1 = new TH1D((tag+"_First_Blob_Dist").c_str(), "Min distance with closest(first) blob; dist; counts/bin",5000. , -0.5, 4999.5 );
 
   TH1D* blobsdistance2 = new TH1D((tag+"_Second_Blob_Dist").c_str(), "Min distance with second closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
 
+  TH1D* blobsdistance3 = new TH1D((tag+"_Third_Blob_Dist").c_str(), "Min distance with third closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
 
-  int ab=0; //for recording index of first loop
-  int k=-1; //for recording index of first min distance blob
-  for(Vec3f blb: blobs){
+
+  int first_ind=-1; //for recording index of first min distance blob
+  int sec_ind =-1;
+  for(int i=0;i<blobs.size();i++){
+    Vec3f blb = blobs[i];
     blobsize->Fill(blb[2]);
     double mindist = 10000000;
     double mindist2 = 10000000;
-    for(int i=0; i<blobs.size(); i++){
-      if(i==ab)continue;
-      double dist = sqrt((blobs[i][0]-blb[0])*(blobs[i][0]-blb[0])+(blobs[i][1]-blb[1])*(blobs[i][1]-blb[1]));
-      if(dist<mindist){mindist = dist; k=i;}
+    double mindist3 = 10000000;
+    for(int j=0; j<blobs.size(); j++){
+      if(j==i)continue;
+      double dist = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
+      if(dist<mindist){mindist = dist; first_ind=j;}
     }
    
     for(int j=0; j<blobs.size(); j++){
-      if(j==ab || j==k)continue;
+      if(j==i || j==first_ind)continue;
       double dist2 = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
-      if(dist2<mindist2){mindist2 = dist2; }
+      if(dist2<mindist2){mindist2 = dist2; sec_ind = j; }
+    }
+for(int j=0; j<blobs.size(); j++){
+      if(j==i || j==first_ind || j==sec_ind)continue;
+      double dist3 = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
+      if(dist3<mindist3){mindist3 = dist3; }
     }
 
     if(mindist!=10000000){  blobsdistance1->Fill(mindist);}
     if(mindist2!=10000000){  blobsdistance2->Fill(mindist2);}
-    ab++;
+    if(mindist3!=10000000){  blobsdistance3->Fill(mindist3);}
   }
 
 }
