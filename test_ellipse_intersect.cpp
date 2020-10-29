@@ -104,6 +104,10 @@ int main(){
   
   ellipse( m, center1, axes1, phi1, 0., 360,  Scalar (0, 0, 255), 1 );
 
+  //converting angle to radian
+  phi0=phi0*acos(-1)/180.0;
+  phi1=phi1*acos(-1)/180.0;
+  
   ellipse_st first(b0, e0, phi0, xypoint(x0,y0));
   ellipse_st second(b1, e1, phi1, xypoint(x1,y1));
   
@@ -129,11 +133,14 @@ int main(){
   putText(m, text, cv::Point(2,480),FONT_HERSHEY_SIMPLEX , 0.5, cv::Scalar(0,0,255) );
 
   putText(m, std::to_string(inters), cv::Point(2,500),FONT_HERSHEY_SIMPLEX , 0.5, cv::Scalar(0,0,255) );
-  
-  // std::string name = "./runs/"+std::to_string(inters)+"/ellipse_test"+std::to_string(i)+".jpg";
-  //  imwrite(name, m);
-   imwrite("ellipse.jpg", m);
 
+  if(debug){
+   std::string name = "./runs/"+std::to_string(inters)+"/ellipse_test"+std::to_string(i)+".jpg";
+    imwrite(name, m);
+  }
+  if(!debug){
+  imwrite("ellipse.jpg", m);
+  }
   outfile.close();
    }
   return 0;

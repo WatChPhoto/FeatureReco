@@ -1,5 +1,6 @@
 /*################################################################################
 #Code to classify if two ellipse intersect, one is inside other, or separated    #
+#Only send angle in radians!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!    #
 #based on:https://www.geometrictools.com/Documentation/IntersectionOfEllipses.pdf#
 #                                                                                #  
 ##################################################################################*/
@@ -25,7 +26,7 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
   //double phi0 = (ee0==0.0)?0.0:degree_to_Rad(e0.get_phi()); //when input angle is in degree
   double phi0 = (ee0==0.0)?0.0:e0.get_phi();//when angle is in radian
   xypoint cent0 = e0.get_xy();
-  
+
   //Getting parameters for Second ellipse
   double a1 = e1.get_a();
   double b1 = e1.get_b();
@@ -39,34 +40,38 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
   //M(matrix) = U0U0/l0^2+U0U1^T/l1^2; where U = unit vector along ellipse axis
   //M is positive definite matrix=> symmetric matrix with all +ve eigenvalue.
   Matx21d K0(cent0.x,
-	     cent0.y);
+  	     cent0.y);
   
   //M = RDR^T (eigenvalue decomposition; R is orthogonal so R^-1 = R^T)
   //R0=matrix with column vector(unit) pointing in direction of ellipse axis.
   Matx22d R0(cos(phi0), -1.0*sin(phi0),
-	     sin(phi0), cos(phi0));
+  	     sin(phi0), cos(phi0));
  
   Matx22d D0(1.0/(a0*a0), 0.,
-	     0., 1.0/(b0*b0));
+  	     0., 1.0/(b0*b0));
     
     
   //parameters of ellipse 1
   Matx21d K1(cent1.x,
-	     cent1.y);
+  	     cent1.y);
   
   Matx22d R1(cos(phi1), -1.0*sin(phi1),
-	     sin(phi1), cos(phi1));
+  	     sin(phi1), cos(phi1));
   
-  Matx22d D1(1.0/(a1*a1), 0,
-	     0, 1.0/(b1*b1));
+  Matx22d D1(1.0/(a1*a1), 0.,
+                0., 1.0/(b1*b1));
 
   //D0^-0.5 
+  /*Mat D0NegHalf(2, 2, CV_64FC1);
+  m.at<double>(0,0)=a0; m.at<double>(0,1)=0.;
+  m.at<double>(1,0)=0.; m.at<double>(1,1)=b0;
+  */
   Matx22d D0NegHalf(a0, 0,
-		    0, b0);
+  		    0, b0);
     
   //D0Half = D0^0.5
   Matx22d D0Half(1.0/a0, 0,
-		 0, 1.0/b0);
+  		 0, 1.0/b0);
     
   //K= centre of transformed ellipse(2)(variable changed to Y)  
   Matx21d K2 = D0Half*(R0.t())*(K1-K0);
@@ -75,14 +80,27 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
   
   //M2 = D^-0.5R0^TR1D1R^TR0D0^-0.5
   Matx22d M2 = D0NegHalfR0TR1*D1*(D0NegHalfR0TR1.t());
+
+  //changing to CV_64FC1 to apply eigen()
+  Mat Me(2, 2, CV_64FC1);
+  Me.at<double>(0,0)=M2(0,0); Me.at<double>(0,1)=M2(0,1);
+  Me.at<double>(1,0)=M2(1,0); Me.at<double>(1,1)=M2(1,1);
   
   //M2 = RDR^T
   //M2 is symmetric matrix(when the shape is ellipse).
+  Mat eval(2, 2, CV_64FC1);
+  //
+  //Matx22d eigenvalues;
+  Mat evec(2, 2, CV_64FC1);
+  //
+  eigen(Me, eval, evec);
+
+  //Filling eigenvalue and eigenvector matrix
   std::vector<double> eigenvalues;
-  Matx22d eigenvector;
-  eigen(M2,eigenvalues, eigenvector);
-    
-  //eigen() outputs eigenvector in each row, but we want eigenvectors in column
+  eigenvalues.push_back(eval.at<double>(0,0));  eigenvalues.push_back(eval.at<double>(1,0));
+  Matx22d eigenvector(evec.at<double>(0,0), evec.at<double>(0,1),
+		      evec.at<double>(1,0), evec.at<double>(1,1));
+  
   Matx22d R = eigenvector.t();
   std::vector<double> D = eigenvalues;
   
@@ -96,12 +114,19 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
     std::cout<<"M201 = "<<M2(0,1)<<std::endl;
     std::cout<<"M210 = "<<M2(1,0)<<std::endl;
     std::cout<<"M211 = "<<M2(1,1)<<std::endl;
-    std::cout<<"eigen vector"<<std::endl;
-    std::cout<<R(0,0)<<" "<<R(0,1)<<std::endl;
-    std::cout<<R(1,0)<<" "<<R(1,1)<<std::endl;
     std::cout<<"M2"<<std::endl;
     std::cout<<M2(0,0)<<" "<<M2(0,1)<<std::endl;
     std::cout<<M2(1,0)<<" "<<M2(1,1)<<std::endl;
+    std::cout<<"eigen vector"<<std::endl;
+    std::cout<<R(0,0)<<" "<<R(0,1)<<std::endl;
+    std::cout<<R(1,0)<<" "<<R(1,1)<<std::endl;
+    std::cout<<"eigenvalue"<<std::endl;
+    std::cout<<"D0 "<<" "<<D[0]<<std::endl;
+    std::cout<<"D[1] "<<" "<<D[1]<<std::endl;
+    //std::cout<<"eigen values "<<" "<<eigenvalues.at<double>(0,0)<<std::endl;
+    //std::cout<<"eigen value "<<" "<<eigenvalues.at<double>(0,1)<<std::endl;
+    //std::cout<<"eigen values "<<" "<<eigenvalues.at<double>(1,0)<<std::endl;
+    //std::cout<<"eigen value "<<" "<<eigenvalues.at<double>(1,1)<<std::endl;
 
     //Drawing the transformed and axis aligned version.
     Mat mpa = cv::Mat(cv::Size(500, 500), CV_64FC3, Scalar(0,0,0));
