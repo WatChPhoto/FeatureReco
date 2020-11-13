@@ -48,6 +48,12 @@ void draw_text_circles(cv::Mat &img, const MedianTextData& mtd);
 //Returns empty vector if text file is not supplied.
 MedianTextData assign_data_from_text(int argc, std::string argv);
 
+//For assigning Michael's /Dan's Data to the vector<Vec3f>
+std::vector<cv::Vec3f> fill_bolts_vector(std::string argv);
+
+//Writting blobs location for purpose of getting true bolts from reprojecion.
+void write_to_text(std::string argv, const std::vector<cv::Vec3f> &blobs);
+
 //flags to turn on/off saving images
 std::vector<bool> setup_verbosity(int option);
 

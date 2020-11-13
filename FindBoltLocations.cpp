@@ -583,7 +583,23 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
   TH1D* blobsdistance2 = new TH1D((tag+"_Second_Blob_Dist").c_str(), "Min distance with second closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
 
   TH1D* blobsdistance3 = new TH1D((tag+"_Third_Blob_Dist").c_str(), "Min distance with third closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
+  TH1D* blobsdensity = new TH1D((tag+"Blobs_density").c_str(), "Blobs Density; Density(num/35^2Pi); counts/bin",50. , -0.5, 49.5 );  
+  TH2D* blobsdensity2D = new TH2D((tag+"Blobs_density_2D").c_str(), "Blobs Density_2D;X;Y",1000, 0., 4000., 750,0.,3000. );  
 
+  //fill the blob density histogra
+  //std::vector<int> ind;
+  for(int i=0;i<blobs.size();i++){
+    Vec3f blb = blobs[i];
+    int count =1;
+    for(int j=0; j<blobs.size(); j++){
+      if(j==i)continue;
+      double dist = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
+      if(dist<35){count++;}
+    }
+    blobsdensity->Fill(count);
+    blobsdensity2D->Fill(blb[0],2750.-blb[1],count);
+  }
+  //end
 
   int first_ind=-1; //for recording index of first min distance blob
   int sec_ind =-1;
@@ -1186,7 +1202,7 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 
 //Removing the noise inside of PMT(Filtering blobs)
-void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img, const float blobcutlen=35){
+void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img){
   /*  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
   TH1D* blobsdistance = new TH1D("Mindistance betn blobs", "Min distance between blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
   int ab=0;
@@ -1220,6 +1236,42 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
  std::cout<<"Q2 value = "<<x_2<<std::endl;
  std::cout<<"Q3 value = "<<x_3<<std::endl;
   */
+  vector<vector<int>>disk;
+  for(int i=0; i<blobs1.size(); ++i){
+    vector<int>entries;
+    for(int j =0; j<blobs1.size();++j){
+      float dist = RobustLength(fabs(blobs1[i][0]-blobs1[j][0]),fabs(blobs1[i][1]-blobs1[j][1]));
+      if(dist<=35){
+	entries.push_back(j);
+      }
+    }
+    if(entries.size()<=0){
+      entries.push_back(-1);
+    }
+    
+    disk.push_back(entries);
+  }
+
+  for(int i=0; i<disk.size(); i++){
+    int sum = 0;
+    if(disk[i].size()<3){
+      blobs.push_back(blobs1[i]);
+    }
+    /*
+    for(int j=0; j<disk[i].size(); j++){
+      int num = disk[i].size();
+      
+      if(num>2){sum++;}
+    } 
+    */
+    if(disk[i].size()>14){}//disk[i].size()>2 && sum>2){}
+    else{
+      blobs.push_back(blobs1[i]);
+    }
+  
+  }
+
+  if(0){
   Mat blbs_yellow = img.clone();
   Mat blbs_size = img.clone();
   Mat blbs_near = img.clone();
@@ -1244,7 +1296,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<blobcutlen){//25){//35){ 
+      if (dist<35){//25){//35){ 
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1275,12 +1327,12 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     if(near){
       circle( blbs_near, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
-    if(ra>10){
+    if(ra>6){
       circle( blbs_size, Point( bl[0], bl[1] ), 3, Scalar(0,200,0), 2, 0 );
     }
 
 
-    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>10 || near)continue;//10 || near)continue;
+    if((abs(r-g)<70 && g>50 && abs(g-b)>100)||ra>6 || near)continue;//10 || near)continue;
     
     blobs.push_back(bl);
   }
@@ -1301,18 +1353,26 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
    imwrite("rem_size.jpg", blbs_size);
 
   //imwrite("trimmmmm.jpg", blbs);
-
+  }
 }
 
 
 
 int main (int argc, char **argv) {
 
-      if (argc != 2 && argc != 3) {
-	printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
-	return -1;
-      }
-      //have_truth == 0 means 2 argument mode without true bolt information provided
+  unsigned blobs_supplied=0;
+  if(std::string(argv[argc-1])=="-i" || std::string(argv[argc-1])=="i"){
+    std::cout<<"true"<<std::endl;
+    blobs_supplied=1;
+  }
+
+  if (argc != 2 && argc != 3 && argc!=4 && argc!=5) {
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>][<truth-text-file>]\n");
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>][<blobs-input-file>] [-i]\n");
+    return -1;
+  }
+  //have_truth == 0 means 2 argument mode without true bolt information provided
       //bool have_truth = argc - 2;
 
       std::cout<<"Processing image "<<argv[1]<<std::endl;
@@ -1350,6 +1410,8 @@ int main (int argc, char **argv) {
       //      std::cout<<"Got the Config file fine."<<std::endl;
 					      
       Mat image_final = image_color.clone();
+
+      Mat input_blobs = image_color.clone();
       //Mat image_ellipse = image_color.clone();
       Mat image_houghellipse = image_color.clone();
       Mat img_blob_map = image_color.clone();
@@ -1402,16 +1464,32 @@ int main (int argc, char **argv) {
 	  Mat blob_circles;
 	  std::vector < KeyPoint > keypoints;
 	  //std::cout<<"Detecting blobs"<<std::endl;
-	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+	  vector< Vec3f > blobs1;
+	  if(!blobs_supplied){
+	    blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+	  }
+	  //vector< Vec3f > blobs2;
+	  if(blobs_supplied){
+	    blobs1 = fill_bolts_vector(string(argv[2]));
+	    //std::cout<<argv[2]<<std::endl;
+	  }
+	  
+	  if(config::Get_int ("save_blobs_in_text"){
+	      std::string name = build_output_filename(argv[1],"blobs");
+	      name = name.substr(0,name.length()-4);
+	      write_to_text(name, blobs1);
+	      //drawing blobs from Dan's file
+	      draw_foundblobs( blobs1, input_blobs );
+	      imwrite("input_blobs.jpg", input_blobs);
+	      
+	      histogram_blobs( blobs1, "all" );
+	    }
 
-	  histogram_blobs( blobs1, "all" );
-
-	  vector < Vec3f > blobs;
-	  //Filtering closely packed blobs and yellowish blobs for corner image;
-	  bool corner = config::Get_int("corner");
-	  int blobcutval = config::Get_int("corner_blobcutval");
+	    vector < Vec3f > blobs;
+	    //Filtering closely packed blobs and yellowish blobs for corner image;
+	    bool corner = config::Get_int("corner");
 	  if(corner){
-	    rem_bolts(blobs1, blobs, image_color, blobcutval);
+	    rem_bolts(blobs1, blobs, image_color);
 	  }
 	  else{
 	    blobs = blobs1;
@@ -1422,7 +1500,10 @@ int main (int argc, char **argv) {
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  //std::cout<<"Looking for the truth"<<std::endl;
-	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+	  //if(argc==3){
+	    const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+	    // }
+
 	  //drawing mdt in image
 	  draw_text_circles (image_line, mtd);
 	  draw_circle_from_data (blobs, image_line,
