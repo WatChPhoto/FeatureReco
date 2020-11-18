@@ -583,7 +583,23 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
   TH1D* blobsdistance2 = new TH1D((tag+"_Second_Blob_Dist").c_str(), "Min distance with second closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
 
   TH1D* blobsdistance3 = new TH1D((tag+"_Third_Blob_Dist").c_str(), "Min distance with third closest blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
+  TH1D* blobsdensity = new TH1D((tag+"Blobs_density").c_str(), "Blobs Density; Density(num/35^2Pi); counts/bin",50. , -0.5, 49.5 );  
+  TH2D* blobsdensity2D = new TH2D((tag+"Blobs_density_2D").c_str(), "Blobs Density_2D;X;Y",1000, 0., 4000., 750,0.,3000. );  
 
+  //fill the blob density histogra
+  //std::vector<int> ind;
+  for(int i=0;i<blobs.size();i++){
+    Vec3f blb = blobs[i];
+    int count =1;
+    for(int j=0; j<blobs.size(); j++){
+      if(j==i)continue;
+      double dist = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
+      if(dist<35){count++;}
+    }
+    blobsdensity->Fill(count);
+    blobsdensity2D->Fill(blb[0],2750.-blb[1],count);
+  }
+  //end
 
   int first_ind=-1; //for recording index of first min distance blob
   int sec_ind =-1;
@@ -617,7 +633,88 @@ for(int j=0; j<blobs.size(); j++){
 
 }
 
+void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::string tag){
+  TH2D* blobsdensity2D = new TH2D((tag+"stddev with 15").c_str(), "Std Deviation;X;Y",1000, 0., 4000., 750,0.,3000. );  
+  TH2D* blobsdensity2D1 = new TH2D((tag+"stddev with mean").c_str(), "Std Deviation;X;Y",1000, 0., 4000., 750,0.,3000. );  
+  TH2D* blobsdensity2D2 = new TH2D((tag+"stddev with median").c_str(), "Std Deviation;X;Y",1000, 0., 4000., 750,0.,3000. );  
+  for(PMTIdentified her: ellipse_pmts){
+    float a = her.circ.get_xy().x ;
+    float b = her.circ.get_xy().y ; // axis start from left bottom corner y^->x
+    float aa = her.circ.get_a();
+    float bb = her.circ.get_b();
+    float ee = her.circ.get_e();
+    float area = aa*bb*pi;
+    float phi = her.circ.get_phi();
 
+    vector<float>data;    
+    for(int j=0; j<her.bolts.size(); j++){
+      float x0=her.bolts[j][0]-a;
+      float y0=her.bolts[j][1]-b;
+      float min_ang=362;
+      for(int k=0; k<her.bolts.size(); k++){
+	if(j==k){continue;}
+	float x1=her.bolts[k][0]-a;
+	float y1=her.bolts[k][1]-b;
+	
+	float theta = std::acos(fabs(((x0*x1)+(y0*y1))/(std::sqrt(((x0*x0)+(y0*y0))*((x1*x1)+(y1*y1))))));
+	theta = theta*180.0/acos(-1);
+	if(theta<min_ang){
+	  min_ang=theta;
+	}
+	
+      }
+      data.push_back(min_ang);
+
+    }
+    
+    //based on mode
+    //have to sort first
+    std::vector<float>dmedian=data;
+    for(int i=0; i<data.size();i++){
+      float d=dmedian[i];
+      int ind=-1;
+      for(int k=i+1;k<data.size();k++){
+	if(dmedian[k]<d){d=dmedian[k]; ind=k;}
+      }
+      if(ind>=0){ dmedian[ind]=data[i]; dmedian[i]=d;}
+    }
+    
+    float median = dmedian[data.size()/2];
+
+    float avg=15.;//0;
+    
+    float mean; 
+    for(float x:data){
+      mean +=x;
+    }
+    mean /= data.size();
+    
+    //calculating stddev
+    float sum=0;
+    for(float x:data){
+      sum += (x-avg)*(x-avg);
+    }
+    //for mean
+    float sum1=0;
+    for(float x:data){
+      sum1 += (x-mean)*(x-mean);
+    }
+    //median
+    float sum2=0;
+    for(float x:data){
+      sum2 += (x-median)*(x-median);
+    }
+    
+    float stddev = sqrt(sum/data.size());
+    float stddev1 = sqrt(sum1/data.size());
+    float stddev2 = sqrt(sum2/data.size());
+    blobsdensity2D->Fill(a,2750.-b,stddev);
+    blobsdensity2D1->Fill(a,2750.-b,stddev1);
+    blobsdensity2D2->Fill(a,2750.-b,stddev2);
+   
+  }
+  
+}
 
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
 			     bool write_image, const std::string& infname, const MedianTextData & mtd ){ 
@@ -676,6 +773,9 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
       ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, her.peakval ) );
     }
+
+    //Trial here.
+    histogram_stddev(ellipse_pmts, "before");
 
     /// collect blobs that were put onto PMTs
     std::vector< Vec3f > blobs_on_pmts;
@@ -758,7 +858,8 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     //making histogram of angle of ellipse wrt y-axis and size
     //TH2D *ellipse_feature = new TH2D("Ellipse feature", "Ellipse feature; y-value;phi(degree);size; count); 
 
-
+    histogram_stddev(ellipse_pmts, "after_pruning");
+    
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
 				    "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
@@ -1220,6 +1321,43 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
  std::cout<<"Q2 value = "<<x_2<<std::endl;
  std::cout<<"Q3 value = "<<x_3<<std::endl;
   */
+  if(0){
+ vector<vector<int>>disk;
+  for(int i=0; i<blobs1.size(); ++i){
+    vector<int>entries;
+    for(int j =0; j<blobs1.size();++j){
+      float dist = RobustLength(fabs(blobs1[i][0]-blobs1[j][0]),fabs(blobs1[i][1]-blobs1[j][1]));
+      if(dist<=35){
+	entries.push_back(j);
+      }
+    }
+    if(entries.size()<=0){
+      entries.push_back(-1);
+    }
+    
+    disk.push_back(entries);
+  }
+
+  for(int i=0; i<disk.size(); i++){
+    int sum = 0;
+    if(disk[i].size()<3){
+      blobs.push_back(blobs1[i]);
+    }
+    /*
+    for(int j=0; j<disk[i].size(); j++){
+      int num = disk[i].size();
+      
+      if(num>2){sum++;}
+    } 
+    */
+    if(disk[i].size()>14){}//disk[i].size()>2 && sum>2){}
+    else{
+      blobs.push_back(blobs1[i]);
+    }
+    
+  }
+  }
+  if(1){
   Mat blbs_yellow = img.clone();
   Mat blbs_size = img.clone();
   Mat blbs_near = img.clone();
@@ -1244,7 +1382,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     for(int i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
-      if (dist<blobcutlen){//25){//35){ 
+      if (dist<blobcutlen){//35){//25){//35){ 
 	n++;   //count number of blobs within 35 px
 	ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
@@ -1301,18 +1439,26 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
    imwrite("rem_size.jpg", blbs_size);
 
   //imwrite("trimmmmm.jpg", blbs);
-
+  }
 }
 
 
 
 int main (int argc, char **argv) {
 
-      if (argc != 2 && argc != 3) {
-	printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
-	return -1;
-      }
-      //have_truth == 0 means 2 argument mode without true bolt information provided
+  unsigned blobs_supplied=0;
+  if(std::string(argv[argc-1])=="-i" || std::string(argv[argc-1])=="i"){
+    std::cout<<"true"<<std::endl;
+    blobs_supplied=1;
+  }
+
+  if (argc != 2 && argc != 3 && argc!=4 && argc!=5) {
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>][<truth-text-file>]\n");
+    printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>][<blobs-input-file>] [-i]\n");
+    return -1;
+  }
+  //have_truth == 0 means 2 argument mode without true bolt information provided
       //bool have_truth = argc - 2;
 
       std::cout<<"Processing image "<<argv[1]<<std::endl;
@@ -1350,6 +1496,8 @@ int main (int argc, char **argv) {
       //      std::cout<<"Got the Config file fine."<<std::endl;
 					      
       Mat image_final = image_color.clone();
+
+      Mat input_blobs = image_color.clone();
       //Mat image_ellipse = image_color.clone();
       Mat image_houghellipse = image_color.clone();
       Mat img_blob_map = image_color.clone();
@@ -1402,16 +1550,33 @@ int main (int argc, char **argv) {
 	  Mat blob_circles;
 	  std::vector < KeyPoint > keypoints;
 	  //std::cout<<"Detecting blobs"<<std::endl;
-	  vector< Vec3f > blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+	  vector< Vec3f > blobs1;
+	  if(!blobs_supplied){
+	    blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
+	  }
+	  //vector< Vec3f > blobs2;
+	  if(blobs_supplied){
+	    blobs1 = fill_bolts_vector(string(argv[2]));
+	    //std::cout<<argv[2]<<std::endl;
+	  }
+	  
+	  if(config::Get_int ("save_blobs_in_text")){
+	      std::string name = build_output_filename(argv[1],"blobs");
+	      name = name.substr(0,name.length()-4);
+	      write_to_text(name, blobs1);
+	      //drawing blobs from Dan's file
+	      draw_foundblobs( blobs1, input_blobs );
+	      imwrite("input_blobs.jpg", input_blobs);
+	      
+	      histogram_blobs( blobs1, "all" );
+	    }
 
-	  histogram_blobs( blobs1, "all" );
-
-	  vector < Vec3f > blobs;
-	  //Filtering closely packed blobs and yellowish blobs for corner image;
-	  bool corner = config::Get_int("corner");
-	  int blobcutval = config::Get_int("corner_blobcutval");
-	  if(corner){
-	    rem_bolts(blobs1, blobs, image_color, blobcutval);
+	    vector < Vec3f > blobs;
+	    //Filtering closely packed blobs and yellowish blobs for corner image;
+	    bool corner = config::Get_int("corner");
+	    int blobcutval = config::Get_int("corner_blobcutval");
+	    if(corner){
+	      rem_bolts(blobs1, blobs, image_color, blobcutval);
 	  }
 	  else{
 	    blobs = blobs1;
@@ -1422,7 +1587,10 @@ int main (int argc, char **argv) {
 	  // Read in truth bolt locations if provided
 	  // Returns empty vector if text file is not supplied.
 	  //std::cout<<"Looking for the truth"<<std::endl;
-	  const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+	  //if(argc==3){
+	    const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+	    // }
+
 	  //drawing mdt in image
 	  draw_text_circles (image_line, mtd);
 	  draw_circle_from_data (blobs, image_line,

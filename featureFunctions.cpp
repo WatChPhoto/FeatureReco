@@ -293,7 +293,7 @@ void draw_found_center(const std::vector<cv::Vec3f>& data, cv::Mat & image){
 
 void draw_foundblobs(const std::vector<cv::Vec3f>& data, cv::Mat & image){
   for( size_t i = 0; i < data.size(); i++ ) {
-    circle(image, cv::Point( data[i][0], data[i][1] ), data[i][2], 255, -1 );
+    circle(image, cv::Point( data[i][0], data[i][1] ), data[i][2], cv::Scalar(0,255,255), -1 );
   }
 }
 
@@ -316,6 +316,39 @@ MedianTextData assign_data_from_text(int argc, std::string argv){
   MedianTextReader *boltreader = MedianTextReader::Get();
   boltreader->set_input_file( std::string( argv ) );
   return boltreader->get_data();
+}
+
+//Assign data from Michael's /Dan's code
+//Returns empty vector if text file is not supplied.
+std::vector<cv::Vec3f> fill_bolts_vector(std::string argv){
+  //  if(argc==2){MedianTextData a; return a;}
+  std::vector <cv::Vec3f> bolts;
+  std::string line;
+  std::ifstream boltloc(argv);
+  if(boltloc.is_open()){
+    while(getline(boltloc, line)){
+      int indx;
+      std::istringstream iss(line);
+      cv::Vec3f temp(1);
+      iss>>indx>>temp[0]>>temp[1];
+      temp[2]=3; //fake radius;
+      bolts.push_back(temp);
+    }
+    boltloc.close();
+  }
+  else{ std::cout<<"Unable to open "<<argv<<std::endl;}
+  return bolts;
+}
+
+void write_to_text(std::string argv, const std::vector<cv::Vec3f> &blobs){
+  std::ofstream text((argv+".txt").c_str());
+  if(text.is_open()){
+    for(unsigned i=0; i<blobs.size();i++){
+      text<<"-1\t"<<blobs[i][0]<<"\t"<<blobs[i][1]<<std::endl;
+    } 
+    text.close();
+  }
+  else{ std::cout<<"Unable to open "<<(argv+".txt").c_str()<<std::endl;}  
 }
 
 

@@ -111,3 +111,6 @@ do_rms = 0
 #Is the image corner image?
 corner = 1
 corner_blobcutval = 15 # 35 for corner images
+
+#Save blobs for someone to give us list	of true	bolts back.
+save_blobs_in_text = 0
