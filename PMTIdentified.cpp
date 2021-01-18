@@ -293,17 +293,128 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
 }
 
 
+
+
+void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset, float dev_thresh ){
+  float angle_betn_consecutive_bolts = 360.0 / 24; // angle between two consecutive bolts.
+
+
+for( PMTIdentified& pmt : final_pmts ){
+    std::vector< unsigned > indices_to_keep;
+    Point2f c0 ( pmt.circ.get_xy().x, pmt.circ.get_xy().y );   //centre of PMT
+
+    int max_votes=0;
+    int idxc=-1;  //index of max vote.
+    //Finding the bolt that is most likely true. Based on max_votes
+    for ( unsigned i =0 ; i<pmt.bolts.size(); ++i ){
+      // find angle closest to 15 degrees from this angle
+      Point2f v1(pmt.bolts[i][0]-c0.x, pmt.bolts[i][1]-c0.y);  //vector going from centre of ellipse to the bolt at index i.
+      
+      int cur_vote=0;
+      for ( unsigned j =0 ; j<pmt.bolts.size(); ++j ){
+	if ( i == j ) continue;
+	Point2f v2(pmt.bolts[j][0]-c0.x, pmt.bolts[j][1]-c0.y);  //vector going from centre of ellipse to the bolt at index j.
+	
+	//Finding angle between V1 and v2 vectors. Angle is between 0 to 180 degree.
+	//cos(theta)=v1.v2/||v1||||v2||
+	float dang = acos(((v1.x*v2.x)+(v1.y*v2.y))/(sqrt((v1.x*v1.x)+(v1.y*v1.y))*sqrt((v2.x*v2.x)+(v2.y*v2.y))))*(180.0/acos(-1));
+	float rem = fabs(dang-round(dang/angle_betn_consecutive_bolts)*angle_betn_consecutive_bolts); //angle offset form expected
+	
+	if(rem<dev_thresh||rem>(angle_betn_consecutive_bolts-dev_thresh)){cur_vote++;}
+      }
+      if (cur_vote>=max_votes){max_votes=cur_vote; idxc = i;}
+    }
+    
+    indices_to_keep.push_back(idxc); 
+    //std::vector<unsigned> dont_add;
+    Point2f v1(pmt.bolts[idxc][0]-c0.x, pmt.bolts[idxc][1]-c0.y);  //vector going from centre of ellipse to the bolt at index i.
+
+    for ( unsigned k =0 ; k<pmt.bolts.size(); ++k ){
+      if ( k == idxc ) {continue;}
+      //condition to keep bolts is 
+      //1) Bolt is within threshold of expected angle.
+      //2)If there are two bolts at angle < 15/2=7.5 degrees one of them should be reoved.
+      bool within_thresh=false;  
+      bool duplicate=false;
+
+      Point2f v2(pmt.bolts[k][0]-c0.x, pmt.bolts[k][1]-c0.y);  //vector going from centre of ellipse to the bolt at index j.
+
+      float dang = acos(((v1.x*v2.x)+(v1.y*v2.y))/(sqrt((v1.x*v1.x)+(v1.y*v1.y))*sqrt((v2.x*v2.x)+(v2.y*v2.y))))*(180.0/acos(-1));
+      
+      float rem = fabs(dang - round(dang/angle_betn_consecutive_bolts)*angle_betn_consecutive_bolts); //angle offset from expected.
+      if(rem<dev_thresh||rem>(angle_betn_consecutive_bolts-dev_thresh)){within_thresh=true;}
+
+      //now determining if the bolt is duplicate(odd)
+      for(int m=0; m<pmt.bolts.size(); ++m){
+	if(k==m)continue;
+	Point2f v3(pmt.bolts[m][0]-c0.x, pmt.bolts[m][1]-c0.y);  //vector going from centre of ellipse to the bolt at index m.
+	float dang = acos(((v2.x*v3.x)+(v2.y*v3.y))/(sqrt((v2.x*v2.x)+(v2.y*v2.y))*sqrt((v3.x*v3.x)+(v3.y*v3.y))))*(180.0/acos(-1));
+	
+	if(dang<(angle_betn_consecutive_bolts/2.0)){
+	  //then remove the one that is more off from expected location
+	  float dang2 = acos(((v2.x*v1.x)+(v2.y*v1.y))/(sqrt((v2.x*v2.x)+(v2.y*v2.y))*sqrt((v1.x*v1.x)+(v1.y*v1.y))))*(180.0/acos(-1));
+	  float dang3 = acos(((v3.x*v1.x)+(v3.y*v1.y))/(sqrt((v3.x*v3.x)+(v3.y*v3.y))*sqrt((v1.x*v1.x)+(v1.y*v1.y))))*(180.0/acos(-1));
+	  float rem2 = fabs(dang2-round(dang2/angle_betn_consecutive_bolts)*angle_betn_consecutive_bolts);//angle offset from expected for index k
+	  float rem3 = fabs(dang3-round(dang3/angle_betn_consecutive_bolts)*angle_betn_consecutive_bolts);//angle offset from expected for index m
+	  if(rem2>rem3){duplicate=true; break;}
+	}
+      }
+
+      if((!duplicate) && within_thresh){
+	indices_to_keep.push_back(k);
+      }
+    }
+ 
+ 
+
+    // now remove bolts
+    std::vector<cv::Vec3f> bolts; // bolts going with this PMT
+    std::vector<float> dists; // distance of bolt from PMT circle 
+    std::vector<float> angles; // angle of each bolt
+    std::vector<float> dangs;  // difference in angle from boltid's angle
+    std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
+    
+    // include comparison to truth if available
+    std::vector<int>   idx_txt; // index of medianTextReader
+    std::vector<float> dist_txt; // distance to closest matching bolt
+    
+    for (unsigned i=0; i<indices_to_keep.size() ; ++i ){
+      //if ( std::find( indices_to_keep.begin(), indices_to_keep.end(), i ) == indices_to_keep.end() ) continue;
+      bolts.push_back( pmt.bolts[ indices_to_keep[i] ] );
+      dists.push_back( pmt.dists[ indices_to_keep[i] ] );
+      float cor_ang = pmt.angles[ indices_to_keep[i] ] - ang_offset;
+      if ( cor_ang > 360.0 ) cor_ang-=360.0;
+      else if( cor_ang < 0 ) cor_ang+=360;
+      angles.push_back( cor_ang );
+      dangs.push_back( pmt.dangs[ indices_to_keep[i] ] - ang_offset );
+      boltid.push_back( pmt.boltid[ indices_to_keep[i] ] );
+      if ( pmt.idx_txt.size() > 0 ){
+	idx_txt.push_back( pmt.idx_txt[ indices_to_keep[i] ] );
+	dist_txt.push_back( pmt.dist_txt[ indices_to_keep[i] ] );
+      }
+    }
+
+    pmt.bolts = bolts;
+    pmt.dists = dists;
+    pmt.angles = angles;
+    pmt.boltid = boltid;
+    pmt.idx_txt = idx_txt;
+    pmt.dist_txt = dist_txt;
+    
+ }
+}
+
 void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
   float angle_between_bolts = 360.0 / 24; // 24 bolts
   float dang = angle_between_bolts/2;
   
   TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
 				     120, -15., 15. );
-
+  
 
   for( PMTIdentified& pmt : final_pmts ){
     std::vector< unsigned > indices_to_keep;
-
+    
     for ( unsigned iang =0 ; iang<pmt.angles.size(); ++iang ){
       // find angle closest to 15 degrees from this angle
       float min_angle_plus = 360.;
@@ -326,12 +437,12 @@ void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_o
       hdangs_improved->Fill(  min_angle_plus  );
       //if ( min_angle_minus < 3.0 || min_angle_plus < 3.0 ){
       if ( ((int)min_angle_minus)%15 < 3 ||((int)min_angle_minus)%15 >12 || ((int)min_angle_plus)%15 < 3||((int)min_angle_plus)%15 > 12 ){
-      //if ( ((int)min_angle_minus)%15 < 3.0||((int)min_angle_minus)%15 >12 ||((int) min_angle_plus)%15 < 3.0 || ((int) min_angle_plus)%15 > 12.0 ){
+	//if ( ((int)min_angle_minus)%15 < 3.0||((int)min_angle_minus)%15 >12 ||((int) min_angle_plus)%15 < 3.0 || ((int) min_angle_plus)%15 > 12.0 ){
 	// keep this bolt
 	indices_to_keep.push_back( iang );
       }
     }
-
+    
     // now remove bolts
     std::vector<cv::Vec3f> bolts; // bolts going with this PMT
     std::vector<float> dists; // distance of bolt from PMT circle 
@@ -357,7 +468,7 @@ void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_o
 	dist_txt.push_back( pmt.dist_txt[ i ] );
       }
     }
-
+    
     pmt.bolts = bolts;
     pmt.dists = dists;
     pmt.angles = angles;
@@ -367,194 +478,6 @@ void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_o
     
   }
   
-}
-
-
-void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
-  //float angle_between_bolts = 360.0 / 24; // 24 bolts
-  // float dang = angle_between_bolts/2;
-  
-  //  TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
-  //				     120, -15., 15. );
-
-
-for( PMTIdentified& pmt : final_pmts ){
-    std::vector< unsigned > indices_to_keep;
-
-    int nm=0;
-    int idxc=-1;
-    for ( unsigned iang =0 ; iang<pmt.angles.size(); ++iang ){
-      // find angle closest to 15 degrees from this angle
-      float min_angle_plus = 360.;
-      float min_angle_minus = 360.;
-      int nmm=0;
-      //int it=-1;
-      for ( unsigned jang =0 ; jang<pmt.angles.size(); ++jang ){
-	if ( iang == jang ) continue;
-	
-	float dang = fabs(pmt.angles[iang] - pmt.angles[jang]);
-	float rem = fabs(dang-int(dang/15)*15);
-	//if(dang<4){continue;}
-	//if(dang%15<4 || dang%15>11){nmm++;}
-	  if(rem<4||rem>11){nmm++;}
-      }
-      if (nmm>nm){nm=nmm; idxc = iang;}
-
-      
-
-    }
-    indices_to_keep.push_back(idxc);
-    std::vector<unsigned> dont_add;
-    for ( unsigned kang =0 ; kang<pmt.angles.size(); ++kang ){
-      if ( kang == idxc ) {continue;}
-	
-      float dang1 = fabs(pmt.angles[idxc] - pmt.angles[kang]);
-      float rem1 = fabs(dang1 - int(dang1/15)*15);
-      //remove only when the bolt is duplicate else keep it
-      //is duplicate?
-      bool duplicate=false;
-      int id1 = pmt.boltid[kang];
-      //vector<int> sameid;
-      for(unsigned ac=0; ac<pmt.angles.size(); ++ac){
-	if(ac==kang){continue;}
-	int id2 = pmt.boltid[ac];
-	//if(id1!=id2){continue;}
-	if(id1==id2){
-	  //sameid.push_back(ac);
-	  if(pmt.dists[kang]>pmt.dists[ac]){duplicate=true; break;}
-	  else if(pmt.dists[kang]==pmt.dists[ac]){dont_add.push_back(ac); break;}
-	}
-      }
-      
-      bool is_dont_add = false;
-      if(dont_add.size()>0){
-      for(unsigned a=0; a<dont_add.size(); ++a){
-	if(kang==dont_add[a]){is_dont_add=true; break;}
-      }
-      }
-      //bool cond =(dang1%15<4||dang1%15>11);
-      bool cond =(rem1<4||rem1>11);
-      if((!duplicate) && cond  && (!is_dont_add)){
-	//if(dang%15<4 || dang%15>11){ indices_to_keep.push_back( kang ); }
-	indices_to_keep.push_back(kang);
-      }
-    }
- 
-
-    // now remove bolts
-    std::vector<cv::Vec3f> bolts; // bolts going with this PMT
-    std::vector<float> dists; // distance of bolt from PMT circle 
-    std::vector<float> angles; // angle of each bolt
-    std::vector<float> dangs;  // difference in angle from boltid's angle
-    std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
-    
-    // include comparison to truth if available
-    std::vector<int>   idx_txt; // index of medianTextReader
-    std::vector<float> dist_txt; // distance to closest matching bolt
-    
-    for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
-      if ( std::find( indices_to_keep.begin(), indices_to_keep.end(), i ) == indices_to_keep.end() ) continue;
-      bolts.push_back( pmt.bolts[ i ] );
-      dists.push_back( pmt.dists[ i ] );
-      float cor_ang = pmt.angles[ i ] - ang_offset;
-      if ( cor_ang > 360.0 ) cor_ang-=360.0;
-      angles.push_back( cor_ang );
-      dangs.push_back( pmt.dangs[ i ] - ang_offset );
-      boltid.push_back( pmt.boltid[ i ] );
-      if ( pmt.idx_txt.size() > 0 ){
-	idx_txt.push_back( pmt.idx_txt[ i ] );
-	dist_txt.push_back( pmt.dist_txt[ i ] );
-      }
-    }
-
-    pmt.bolts = bolts;
-    pmt.dists = dists;
-    pmt.angles = angles;
-    pmt.boltid = boltid;
-    pmt.idx_txt = idx_txt;
-    pmt.dist_txt = dist_txt;
-    
-  }
-}
-  
-
-void prune_bolts3( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
-   float angle_between_bolts = 360.0 / 24; // 24 bolts
-  float dang = angle_between_bolts/2;
-
-
-  for(PMTIdentified & pmt: final_pmts){
-    
-  }
-  for( PMTIdentified& pmt : final_pmts ){
-    std::map<  unsigned, std::vector< unsigned > > boltmap; 
-    for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
-      boltmap[ pmt.boltid[i] ].push_back( i );
-    }
-    std::vector<unsigned> indices_to_remove;
-    for ( const std::pair<const unsigned int, std::vector<unsigned int> >& key : boltmap ){
-      unsigned boltnum = key.first;
-      if ( key.second.size() > 0 ){
-	float mindist = 10000.0;
-	unsigned idxkeep = 0;
-	float boltidang = (boltnum-1) * angle_between_bolts + ang_offset;
-	for ( unsigned idx : key.second ){
-	  // compare angle to expected 
-	  float da = pmt.angles[ idx ] - boltidang;
-	  if ( da > 360.0-dang ) da -= 360.0;
-	  if ( da < mindist ){
-	    mindist = da;
-	    idxkeep = idx;
-	  }
-	} 
-	for ( unsigned idx : key.second ){
-	  if ( idx != idxkeep || fabs( mindist )>=4.0 ){ // only keep best if it is within +-4 degrees of expected
-	    indices_to_remove.push_back( idx );
-	  }
-	}
-
-      }	
-    }
-
-    // now remove bolts
-    std::vector<cv::Vec3f> bolts; // bolts going with this PMT
-    std::vector<float> dists; // distance of bolt from PMT circle 
-    std::vector<float> angles; // angle of each bolt
-    std::vector<float> dangs;  // difference in angle from boltid's angle
-    std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
-
-    // include comparison to truth if available
-    std::vector<int>   idx_txt; // index of medianTextReader
-    std::vector<float> dist_txt; // distance to closest matching bolt
-
-    for (unsigned i=0; i<pmt.bolts.size() ; ++i ){
-      if ( std::find( indices_to_remove.begin(), 
-		      indices_to_remove.end(), i ) == indices_to_remove.end() ){
-
-	bolts.push_back( pmt.bolts[ i ] );
-	dists.push_back( pmt.dists[ i ] );
-	float cor_ang = pmt.angles[ i ] - ang_offset;
-	if ( cor_ang > 360.0 ) cor_ang-=360.0;
-	angles.push_back( cor_ang );
-	dangs.push_back( pmt.dangs[ i ] - ang_offset );
-	boltid.push_back( pmt.boltid[ i ] );
-	if ( pmt.idx_txt.size() > 0 ){
-	  idx_txt.push_back( pmt.idx_txt[ i ] );
-	  dist_txt.push_back( pmt.dist_txt[ i ] );
-	}
-      }
-
-    }
-
-    pmt.bolts = bolts;
-    pmt.dists = dists;
-    pmt.angles = angles;
-    pmt.boltid = boltid;
-    pmt.idx_txt = idx_txt;
-    pmt.dist_txt = dist_txt;
-  }
-
- 
 }
 
 void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){

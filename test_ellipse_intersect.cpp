@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-const int debug =0;
+const int debug =1;
 using namespace cv; 
 
 //Function used to test performance of ellipse_intersection.cpp class
@@ -40,28 +40,28 @@ int main(){
  */
   srand (time(NULL));
   
-  for(int i=0; i<1; i++){
-  Mat m = cv::Mat(cv::Size(500, 500), CV_64FC3, Scalar(0,0,0));
+  for(int i=0; i<100; i++){
+  Mat m = cv::Mat(cv::Size(1000, 1000), CV_64FC3, Scalar(255,255,255));
   
   
   double phi0 =(rand() %180);
-  double b0=(rand()%60+10);
+  double b0=(rand()%120+10);
   double e0=(rand()%10)/10.0;
   double a0=b0/std::sqrt(1-e0*e0);
   
-  double x0=(rand()%150+90);
-  double y0=(rand()%150+90);
+  double x0=(rand()%500+90);
+  double y0=(rand()%500+90);
   Size axes(  a0, b0 );
   Point center( x0, y0 );
 
-  ellipse( m, center, axes, phi0, 0., 360,  Scalar (0, 255, 0), 1 );
+  ellipse( m, center, axes, phi0, 0., 360,  Scalar (255, 0, 0), 2 );
 
   double phi1 =(rand() %180);
-  double b1=(rand()%60+10);
+  double b1=(rand()%120+10);
   double e1=(rand()%10)/10.0;
   double a1=b1/std::sqrt(1-e1*e1);
-  double x1=(rand()%150+90);
-  double y1=(rand()%150+90);
+  double x1=(rand()%500+90);
+  double y1=(rand()%500+90);
   
   std::string file_name = "./runs/txt/ellipse_test"+std::to_string(i)+".txt";
   std::ofstream outfile;
@@ -102,7 +102,7 @@ int main(){
   Size axes1(  a1, b1 );
   Point center1( x1, y1 );
   
-  ellipse( m, center1, axes1, phi1, 0., 360,  Scalar (0, 0, 255), 1 );
+  ellipse( m, center1, axes1, phi1, 0., 360,  Scalar (0, 0, 255), 2 );
 
   //converting angle to radian
   phi0=phi0*acos(-1)/180.0;
@@ -119,20 +119,20 @@ int main(){
   switch(inters){
   case 0: text = "Ellipse Separated"; break;
   case 1: text="Ellipses Overlap"; break;
-  case 2: text="Ellipse0(Green) outside Ellipse1(Red) But Tangent"; break;
-  case 3: text="Ellipse0(Green) strictly contains Ellipse1(Red)"; break;
-  case 4: text="Ellipse0(Green) strictly contains Ellipse1(Red) but tangent"; break;
-  case 5: text="Ellipse1(Red) strictly contains Ellipse0(Green)"; break;
-  case 6: text="Ellipse1(Red) contains Ellipse0(Green) but tangent"; break;
+  case 2: text="Ellipse0(Blue) outside Ellipse1(Red) But Tangent"; break;
+  case 3: text="Ellipse0(Blue) strictly contains Ellipse1(Red)"; break;
+  case 4: text="Ellipse0(Blue) strictly contains Ellipse1(Red) but tangent"; break;
+  case 5: text="Ellipse1(Red) strictly contains Ellipse0(Blue)"; break;
+  case 6: text="Ellipse1(Red) contains Ellipse0(Blue) but tangent"; break;
   case 7: text="Ellipses Equal"; break;
   }
   
 
-  putText(m, "Green= Ellipse 0; Red = Ellipse 1", cv::Point(2,400),FONT_HERSHEY_SIMPLEX , 0.5, cv::Scalar(0,0,255) );
+  putText(m, "Blue= Ellipse 0; Red = Ellipse 1", cv::Point(2,800),FONT_HERSHEY_SIMPLEX , 1.0, cv::Scalar(0,0,0),2 );
   
-  putText(m, text, cv::Point(2,480),FONT_HERSHEY_SIMPLEX , 0.5, cv::Scalar(0,0,255) );
+  putText(m, text, cv::Point(2,900),FONT_HERSHEY_SIMPLEX , 1.0, cv::Scalar(0,0,0),2 );
 
-  putText(m, std::to_string(inters), cv::Point(2,500),FONT_HERSHEY_SIMPLEX , 0.5, cv::Scalar(0,0,255) );
+  putText(m, std::to_string(inters), cv::Point(2,970),FONT_HERSHEY_SIMPLEX , 2.0, cv::Scalar(0,0,0), 2 );
 
   if(debug){
    std::string name = "./runs/"+std::to_string(inters)+"/ellipse_test"+std::to_string(i)+".jpg";
