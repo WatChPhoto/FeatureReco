@@ -451,9 +451,9 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
   }
 
   // look for duplicate bolts and keep only best matches
-  prune_bolts( f_ellipse_pmts, fhdangboltel->GetMean() );
+  prune_bolts_super_improved( f_ellipse_pmts, fhdangboltel->GetMean(),4 );
   // remove pmts below threshold (9 bolts)
-  prune_pmts( f_ellipse_pmts, 12, "f_ellipsehough" );
+  prune_pmts_improved( f_ellipse_pmts, 12, "f_ellipsehough" );
   
 
 
@@ -716,6 +716,76 @@ void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::strin
   
 }
 
+void histogram_deviation(const std::vector< PMTIdentified >ellipse_pmts, std::string tag){
+  TH2D* deviation2D = new TH2D((tag+"deviation2D").c_str(), "Std Deviation;X;Y",1000, 0., 4000., 750,0.,3000. );  
+
+TH1D* angledev = new TH1D((tag+"angle_dev").c_str(), "Angle of bolt from expected; #Delta angle (deg); counts/bin",60. , -15., 15. );  
+TH1D* angledist = new TH1D((tag+"angle_distribution").c_str(), "Min distance with second closest blobs; dist; counts/bin",360. , -0.5, 360 );  
+
+TH2D* deviation_acc = new TH2D((tag+"deviation_accumulation").c_str(), "Deviation Accumulation;X;Y",1000, 0., 4000., 750,0.,3000. );  
+
+ for(PMTIdentified her: ellipse_pmts){
+   float a = her.circ.get_xy().x ;
+   float b = her.circ.get_xy().y ; // axis start from left bottom corner y^->x
+   float aa = her.circ.get_a();
+   float bb = her.circ.get_b();
+   float ee = her.circ.get_e();
+   float area = aa*bb*pi;
+   float phi = her.circ.get_phi();
+   
+   int max_count=0;
+   int index=-1;
+   for ( unsigned i =0 ; i<her.bolts.size(); ++i ){
+     //vector in direction of first bolt considering centre of ellipse as origin
+     float x0 = her.bolts[i][0]-a;
+     float y0 = her.bolts[i][1]-b;
+     std::cout<<"(x0,y0) = "<<"("<<x0<<","<<y0<<")"<<std::endl;
+     int count=0;
+      
+     for ( unsigned j =0 ; j<her.bolts.size(); ++j ){
+       if ( i == j ) continue;
+       //vector in direction of second bolt considering centre of ellipse as origin
+       float x1 = her.bolts[j][0]-a;
+       float y1 = her.bolts[j][1]-b;
+       std::cout<<"(x1,y1) = "<<"("<<x1<<","<<y1<<")"<<std::endl;
+       //small angle between vector is cos(theta)=a.b/|a||b|. Angle is between 0 to 180
+       float dang = acos(((x0*x1)+(y0*y1))/(sqrt((x0*x0)+(y0*y0))*sqrt((x1*x1)+(y1*y1))))*(180.0/acos(-1));
+       std::cout<<"dang = "<<dang<<std::endl;
+       float rem = fabs(dang-(round(dang/15.0)*15));
+       if(rem<4||rem>11){count++;}
+     }
+     if (count>=max_count){max_count=count; index = i;}
+     
+     
+   }
+   std::cout<<"-----------------------Second-----------------------"<<std::endl;
+   std::cout<<"index = "<<index<<std::endl;
+   //index is probable true bolt.
+   float x0 = her.bolts[index][0]-a;
+   float y0 = her.bolts[index][1]-b;
+   std::cout<<"(x0,y0) = "<<"("<<x0<<","<<y0<<")"<<std::endl;
+   float deviation=0.;
+   for ( unsigned k =0 ; k<her.bolts.size(); ++k ){
+     //if ( index == k ) continue;
+     //vector in direction of second bolt considering centre of ellipse as origin
+     float x1 = her.bolts[k][0]-a;
+     float y1 = her.bolts[k][1]-b;
+     std::cout<<"(x1,y1) = "<<"("<<x1<<","<<y1<<")"<<std::endl;
+     //small angle between vector is cos(theta)=|a.b|/|a||b|
+     float dang = acos(((x0*x1)+(y0*y1))/(sqrt((x0*x0)+(y0*y0))*sqrt((x1*x1)+(y1*y1))))*(180.0/acos(-1));
+     std::cout<<"dang = "<<dang<<std::endl;
+     float rem = dang-(round(dang/15.0)*15);
+     deviation2D->Fill(her.bolts[k][0],her.bolts[k][1],rem);
+     angledev->Fill(rem);	      
+     angledist->Fill(dang);
+     
+     //differentiating two PMT's having same number of bolts
+     deviation += fabs(rem);
+   }
+   deviation_acc->Fill(a,2750-b,deviation);
+ }
+}
+
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
 			     bool write_image, const std::string& infname, const MedianTextData & mtd ){ 
 
@@ -776,6 +846,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
     //Trial here.
     histogram_stddev(ellipse_pmts, "before");
+    
 
     /// collect blobs that were put onto PMTs
     std::vector< Vec3f > blobs_on_pmts;
@@ -840,7 +911,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
-    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean() );
+    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean(), 4. );
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // look for duplicate bolts and keep only best matches
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
@@ -859,7 +930,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     //TH2D *ellipse_feature = new TH2D("Ellipse feature", "Ellipse feature; y-value;phi(degree);size; count); 
 
     histogram_stddev(ellipse_pmts, "after_pruning");
-    
+    histogram_deviation(ellipse_pmts, "after");
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
 				    "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
@@ -1096,7 +1167,7 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   }
 
   // look for duplicate bolts and keep only best matches
-  prune_bolts_improved( final_pmts, hdangbolt->GetMean() );
+  prune_bolts_super_improved( final_pmts, hdangbolt->GetMean(), 4 );
   //prune_bolts( final_pmts, hdangbolt->GetMean() );
   // remove pmts below threshold (12 bolts)
   prune_pmts( final_pmts, 12, label );
