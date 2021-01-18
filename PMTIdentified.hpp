@@ -98,8 +98,7 @@ void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, c
 
 void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label );
 
-void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset);
-void prune_bolts_improved2( std::vector< PMTIdentified >& final_pmts, float ang_offset );
+void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset, float dev_thresh);
 
 #endif
 
