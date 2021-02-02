@@ -225,10 +225,10 @@ int EllipseIntersect::intersect(const ellipse_st e0, const ellipse_st e1){
     double roots[4];
 
     if(numValid==2){
-      GetRoots(valid[0].x, valid[1].x, valid[0].y, valid[1].y, numRoots, roots);
+      GetRoots( numRoots, roots);
     }
     else if(numValid ==1){
-      GetRoots(valid[0].x, valid[0].y, numRoots, roots);
+      GetRootsCircle( numRoots, roots);
     }
     
     //numvalid cannot be zero because we already handled K=0 case.
@@ -377,14 +377,14 @@ double EllipseIntersect::BisectionRoot(double smin, double smax,double f0, doubl
 }
 
 //d0>d1
-void EllipseIntersect::GetRoots(const double &x1, const double &x2, const double &y1, const double &y2, int &numRoots, double *roots){
+void EllipseIntersect::GetRoots( int &numRoots, double *roots){
   
   const unsigned int maxIterations = (unsigned int)(3+std::numeric_limits<double>::digits - std::numeric_limits<double>::min_exponent);
   
   //finding smallest root.
-  unsigned int iterations;
+  //unsigned int iterations;
   numRoots = 0;
-  double smin, smax, s, fval;
+  double smin=0, smax, s;//, fval;
   
   if(debug){
   std::cout<<"d0 = "<<d0<<std::endl;
@@ -400,7 +400,8 @@ void EllipseIntersect::GetRoots(const double &x1, const double &x2, const double
   if(f0>0.0){
     smin = ((1.0-std::sqrt(d0*c0+d1*c1))/d1);//f(smin) should be <0 because the function is increasing in the interval.
     // smax = 0.0;
-    fval = F(smin);
+    //fval = 
+    F(smin);
   }
   else if(f0<0.0){
     smin = 0.0;
@@ -408,8 +409,10 @@ void EllipseIntersect::GetRoots(const double &x1, const double &x2, const double
   }
 
   if(f0!=0){
-    iterations = BisectionRoot(smin, smax,-1,1, maxIterations, s);
-    fval = F(s);
+    //iterations = 
+    BisectionRoot(smin, smax,-1,1, maxIterations, s);
+    //fval = 
+    F(s);
     roots[numRoots++]=s;
   }
   else{
@@ -422,12 +425,14 @@ void EllipseIntersect::GetRoots(const double &x1, const double &x2, const double
   if(fmid <0.0){
     smin = 1.0/d0;
     smax = smid;
-    iterations = BisectionRoot(smin, smax,1,-1, maxIterations, s);
+    //iterations = 
+    BisectionRoot(smin, smax,1,-1, maxIterations, s);
     roots[numRoots++] = s;
 
     smin = smid;
     smax = 1.0/d1;
-    iterations = BisectionRoot(smin, smax,-1,1, maxIterations, s);
+    //iterations = 
+    BisectionRoot(smin, smax,-1,1, maxIterations, s);
     roots[numRoots++] = s;
   }
   else if(fmid==0.0){
@@ -437,12 +442,13 @@ void EllipseIntersect::GetRoots(const double &x1, const double &x2, const double
   //last root
   smin = 1.0/d1;
   smax = (1.0+std::sqrt(d0*c0+d1*c1))/d1;
-  iterations = BisectionRoot(smin, smax,1,-1, maxIterations, s);
+  //iterations = 
+  BisectionRoot(smin, smax,1,-1, maxIterations, s);
   roots[numRoots++]=s;
 }
 
 //case when the second transformed ellipse is also circle.
-void EllipseIntersect::GetRoots(const double &x1, const double &y1, int &numRoots, double *roots){
+void EllipseIntersect::GetRootsCircle( int &numRoots, double *roots){
   //here c0 = k0^2; c1 = k1^2. This has been done before sending here so just use c0.
   roots[0] = (1.0-std::sqrt(d0*(c0+c1)))/d0;
   roots[1] = (1.0+std::sqrt(d0*(c0+c1)))/d0;

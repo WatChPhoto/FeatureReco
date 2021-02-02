@@ -34,8 +34,8 @@ private:
   double DF(double s);
   int Classify(double minSqrDistance, double maxSqrDistance, double z);
   double BisectionRoot(double smin, double smax,double f0, double f1, unsigned int maxIterations, double &s);
-  void GetRoots(const double &x1, const double &x2, const double &y1, const double &y2, int &numRoots, double *roots);
-  void GetRoots(const double &x1, const double &y1, int &numRoots, double *roots);
+  void GetRoots( int &numRoots, double *roots);
+  void GetRootsCircle( int &numRoots, double *roots);
 
 };
 #endif

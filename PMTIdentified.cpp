@@ -78,9 +78,9 @@ void find_candidate_bolts( const std::vector< Vec3f >& blobs,
 
 std::ostream& operator<<( std::ostream& os, const PMTIdentified& p ){
   bool save_mode = config::Get_int( "text_file_mode" );
-  if(save_mode=1){
+  if(save_mode==1){
     os<<"00"<<"\t"<<p.circ[0]<<"\t"<<p.circ[1]<<std::endl; //for michael testing.
-    for ( int ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
+    for ( unsigned ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
       Vec3f b = p.bolts[ibolt];
       int bid =p.boltid[ibolt];
       //std::string id = std::string(p.boltid[ibolt]);
@@ -91,7 +91,7 @@ std::ostream& operator<<( std::ostream& os, const PMTIdentified& p ){
     }
   }
   else{
-    for ( int ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
+    for ( unsigned ibolt = 0; ibolt < p.bolts.size(); ++ibolt ){
       os<<p.pmtid<<" ";
       os<<p.circ[0]<<" "<<p.circ[1]<<" "<<p.circ[2]<<" ";
       os<<p.boltid[ibolt]<<" ";
@@ -177,18 +177,18 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
   }  
 
   //goal is if a is closest to b and b is closest to a then they are the map.
-  for(int i=0; i< final_pmts.size(); i++){
+  for(unsigned i=0; i< final_pmts.size(); i++){
     vector <cv::Vec3f> bolts = final_pmts[i].bolts;
     
-    for (int j=0; j<bolts.size(); j++){ 
+    for (unsigned j=0; j<bolts.size(); j++){ 
       const cv::Vec3f & b = bolts[j]; 
       float  mindist = 1000000;
       int txt_ind=-1;
       float b_x = b[0];
       float b_y = b[1];
       
-      int x,y;
-      for (int k=0; k< mtd.size(); k++){
+      //int x,y;
+      for (unsigned k=0; k< mtd.size(); k++){
 	const MedianTextRecord & rec =  mtd[k]; 
 	float m_x = rec.x();
 	float m_y = rec.y();
@@ -199,7 +199,7 @@ void find_closest_matches( std::vector< PMTIdentified>& final_pmts, const Median
 	float dist = std::sqrt((b_x - m_x)*(b_x - m_x)+ (b_y - m_y)*(b_y - m_y) );
 	if ( dist < mindist ) {
 	  bool reverse = true;
-	  for(int m=0; m< final_pmts.size(); m++){
+	  for(unsigned m=0; m< final_pmts.size(); m++){
 	    vector <cv::Vec3f> bolts1 = final_pmts[m].bolts;
 	    for ( const cv::Vec3f & b1 : bolts1 ){
 	      
@@ -304,7 +304,7 @@ for( PMTIdentified& pmt : final_pmts ){
     Point2f c0 ( pmt.circ.get_xy().x, pmt.circ.get_xy().y );   //centre of PMT
 
     int max_votes=0;
-    int idxc=-1;  //index of max vote.
+    unsigned idxc=0;  //index of max vote.
     //Finding the bolt that is most likely true. Based on max_votes
     for ( unsigned i =0 ; i<pmt.bolts.size(); ++i ){
       // find angle closest to 15 degrees from this angle
@@ -345,7 +345,7 @@ for( PMTIdentified& pmt : final_pmts ){
       if(rem<dev_thresh||rem>(angle_betn_consecutive_bolts-dev_thresh)){within_thresh=true;}
 
       //now determining if the bolt is duplicate(odd)
-      for(int m=0; m<pmt.bolts.size(); ++m){
+      for(unsigned m=0; m<pmt.bolts.size(); ++m){
 	if(k==m)continue;
 	Point2f v3(pmt.bolts[m][0]-c0.x, pmt.bolts[m][1]-c0.y);  //vector going from centre of ellipse to the bolt at index m.
 	float dang = acos(((v2.x*v3.x)+(v2.y*v3.y))/(sqrt((v2.x*v2.x)+(v2.y*v2.y))*sqrt((v3.x*v3.x)+(v3.y*v3.y))))*(180.0/acos(-1));
@@ -405,8 +405,8 @@ for( PMTIdentified& pmt : final_pmts ){
 }
 
 void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
-  float angle_between_bolts = 360.0 / 24; // 24 bolts
-  float dang = angle_between_bolts/2;
+  //float angle_between_bolts = 360.0 / 24; // 24 bolts
+  //float dang = angle_between_bolts/2;
   
   TH1D * hdangs_improved = new TH1D( "hdangs_improved", "Angle between features closest to 15 degrees; #Delta angle (degrees)",
 				     120, -15., 15. );
@@ -557,7 +557,7 @@ void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
 }
 
 
-void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, const std::string& label ){
+void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) { //, unsigned numbolts, const std::string& label ){
 
   /*  
       for ( unsigned i = 0; i < final_pmts.size(); i++ ){ 
@@ -584,7 +584,7 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned nu
       double x0 = pmt.circ.get_xy().x;
       double y0 = pmt.circ.get_xy().y;
       double a0 = pmt.circ.get_a();
-      for(int j = 0; j< final_pmts.size(); ++j){
+      for(unsigned j = 0; j< final_pmts.size(); ++j){
 	if(i==j){continue;}
 	PMTIdentified pmt1 = final_pmts[j];
 	double x1 = pmt1.circ.get_xy().x;
@@ -606,10 +606,10 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned nu
     }
     	 
  
-    for ( int c = 0; c < final_pmts.size(); c++ ){ 
+    for ( unsigned c = 0; c < final_pmts.size(); c++ ){ 
       bool skip=false;
-      for(int k=0; k< pruned_indx.size();k++){
-	int val = pruned_indx[k];
+      for( unsigned k=0; k< pruned_indx.size();k++){
+	unsigned val = pruned_indx[k];
 	if(val==c){skip=true; break;}
       }
       if(!skip){
@@ -631,17 +631,17 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned nu
   std::vector< PMTIdentified > not_pruned_pmts;
   std::vector<int> pruned_indx;
     
-  for (int j=0; j< final_pmts.size(); j++){
+  for (unsigned j=0; j< final_pmts.size(); j++){
     //const PMTIdentified &p = final_pmts[j];
     float a0 = final_pmts[j].circ.get_xy().x;
     float a1 = final_pmts[j].circ.get_xy().y;
     
     int num15=0; //number of bolts that has another bolt within 15+-3 deg
     // PMTIdentified pmt = final_pmts[i];
-    for(int i=0; i<final_pmts[j].bolts.size(); i++){
+    for(unsigned i=0; i<final_pmts[j].bolts.size(); i++){
       float x0 = final_pmts[j].bolts[i][0];
       float y0 = final_pmts[j].bolts[i][1];
-      for(int k=0; k<final_pmts[j].bolts.size(); k++){
+      for(unsigned k=0; k<final_pmts[j].bolts.size(); k++){
 	if(i!=k){
 	  float x1 = final_pmts[j].bolts[k][0];
 	  float y1 = final_pmts[j].bolts[k][1];
@@ -663,10 +663,10 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts, unsigned nu
     
   } 
   
-  for ( int c = 0; c < final_pmts.size(); c++ ){ 
+  for ( unsigned c = 0; c < final_pmts.size(); c++ ){ 
     bool skip=false;
-    for(int k=0; k< pruned_indx.size(); k++){
-      int val = pruned_indx[k];
+    for(unsigned k=0; k< pruned_indx.size(); k++){
+      unsigned val = pruned_indx[k];
       if(val==c){skip=true; break;}
     }
     if(!skip){
@@ -688,7 +688,7 @@ void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, c
 
   for ( unsigned i = 0; i < final_pmts.size(); ++i ){ 
     const PMTIdentified& pmt = final_pmts[i];
-    bool isinside=false;
+    //bool isinside=false;
     bool hasfewerbolts=false; // only set for intersecting pmts
     for ( unsigned j = i+1; j < final_pmts.size(); ++j ){
       const PMTIdentified& pmtb =  final_pmts[j];
@@ -705,7 +705,7 @@ void prune_pmts(  std::vector< PMTIdentified >& final_pmts, unsigned numbolts, c
 
 
 	  
-	isinside = true;
+	//isinside = true;
       } else {
 	if ( dist < r1r2 && 
 	     pmt.bolts.size() < pmtb.bolts.size() ) {
@@ -772,7 +772,7 @@ void overlay_bolt_angle_boltid(const std::vector< PMTIdentified >& final_pmts, c
     float b = pmt.circ[1];
     cv::putText( image_final,std::to_string(pmt.circ.get_phi()*180.0/PI) , cv::Point(a,b), FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,0),1);
     cv::putText( image_final,std::to_string(pmt.circ.get_a()*pmt.circ.get_b()) , cv::Point(a,b+50), FONT_HERSHEY_DUPLEX, 0.3, cv::Scalar(0,255,255),1);
-    for(int i=0; i<pmt.bolts.size();i++){
+    for(unsigned i=0; i<pmt.bolts.size();i++){
       std::string txt = std::to_string((int)pmt.angles[i]);
       // A(x1,y1)         P(x,y)            B(x2,y2) 
       //  o-----------------o-----------------o

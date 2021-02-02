@@ -107,10 +107,10 @@ class EllipseHough {
   /// Tunable parameters
   /// Minimum hits to be called a circle
   /// default is 3 hits
-  void set_minhits( int n ){ minhits = n; }
+  void set_minhits( unsigned n ){ minhits = n; }
   /// Minimum height in hough space to be called a circle
   /// default is 5
-  void set_threshold( int n ){ threshold = n; }
+  void set_threshold( unsigned n ){ threshold = n; }
 
   /// Scaling factor for distance from ellipse for hit to be part of ellipse
   /// Value of 2.0 is default, uses sqrt(dx*dx+dy*dy) where dx, dy are
@@ -133,8 +133,8 @@ class EllipseHough {
   unsigned fNy;    float fymin;    float fymax;
 
   /// Parameters
-  int minhits{9};
-  int threshold{27};
+  unsigned minhits{9};
+  unsigned threshold{27};
   float drscaling{4.0};
   
   /// Store results

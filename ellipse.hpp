@@ -25,11 +25,11 @@ struct ellipse_st {
   //   phiphi == rotation of ellipse about x axis
   //   cc == xypoint of center of ellipse
   ellipse_st( double bb, double ee, double phiphi, xypoint cc );
-  ellipse_st() : c( xypoint(0.,0.) ), b(1.), e(0.), phi(0.), epenalty(0.) { }
+  ellipse_st() :  b(1.), e(0.), phi(0.), c( xypoint(0.,0.) ), epenalty(0.) { }
   ellipse_st( const ellipse_st& elli ) : 
-    c( elli.get_xy() ), b( elli.get_b() ), e( elli.get_e() ), phi( elli.get_phi() ) { }
+    b( elli.get_b() ), e( elli.get_e() ), phi( elli.get_phi() ), c( elli.get_xy() ), epenalty(0.)  { }
   ellipse_st( const cv::Vec3f &v ) :
-    c( xypoint( v[0], v[1] ) ), b( v[2] ), e( 0. ), phi( 0. ) { }
+    b( v[2] ), e( 0. ), phi( 0. ), c( xypoint( v[0], v[1] ) ), epenalty(0.)  { }
 
 
   void set_bephi( double bb, double ee, double phiphi ){ b=bb; e=ee; phi=phiphi; } 
@@ -112,10 +112,11 @@ struct ellipse_st {
   friend ostream& operator<<( ostream& os, const ellipse_st &  e );
 
 private:
-  xypoint c; // center
   double  b; // short axis length
   double  e; // eccentricity 0=circle, 1=parallel lines
   double  phi; // rotation of ellipse from x axis
+  xypoint c; // center
+
   double  epenalty; // penalty term for bad eccentricity
 };
 

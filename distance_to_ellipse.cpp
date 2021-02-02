@@ -31,7 +31,7 @@ double dmin(cv::Point c, double e0, double e1, cv::Point p , cv::Point& q, doubl
   int s_sign = (y_1<0)?-1:1;
    
   //x0, x1 has closest point and distance is the min distance.
-  double x0, x1, min_distance = 100000;
+  double x0=0, x1=0, min_distance = 100000;
   for(double theta=0; theta<=PI/2; theta += PI/10000){
    
     double x_0 = e0*cos(theta);
@@ -106,9 +106,9 @@ double get_distance(const cv::Point& c, const double& a, const double& b, const 
   
   if(a<=0 || b<=0){std::cerr<<"axis length less than zero"<<std::endl; exit(1);}
   const double PI = std::acos(-1);
-  double e0;
+  double e0=0;
   double e1;
-  double rot_angle;
+  double rot_angle=0;
   
   if(a>b){
     //if a is bigger axis alighning the coordinate system of ellipse with longer axis of ellipse

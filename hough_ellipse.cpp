@@ -73,34 +73,34 @@ std::ostream& operator<<( std::ostream& os, const HoughEllipseResult& hr ){
 int EllipseHough::get_bbin  ( double bb ) const {
   float fbbwid = (fbbmax-fbbmin)/fNbb; 
   int bbin = (bb-fbbmin)/fbbwid;
-  if (bbin<0 || bbin>= fNbb ) return -1;
+  if (bbin<0 || bbin>= int(fNbb) ) return -1;
   return bbin;
 }
 
 int EllipseHough::get_ebin  ( double ee ) const {
   float feewid = (feemax-feemin)/fNee; 
   int eein = (ee-feemin)/feewid;
-  if (eein<0 || eein>= fNee ) return -1;
+  if (eein<0 || eein>= int(fNee) ) return -1;
   return eein;
 }
 
 int EllipseHough::get_phibin( double phi ) const {
   float fphiwid = (fphimax-fphimin)/fNphi; 
   int phibin = (phi-fphimin)/fphiwid;
-  if (phibin<0 || phibin>= fNee ) return -1;
+  if (phibin<0 || phibin>= int(fNphi) ) return -1;
   return phibin;
 }
 
 int EllipseHough::get_xbin  ( double x ) const {
   float fxbwid = (fxmax-fxmin)/fNx; 
   int xbin = (x-fxmin)/fxbwid;
-  if (xbin<0 || xbin>= fNx ) return -1;
+  if (xbin<0 || xbin>= int(fNx) ) return -1;
   return xbin;
 }
 int EllipseHough::get_ybin  ( double y ) const{
   float fybwid = (fymax-fymin)/fNy; 
   int ybin = (y-fymin)/fybwid;
-  if (ybin<0 || ybin>= fNy ) return -1;
+  if (ybin<0 || ybin>= int(fNy) ) return -1;
   return ybin;
 }
 
@@ -304,8 +304,8 @@ void hough_transform_phibin( EllipseHough& eh, unsigned iphi, const std::vector<
 	      weight = 4-2*abs(xx)-2*abs(yy)+abs(xx*yy);
 	      int curx = xbin + xx;
 	      int cury = ybin + yy;
-	      if ( curx >=0 && curx < eh.fNx &&
-		   cury >=0 && cury < eh.fNy ){
+	      if ( curx >=0 && curx < int(eh.fNx) &&
+		   cury >=0 && cury < int(eh.fNy) ){
 		  /*		  std::cout<<"ibb= "<<ibb<<"  "
 				  <<"iee= "<<iee<<"  "
 				  <<"iphi= "<<iphi<<"  "
@@ -404,8 +404,8 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
   std::vector< std::thread > slice_threads;
 
   const int slice_size = 50;
-  const int xslices = fNx/slice_size;
-  const int yslices = fNy/slice_size;
+  const unsigned xslices = fNx/slice_size;
+  const unsigned yslices = fNy/slice_size;
   std::vector< std::pair< xypoint, xypoint> > slices;
   for ( unsigned ix=0; ix<xslices; ++ix ){
     unsigned ixmin = ix*slice_size;
@@ -458,8 +458,8 @@ std::vector< HoughEllipseResult> EllipseHough::find_maximum( std::vector< xypoin
   // find the hits that are associated with the ellipse and add them
   // to the result, otherwise add them to list of unused_hits
   // use bin sizes in xc, yc as threshold distance for hit to be from circle
-  float fxbwid = (fxmax-fxmin)/fNx;
-  float fybwid = (fymax-fymin)/fNy;
+  //float fxbwid = (fxmax-fxmin)/fNx;
+  //float fybwid = (fymax-fymin)/fNy;
   float rthres = 3;//drscaling * std::sqrt( fxbwid*fxbwid + fybwid*fybwid );
   
   

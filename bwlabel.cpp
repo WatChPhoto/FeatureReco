@@ -92,8 +92,8 @@ std::vector<std::vector<int>> BwLabel::first_grouping(cv::Mat input_image, std::
 void BwLabel::second_grouping(std::vector<std::vector<int>>& used_groups_num, std::vector<std::vector<int>>& group_matrix )
 {
   size_t length_row = group_matrix.size();//number of rows in input img
-  size_t length_column = group_matrix[0].size();//number of cols in input img
-  size_t length_num = used_groups_num.size();  //Total number of group assigned
+  //size_t length_column = group_matrix[0].size();//number of cols in input img
+  //size_t length_num = used_groups_num.size();  //Total number of group assigned
 
   //For each row after first row send the row for processing
   for (size_t index_row = 1; index_row < length_row; index_row++)
@@ -110,7 +110,7 @@ void BwLabel::process_rows(std::vector<int>& first_row, std::vector<int>& sec_ro
 {
   
   size_t length_column = first_row.size();
-  int last_num = 0;
+  //  int last_num = 0;
   //iterate through previous row.
   for (size_t index_column = 0; index_column < length_column; index_column++)
     {
@@ -211,10 +211,10 @@ std::vector<int> BwLabel::find_neighbor(size_t index, std::vector<int>& neighbor
 void BwLabel::trace_parent(std::vector<std::vector<int>>& used_groups_num, int pre_num, int tar_num)
 {
   //Iterate over all the group number of previous row.
-  for (int i = 0; i < used_groups_num[pre_num - 1].size(); i++)
+  for (unsigned i = 0; i < used_groups_num[pre_num - 1].size(); i++)
     {
       //for every group number in previous row entry, add new parent. since tar_num is super parent of all.
-      int num = used_groups_num[pre_num - 1][i];
+      unsigned num = used_groups_num[pre_num - 1][i];
       used_groups_num[num - 1].push_back(tar_num);
     }
 }
@@ -261,7 +261,7 @@ void BwLabel::final_grouping(std::vector<std::vector<int>>& used_groups_num, std
       for(size_t index_column = 0; index_column <length_column; index_column++)
 	{
 	  if(group_matrix[index_row][index_column]){
-	  for(int i=0; i<traces.size();i++){
+	  for(unsigned i=0; i<traces.size();i++){
 	    int curr_num = traces[i].x;
 	    int trace_num = traces[i].y;
 	    if (group_matrix[index_row][index_column] == curr_num)
@@ -345,9 +345,9 @@ void BwLabel::fix_upper(std::vector<std::vector<int>>& used_groups_num, int orig
 {
   size_t length_row = used_groups_num.size();
   size_t length_column = used_groups_num[0].size();
-  for (int index_row = 0; index_row < length_row; index_row++)
+  for (unsigned index_row = 0; index_row < length_row; index_row++)
     {
-      for (int index_column = 0; index_column < length_column; index_column++)
+      for (unsigned index_column = 0; index_column < length_column; index_column++)
 	{
 	  if (used_groups_num[index_row][index_column] == origin_num)
 	    {
