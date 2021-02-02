@@ -19,10 +19,14 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++11 -g")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
-ADD_LIBRARY( featurereco_lib Configuration.cpp MedianTextReader.cpp featureFunctions.cpp bwlabel.cpp PMTIdentified.cpp ellipse.cpp hough_ellipse.cpp ellipse_detection_2.1.cpp distance_to_ellipse.cpp distance_to_ellipse_test.cpp ellipse_intersection.cpp)
+ROOT_GENERATE_DICTIONARY(G__FeatureTreeLib FeatureTTree.hpp LINKDEF Linkdef.h)
+
+ADD_LIBRARY( featurereco_lib openblobdetector.cpp Configuration.cpp MedianTextReader.cpp featureFunctions.cpp bwlabel.cpp PMTIdentified.cpp ellipse.cpp hough_ellipse.cpp ellipse_detection_2.1.cpp distance_to_ellipse.cpp distance_to_ellipse_test.cpp ellipse_intersection.cpp)
+ADD_LIBRARY( FeatureTreeLib SHARED FeatureTTree.cpp G__FeatureTreeLib.cxx)
+add_dependencies(FeatureTreeLib G__FeatureTreeLib)
 include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
 add_executable( FindBoltLocations FindBoltLocations.cpp )
-target_link_libraries( FindBoltLocations featurereco_lib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf)
+target_link_libraries( FindBoltLocations featurereco_lib FeatureTreeLib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf ROOT::Tree)
 
 #project( distance_to_ellipse_test )
 #find_package( OpenCV REQUIRED )
