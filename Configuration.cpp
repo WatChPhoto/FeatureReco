@@ -76,7 +76,7 @@ double config::Get_double(string key){
       
       if(name==key){  //compares the key to first word of in the line.
 	double value;
-	int index = line.find('=')+1;  
+	unsigned index = line.find('=')+1;  
 	line = line.substr(index);
 	stringstream ss(line);    //finding the value of the key.
 	ss >> value;              //converting the obtained value to T(template) type
@@ -124,7 +124,7 @@ int config::Get_int(string key){
       
       if(name==key){  //compares the key to first word of in the line.
 	int value;
-	int index = line.find('=')+1;  
+	unsigned index = line.find('=')+1;  
 	line = line.substr(index);
 	stringstream ss(line);    //finding the value of the key.
 	ss >> value;              //converting the obtained value to T(template) type
