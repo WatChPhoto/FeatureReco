@@ -37,6 +37,7 @@ void fill_ttree_blobs( const vector<OpenBlobDetector::Center>& blobinfo, ImageDa
     b.circularity = blob.circularity;
     b.inertia = blob.inertia;
     b.convexity = blob.convexity;
+    b.intensity = blob.intensity;
     // here we need to calculate the other blob parameters!
     imagedata.AddBlob( b );
   }
@@ -804,8 +805,14 @@ void ellipses_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, Image
 	}
       }
       ed.blobentry.push_back( imagedata.fBlobs[idxmatch] );
-      ed.boltkept.push_back(1);
     }
+    ed.ndof = pmt.dists.size();
+    ed.chi2 = 0.0;
+    for ( float d : pmt.dists ){
+      ed.chi2 += d*d;
+    }
+    ed.peakval = pmt.peakval;
+  
     imagedata.AddEllipse( ed );
   }
 }

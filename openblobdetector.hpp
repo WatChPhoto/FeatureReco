@@ -20,6 +20,7 @@ namespace cv
       double inertia;
       double convexity;
       double area;
+      double intensity;
     };
     
     // filled once for each keypoint returned by detect method

@@ -55,10 +55,10 @@ blob_filterByCircularity = 1 #1 for true 0 for false
 blob_minCircularity = 0.003 #0.0003 #0.003 #0.3   #Min circularity value to consider as a blob
 blob_maxCircularity = 2.000
 blob_minDistBetweenBlobs = 10#1#10#40 #35 #30 #25#10 #20 #10 #10 #Minimum distance between the blobs
-blob_filterByConvexity = 0  #1 for true 0 for false
+blob_filterByConvexity = 1  #1 for true 0 for false
 blob_minConvexity = 0.6   #Minimum convexity to consider as a blob
 blob_maxConvexity = 100.0
-blob_filterByInertia = 0  #1 for true 0 for false
+blob_filterByInertia = 1  #1 for true 0 for false
 blob_minInertiaRatio = 0.00001   #It can be thought as essentricity of ellipse
 blob_maxInertiaRatio = 1.00000   #It can be thought as essentricity of ellipse
 

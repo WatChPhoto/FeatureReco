@@ -12,3 +12,14 @@ rm FindBoltLocation.root
 rm bolts*.txt
 rm he_bolts*.txt
 rm *.log
+rm CMakeCache.txt
+rm FindBoltLocations
+rm Makefile
+rm UndistortImage
+rm cmake_install.cmake
+rm libFeatureTreeLib*
+rm libfeaturereco_lib.a
+rm G__FeatureTreeLib.cxx
+rm *.root
+rm he_pmts*.txt
+rm \#*

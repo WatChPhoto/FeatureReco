@@ -244,6 +244,7 @@ void OpenBlobDetectorImpl::detect(InputArray image, std::vector<cv::KeyPoint>& k
         std::vector < std::vector<Center> > newCenters;
         for (size_t i = 0; i < curCenters.size(); i++)
         {
+	    curCenters[i].intensity = thresh;
             bool isNew = true;
             for (size_t j = 0; j < centers.size(); j++)
             {

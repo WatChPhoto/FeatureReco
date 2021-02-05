@@ -39,9 +39,9 @@ public:
 class EllipseData : public TObject {
 public:
   EllipseData() : 
-    entry(0), xx(0), yy(0), aa(0), bb(0), ee(0), phi(0), pmtkept(0) {}       // default constructor
-  EllipseData(int aentry, float axx, float ayy, float aaa, float abb, float aee, float aphi, int apmtkept ) : 
-    entry(aentry), xx(axx), yy(ayy), aa(aaa), bb(abb), ee(aee), phi(aphi), pmtkept(apmtkept) {}       // default constructor
+    entry(0), xx(0), yy(0), aa(0), bb(0), ee(0), phi(0), peakval(0), chi2(0), ndof(0) {}       // default constructor
+  EllipseData(int aentry, float axx, float ayy, float aaa, float abb, float aee, float aphi, float apeakval ) : 
+    entry(aentry), xx(axx), yy(ayy), aa(aaa), bb(abb), ee(aee), phi(aphi), peakval(apeakval), chi2(0), ndof(0) {}       // default constructor
   ~EllipseData(){}
 
   int entry;        //< entry number (pmt number if avail)
@@ -51,13 +51,14 @@ public:
   float bb;         //< ellipse major axis length in pixels
   float ee;         //< ellipse eccentricity (0-1)
   float phi;        //< rotation of ellipse about x axis (radians)
-  int pmtkept;      //< true (1) if this ellipse is considered to be PMT
+  float peakval;    //< peak in hough space for this ellipse
+  float chi2;       //< chi2 with an assumed uncertainty of 1 pixel
+  float ndof;       //< number of degrees of freedom
   std::vector< BlobData > blobentry; // copy of bolts that are on ellipse
-  std::vector<int>        boltkept;  //true (1) if this bolt is kept after filtering
 
   int size;
   int SetSize() {
-    size = sizeof(EllipseData) + blobentry.size()*sizeof(BlobData) + boltkept.size()*sizeof(int);
+    size = sizeof(EllipseData) + blobentry.size()*sizeof(BlobData);
     return size;
   }
   
