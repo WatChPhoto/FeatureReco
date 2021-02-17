@@ -169,16 +169,21 @@ public:
   ~ImageData(){}
   ImgProcessSettings         ips;  
   std::vector< BlobData >    fBlobs;
-  std::vector< EllipseData > fEllipses;
+  std::vector< EllipseData > fEllipses; // all ellipses found
+  std::vector< EllipseData > fPMTs;     // final ellipses identified as PMTs
 
   void AddBlob( const BlobData& b ){ fBlobs.push_back( b ); }
   void AddEllipse( const EllipseData& e ){ fEllipses.push_back( e ); }
+  void AddPMT( const EllipseData& e ){ fPMTs.push_back( e ); }
 
   int fEntrySize;
   void SetSize() { 
     fEntrySize = sizeof(ImageData) + 
       fBlobs.size() * sizeof(BlobData);
     for ( EllipseData& ed : fEllipses ){
+      fEntrySize += ed.SetSize();
+    }
+    for ( EllipseData& ed : fPMTs ){
       fEntrySize += ed.SetSize();
     }
     std::cout<<"ImageData::SetSize = "<<fEntrySize<<std::endl;
