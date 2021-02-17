@@ -817,6 +817,37 @@ void ellipses_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, Image
   }
 }
 
+
+void pmts_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, ImageData& imagedata ){
+  for ( const PMTIdentified& pmt : ellipse_pmts ){
+    EllipseData ed( pmt.pmtid, pmt.circ[0], pmt.circ[1], 
+		    pmt.circ.get_a(), pmt.circ.get_b(), pmt.circ.get_e(), pmt.circ.get_phi(), 
+		    pmt.bolts.size() );
+    for ( const Vec3f bolt : pmt.bolts ){
+      // find closest matching blob
+      unsigned idxmatch=0;
+      float    distmin2 =1000000;
+      for ( unsigned idx=0; idx<imagedata.fBlobs.size(); ++idx){
+	const BlobData & b = imagedata.fBlobs[idx];
+	float dist2 = (b.x-bolt[0])*(b.x-bolt[0]) + (b.y-bolt[1])*(b.y-bolt[1]);
+	if ( dist2 < distmin2 ){
+	  idxmatch = idx;
+	  distmin2 = dist2;
+	}
+      }
+      ed.blobentry.push_back( imagedata.fBlobs[idxmatch] );
+    }
+    ed.ndof = pmt.dists.size();
+    ed.chi2 = 0.0;
+    for ( float d : pmt.dists ){
+      ed.chi2 += d*d;
+    }
+    ed.peakval = pmt.peakval;
+  
+    imagedata.AddPMT( ed );
+  }
+}
+
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
 			     bool write_image, const std::string& infname, const MedianTextData & mtd , ImageData& imagedata){ 
 
@@ -874,6 +905,9 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
       ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, her.peakval ) );
     }
+
+    ellipses_to_ttree( ellipse_pmts, imagedata );
+
 
     //Trial here.
     histogram_stddev(ellipse_pmts, "before");
@@ -988,7 +1022,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     }
     histogram_blobs( blobs_afterprune, "_final" );
 
-    ellipses_to_ttree( ellipse_pmts, imagedata );
+    pmts_to_ttree( ellipse_pmts, imagedata );
 
     string outfilename = build_output_textfilename( infname, "he_pmts" ); 
     std::ofstream fpmt_out (outfilename);
