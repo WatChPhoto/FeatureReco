@@ -27,11 +27,11 @@ int main(){
   //fill in random points to calculate distance from.
   std::vector<cv::Vec3f> points;
   for(int i =0; i<100; i++){
-    cv::Vec3f temp {rand()%1500+250, rand()%1500+250, 3};
+    cv::Vec3f temp { float(rand()%1500+250), float(rand()%1500+250), 3.0};
     points.push_back(temp);
   }
   
-  for(int j=0; j<points.size(); ++j){
+  for(unsigned j=0; j<points.size(); ++j){
     cv::Point p = cv::Point(points[j][0], points[j][1]); //bolt's centre.
     cv::Point q;
     double dist =  get_distance(c, a, b, p , q, phi); //get the distance of the bolt from current ellipse
@@ -46,13 +46,13 @@ int main(){
 
   
   cv::Size axes( a, b );
-  cv::Point center = c;
+  //cv::Point center = c;
     
   ellipse( test, pa.centre, axes, 180.0*pa.alpha/PI , 0., 360,  cv::Scalar (0, 0, 0) );
   std::cout<<"after phi =" <<pa.alpha<<std::endl;
     
   //drawing line from bolts to closest point in the ellipse
-  for(int i = 0; i<pa.bolts.size(); i++){
+  for(unsigned i = 0; i<pa.bolts.size(); i++){
     cv::Vec3f bolts = pa.bolts[i];
     //drawing included bolts
     cv::circle( test, cv::Point( bolts[0], bolts[1] ), bolts[2], cv::Scalar(0,0,255), 3, 0 );

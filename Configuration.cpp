@@ -10,11 +10,11 @@ using namespace std;
 
 //function to trim the leading and trailing whitespace.
 void config::trim(string &name){
-  int low = name.find_first_not_of(' ');
+  unsigned low = name.find_first_not_of(' ');
   if(low>0 && low<name.length()){         //aviuds the garbage result.
   name = name.substr(low);
   }
-  int high = name.find(' ');
+  unsigned high = name.find(' ');
   if(high>0 && high < name.length()){name=name.substr(0,high);}
     
 }
@@ -22,7 +22,7 @@ void config::trim(string &name){
 //function to change input string to lowercase.
 void config::tolower(string &name){
   string temp="";
-  for(int i = 0; i< name.length(); i++){
+  for(unsigned i = 0; i< name.length(); i++){
     temp+=::tolower(name[i]) ;
   }
   name = temp;
@@ -31,7 +31,7 @@ void config::tolower(string &name){
 //function to obtain the name of the variable from the line in the data file. 
 string config::find_name(const string &line){
   string name;
-  int high = line.find_first_of('=');
+  unsigned high = line.find_first_of('=');
   name = line.substr(0, high);
   trim(name);
 
@@ -62,7 +62,7 @@ double config::Get_double(string key){
      
       getline(Load,line);            
       
-      int low = line.find_first_not_of(' ');
+      unsigned low = line.find_first_not_of(' ');
       if(low>0 && low<line.length()){
 	line = line.substr(low);              //ignores the leading white space in the line.
       }
@@ -76,7 +76,7 @@ double config::Get_double(string key){
       
       if(name==key){  //compares the key to first word of in the line.
 	double value;
-	int index = line.find('=')+1;  
+	unsigned index = line.find('=')+1;  
 	line = line.substr(index);
 	stringstream ss(line);    //finding the value of the key.
 	ss >> value;              //converting the obtained value to T(template) type
@@ -110,7 +110,7 @@ int config::Get_int(string key){
      
       getline(Load,line);            
       
-      int low = line.find_first_not_of(' ');
+      unsigned low = line.find_first_not_of(' ');
       if(low>0 && low<line.length()){
 	line = line.substr(low);              //ignores the leading white space in the line.
       }
@@ -124,7 +124,7 @@ int config::Get_int(string key){
       
       if(name==key){  //compares the key to first word of in the line.
 	int value;
-	int index = line.find('=')+1;  
+	unsigned index = line.find('=')+1;  
 	line = line.substr(index);
 	stringstream ss(line);    //finding the value of the key.
 	ss >> value;              //converting the obtained value to T(template) type

@@ -31,7 +31,7 @@ double distance(cv::Point p1, cv::Point p2){
 ParametricEllipse::ParametricEllipse(cv::Point2i centre, double a, int b, double alpha, int freq  ): centre(centre),a(a),b(b),alpha(alpha),freq(freq){}
 
 bool has_key(const std::vector<cv::Point2i>& bbins, int b, int& index){
-  for(int i=0; i<bbins.size(); ++i){
+  for(unsigned i=0; i<bbins.size(); ++i){
     if(bbins[i].x == b){index =i; return true;}
   }
   return false;
@@ -41,7 +41,7 @@ void find_max(const std::vector<cv::Point2i>& bbins, int& max_freq, int& max_ind
   max_freq = -1;
     max_index = -1;
 
-  for(int i=0; i<bbins.size(); i++){
+  for(unsigned i=0; i<bbins.size(); i++){
     if(bbins[i].y>max_freq){max_freq = bbins[i].y; max_index =i;}
   }
 }
@@ -52,7 +52,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
   std::vector<ParametricEllipse> elData;
 
   //Get first point
-   for(int i=0;i<coordinates.size(); i++){
+   for(unsigned i=0;i<coordinates.size(); i++){
      int x1 = coordinates[i][0];//[i][0];//x for first point
      int y1 = coordinates[i][1];//[i][1];//y for first point
      //Get second point
@@ -60,10 +60,10 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
      ParametricEllipse probable(cv::Point(-1,-1), -1,-1, -1,-1);
      int max_index;
      int max_freq;
-     int bmax;
-     int sec_ind;
+     int bmax=0;
+     int sec_ind=0;
      std::vector<cv::Vec3f> real_unused;
-     for(int j=0;j<coordinates.size();j++){
+     for(unsigned j=0;j<coordinates.size();j++){
        int x2 = coordinates[j][0]; //x coordinate of second point
        int y2 = coordinates[j][1];  //y coordinate of second point
        //distance between first point and second point.
@@ -78,7 +78,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
 	 //third loop to look for point around centre of ellipse where the distance is in range of minor axis.
 	 std::vector<cv::Vec3f> unused;
 	
-	 for(int k=0; k<coordinates.size(); k++){
+	 for(unsigned k=0; k<coordinates.size(); k++){
 	   int x = coordinates[k][0];
 	   int y = coordinates[k][1];
 	   int d = distance(cv::Point(x, y),centre);
@@ -126,7 +126,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
        std::vector<cv::Vec3f> unused;
        
        //including all the points before index to preserve array structure.
-       for(int c=0; c<i; c++){ unused.push_back(coordinates[c]);}
+       for(unsigned c=0; c<i; c++){ unused.push_back(coordinates[c]);}
        
        //setting the first point to (-1000,-1000) to preserve array structure.
        coordinates[i][0]=-1000;
@@ -137,7 +137,7 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
        coordinates[sec_ind][1]=-1000;
              
        //removing all the points that were considered for current ellipse.
-       for(int m=i+1; m<coordinates.size();m++){
+       for(unsigned m=i+1; m<coordinates.size();m++){
 	 int x = coordinates[m][0];
 	 int y = coordinates[m][1];
 	 int d = distance(cv::Point(x, y), probable.centre);
@@ -159,14 +159,14 @@ std::vector<ParametricEllipse> detect_ellipse(const std::vector<cv::Vec3f>& inpu
    }
 
    //Filling the closest point, dist  and bolts in the pmt info.
-   for(int i=0; i< elData.size(); ++i){
+   for(unsigned i=0; i< elData.size(); ++i){
 
      cv::Point centre =  elData[i].centre;
      double e0 = elData[i].a;
      double e1 = elData[i].b;
      double phi = elData[i].alpha;
 
-     for(int j=0; j<input_data.size(); ++j){
+     for(unsigned j=0; j<input_data.size(); ++j){
        cv::Point p = cv::Point(input_data[j][0], input_data[j][1]); //bolt's centre.
        double d = distance(centre , p); //distance of current blob from centre.
        
@@ -194,7 +194,7 @@ void draw_ellipses(const std::vector<ParametricEllipse>& elData, cv::Mat& img ){
     ellipse( img, center, axes, 180.0*ellipses.alpha/PI , 0., 360,  cv::Scalar (255, 255, 255) );
     
     //drawing line from bolts to closest point in the ellipse
-    for(int i = 0; i<ellipses.bolts.size(); i++){
+    for(unsigned i = 0; i<ellipses.bolts.size(); i++){
       cv::Vec3f bolts = ellipses.bolts[i];
       //drawing included bolts
       cv::circle( img, cv::Point( bolts[0], bolts[1] ), bolts[2], cv::Scalar(0,0,255), 1, 0 );

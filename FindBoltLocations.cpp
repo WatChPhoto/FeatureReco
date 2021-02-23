@@ -16,11 +16,79 @@
 
 #include "ellipse_detection_2.1.hpp" //ellipse detection fast
 
+#include "FeatureTTree.hpp"
+#include "openblobdetector.hpp"
 
 using std::string;
 using std::vector;
 
 using namespace cv;
+
+
+void fill_ttree_blobs( const vector<OpenBlobDetector::Center>& blobinfo, ImageData & imagedata ){
+  
+  unsigned entry=0;
+  for ( const OpenBlobDetector::Center & blob : blobinfo ){
+    BlobData b;
+    b.entry = entry++;
+    b.x = blob.location.x;
+    b.y = blob.location.y;
+    b.area = blob.area;
+    b.circularity = blob.circularity;
+    b.inertia = blob.inertia;
+    b.convexity = blob.convexity;
+    b.intensity = blob.intensity;
+    // here we need to calculate the other blob parameters!
+    imagedata.AddBlob( b );
+  }
+}
+
+
+void fill_image_ttree( int imgnum, ImageData& imtt ){
+  imtt.ips.imgnum            = imgnum;
+  imtt.ips.do_clahe          = config::Get_int   ( "do_clahe"                 );
+  imtt.ips.clahe_gridsize    = config::Get_int   ( "clahe_gridsize"           );
+  imtt.ips.clahe_cliplimit   = config::Get_int   ( "clahe_cliplimit"          );
+  imtt.ips.do_blur           = config::Get_int   ( "do_gaus_blur"             );
+  imtt.ips.blur_pixels       = config::Get_int   ( "blurpixels"               );
+  imtt.ips.blur_sigma        = config::Get_int   ( "blursigma"                );
+  imtt.ips.do_bilat          = config::Get_int   ( "do_bifilter"              );
+  imtt.ips.bilat_sigcolor    = config::Get_int   ( "sigColor"                 );
+  imtt.ips.bilat_sigspace    = config::Get_int   ( "sigSpace"                 ); 
+  imtt.ips.blob_min_thres    = config::Get_int   ( "blob_minThreshold"        ); 
+  imtt.ips.blob_max_thres    = config::Get_int   ( "blob_maxThreshold"        );  
+  imtt.ips.blob_filter_area  = config::Get_int   ( "blob_filterByArea"        ); 
+  imtt.ips.blob_min_area     = config::Get_double( "blob_minArea"             );   
+  imtt.ips.blob_max_area     = config::Get_double( "blob_maxArea"             );
+  imtt.ips.blob_filter_circ  = config::Get_int   ( "blob_filterByCircularity" ); 
+  imtt.ips.blob_min_circ     = config::Get_double( "blob_minCircularity"      );
+  imtt.ips.blob_max_circ     = config::Get_double( "blob_maxCircularity"      );
+  imtt.ips.blob_filter_conv  = config::Get_int   ( "blob_filterByConvexity"   );
+  imtt.ips.blob_min_conv     = config::Get_double( "blob_minConvexity"        );
+  imtt.ips.blob_max_conv     = config::Get_double( "blob_maxConvexity"        );
+  imtt.ips.blob_filter_iner  = config::Get_int   ( "blob_filterByInertia"     );
+  imtt.ips.blob_min_iner     = config::Get_double( "blob_minInertiaRatio"     );
+  imtt.ips.blob_max_iner     = config::Get_double( "blob_maxInertiaRatio"     );
+
+  imtt.ips.ehough_minhits      = config::Get_int   ( "ellipse_hough_minhits" );
+  imtt.ips.ehough_threshold    = config::Get_int   ( "ellipse_hough_threshold" ); 
+  imtt.ips.ehough_drscale      = config::Get_double( "ellipse_hough_drscale" );
+  imtt.ips.ehough_nbins_bb     = config::Get_int   ( "ellipse_hough_nbins_bb" ); 
+  imtt.ips.ehough_nbins_ee     = config::Get_int   ( "ellipse_hough_nbins_ee" ); 
+  imtt.ips.ehough_nbins_phiphi = config::Get_int   ( "ellipse_hough_nbins_phiphi" );  
+  imtt.ips.ehough_nbins_x      = config::Get_int   ( "ellipse_hough_nbins_x" ); 
+  imtt.ips.ehough_nbins_y      = config::Get_int   ( "ellipse_hough_nbins_y" ); 
+  imtt.ips.ehough_bbmin        = config::Get_double( "ellipse_hough_bbmin" ); 
+  imtt.ips.ehough_bbmax        = config::Get_double( "ellipse_hough_bbmax" ); 
+  imtt.ips.ehough_eemin        = config::Get_double( "ellipse_hough_eemin" );
+  imtt.ips.ehough_eemax        = config::Get_double( "ellipse_hough_eemax" );
+  imtt.ips.ehough_phimin       = config::Get_double( "ellipse_hough_phimin" );     
+  imtt.ips.ehough_phimax       = config::Get_double( "ellipse_hough_phimax" );
+  imtt.ips.ehough_xmin         = config::Get_double( "ellipse_hough_xmin" );
+  imtt.ips.ehough_xmax         = config::Get_double( "ellipse_hough_xmax" );
+  imtt.ips.ehough_ymin         = config::Get_double( "ellipse_hough_ymin" );
+  imtt.ips.ehough_ymax         = config::Get_double( "ellipse_hough_ymax" );
+}
 
 // RGB to CMYK conversion
 void rgb2cmyk(const cv::Mat& img, std::vector<cv::Mat>& cmyk ) {
@@ -202,12 +270,12 @@ Mat equalize_by_color( const cv::Mat& image, std::string infname, bool write_ima
 /// draw blobs on blob_circles (an empty Mat object)
 /// writes image if write_images is set to false
 vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool write_images, const std::string& infname,   
-			     std::vector < KeyPoint >& keypoints ){
+			     std::vector < KeyPoint >& keypoints, ImageData& imagedata ){
   //Blob detection
   Mat img_blob = image_clahe.clone ();
-
+  
   // Setup SimpleBlobDetector parameters.
-  SimpleBlobDetector::Params params;
+  OpenBlobDetector::Params params;
   
   //detect white
   //params.filterByColor=true;  
@@ -237,10 +305,12 @@ vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool wr
   params.minInertiaRatio = config::Get_double ("blob_minInertiaRatio");
   
   // Set up the detector with set parameters.                                                                                         
-  Ptr < SimpleBlobDetector > detector = SimpleBlobDetector::create (params);
+  Ptr < OpenBlobDetector > detector = OpenBlobDetector::create (params);
   
   // Detect blobs.                                                                                                                        
-  detector->detect (img_blob, keypoints);
+  detector->detect (img_blob, keypoints );
+  
+  fill_ttree_blobs( detector->blobinfo, imagedata );
   
   //blob vector will contain x,y,r
   vector < Vec3f > blobs;
@@ -260,26 +330,26 @@ vector< Vec3f > blob_detect( const Mat& image_clahe , Mat& blob_circles, bool wr
   //draw_found_center (blobs, blob_circles);
   blob_circles = Mat::zeros (image_clahe.size (), image_clahe.type ());
   draw_foundblobs( blobs, blob_circles );
- 
+  
   if ( write_images ) {
     //Draws circle from data to the input image
     Mat img_blob_map = image_clahe.clone();
     draw_circle_from_data (blobs, img_blob_map, Scalar (0, 0, 255));
     string outputname = build_output_filename (infname, "blob");
     imwrite (outputname, img_blob_map);
-  
+    
     // Make image that just has circle centers from blob detection
     outputname = build_output_filename (infname, "blobCandidate");
     imwrite (outputname, blob_circles);
   }
-
+  
   return blobs;
 }
 
 
 Mat apply_gaussian_blur( const Mat& image, bool write_image, const std::string& infname ){
   Mat img_blur = image.clone ();
-  bool verbose = config::Get_int("verbosity");
+  //bool verbose = config::Get_int("verbosity");
   bool do_gaus_blur = (bool) config::Get_int ("do_gaus_blur");
 
   if ( do_gaus_blur ) {
@@ -394,7 +464,7 @@ Mat apply_clahe( const Mat& img_can, bool write_image, const std::string& infnam
 }
   
 
-void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, bool write_image, const std::string& infname, const MedianTextData & mtd ){
+void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, bool write_image, const std::string& infname ){ //, const MedianTextData & mtd ){
   int de_min_major = config::Get_int( "de_min_major" );//80;
   int de_max_major = config::Get_int( "de_max_major" );//160;
   int de_min_minor = config::Get_int( "de_min_minor" );//80;
@@ -453,7 +523,7 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
   // look for duplicate bolts and keep only best matches
   prune_bolts_super_improved( f_ellipse_pmts, fhdangboltel->GetMean(),4 );
   // remove pmts below threshold (9 bolts)
-  prune_pmts_improved( f_ellipse_pmts, 12, "f_ellipsehough" );
+  prune_pmts_improved( f_ellipse_pmts );//, 12, "f_ellipsehough" );
   
 
 
@@ -588,10 +658,10 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
 
   //fill the blob density histogra
   //std::vector<int> ind;
-  for(int i=0;i<blobs.size();i++){
+  for(unsigned i=0;i<blobs.size();i++){
     Vec3f blb = blobs[i];
     int count =1;
-    for(int j=0; j<blobs.size(); j++){
+    for(unsigned j=0; j<blobs.size(); j++){
       if(j==i)continue;
       double dist = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
       if(dist<35){count++;}
@@ -603,24 +673,24 @@ void histogram_blobs( const vector< Vec3f >& blobs, const std::string & tag ){
 
   int first_ind=-1; //for recording index of first min distance blob
   int sec_ind =-1;
-  for(int i=0;i<blobs.size();i++){
+  for(int i=0;i<int(blobs.size());i++){
     Vec3f blb = blobs[i];
     blobsize->Fill(blb[2]);
     double mindist = 10000000;
     double mindist2 = 10000000;
     double mindist3 = 10000000;
-    for(int j=0; j<blobs.size(); j++){
+    for(int j=0; j<int(blobs.size()); j++){
       if(j==i)continue;
       double dist = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
       if(dist<mindist){mindist = dist; first_ind=j;}
     }
    
-    for(int j=0; j<blobs.size(); j++){
+    for(int j=0; j<int(blobs.size()); j++){
       if(j==i || j==first_ind)continue;
       double dist2 = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
       if(dist2<mindist2){mindist2 = dist2; sec_ind = j; }
     }
-for(int j=0; j<blobs.size(); j++){
+    for(int j=0; j<int(blobs.size()); j++){
       if(j==i || j==first_ind || j==sec_ind)continue;
       double dist3 = sqrt((blobs[j][0]-blb[0])*(blobs[j][0]-blb[0])+(blobs[j][1]-blb[1])*(blobs[j][1]-blb[1]));
       if(dist3<mindist3){mindist3 = dist3; }
@@ -640,18 +710,18 @@ void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::strin
   for(PMTIdentified her: ellipse_pmts){
     float a = her.circ.get_xy().x ;
     float b = her.circ.get_xy().y ; // axis start from left bottom corner y^->x
-    float aa = her.circ.get_a();
-    float bb = her.circ.get_b();
-    float ee = her.circ.get_e();
-    float area = aa*bb*pi;
-    float phi = her.circ.get_phi();
+    //float aa = her.circ.get_a();
+    //float bb = her.circ.get_b();
+    //float ee = her.circ.get_e();
+    //float area = aa*bb*pi;
+    //float phi = her.circ.get_phi();
 
     vector<float>data;    
-    for(int j=0; j<her.bolts.size(); j++){
+    for(unsigned j=0; j<her.bolts.size(); j++){
       float x0=her.bolts[j][0]-a;
       float y0=her.bolts[j][1]-b;
       float min_ang=362;
-      for(int k=0; k<her.bolts.size(); k++){
+      for(unsigned k=0; k<her.bolts.size(); k++){
 	if(j==k){continue;}
 	float x1=her.bolts[k][0]-a;
 	float y1=her.bolts[k][1]-b;
@@ -670,10 +740,10 @@ void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::strin
     //based on mode
     //have to sort first
     std::vector<float>dmedian=data;
-    for(int i=0; i<data.size();i++){
+    for(unsigned i=0; i<data.size();i++){
       float d=dmedian[i];
       int ind=-1;
-      for(int k=i+1;k<data.size();k++){
+      for(unsigned k=i+1;k<data.size();k++){
 	if(dmedian[k]<d){d=dmedian[k]; ind=k;}
       }
       if(ind>=0){ dmedian[ind]=data[i]; dmedian[i]=d;}
@@ -683,7 +753,7 @@ void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::strin
 
     float avg=15.;//0;
     
-    float mean; 
+    float mean=0.0; 
     for(float x:data){
       mean +=x;
     }
@@ -716,78 +786,70 @@ void histogram_stddev(const std::vector< PMTIdentified >ellipse_pmts, std::strin
   
 }
 
-void histogram_deviation(const std::vector< PMTIdentified >ellipse_pmts, std::string tag){
-  TH2D* deviation2D = new TH2D((tag+"deviation2D").c_str(), "Std Deviation;X;Y",1000, 0., 4000., 750,0.,3000. );  
 
-TH1D* angledev = new TH1D((tag+"angle_dev").c_str(), "Angle of bolt from expected; #Delta angle (deg); counts/bin",60. , -15., 15. );  
-TH1D* angledist = new TH1D((tag+"angle_distribution").c_str(), "Min distance with second closest blobs; dist; counts/bin",360. , -0.5, 360 );  
+void ellipses_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, ImageData& imagedata ){
+  for ( const PMTIdentified& pmt : ellipse_pmts ){
+    EllipseData ed( pmt.pmtid, pmt.circ[0], pmt.circ[1], 
+		    pmt.circ.get_a(), pmt.circ.get_b(), pmt.circ.get_e(), pmt.circ.get_phi(), 
+		    pmt.bolts.size() );
+    for ( const Vec3f bolt : pmt.bolts ){
+      // find closest matching blob
+      unsigned idxmatch=0;
+      float    distmin2 =1000000;
+      for ( unsigned idx=0; idx<imagedata.fBlobs.size(); ++idx){
+	const BlobData & b = imagedata.fBlobs[idx];
+	float dist2 = (b.x-bolt[0])*(b.x-bolt[0]) + (b.y-bolt[1])*(b.y-bolt[1]);
+	if ( dist2 < distmin2 ){
+	  idxmatch = idx;
+	  distmin2 = dist2;
+	}
+      }
+      ed.blobentry.push_back( imagedata.fBlobs[idxmatch] );
+    }
+    ed.ndof = pmt.dists.size();
+    ed.chi2 = 0.0;
+    for ( float d : pmt.dists ){
+      ed.chi2 += d*d;
+    }
+    ed.peakval = pmt.peakval;
+  
+    imagedata.AddEllipse( ed );
+  }
+}
 
-TH2D* deviation_acc = new TH2D((tag+"deviation_accumulation").c_str(), "Deviation Accumulation;X;Y",1000, 0., 4000., 750,0.,3000. );  
 
- for(PMTIdentified her: ellipse_pmts){
-   float a = her.circ.get_xy().x ;
-   float b = her.circ.get_xy().y ; // axis start from left bottom corner y^->x
-   float aa = her.circ.get_a();
-   float bb = her.circ.get_b();
-   float ee = her.circ.get_e();
-   float area = aa*bb*pi;
-   float phi = her.circ.get_phi();
-   
-   int max_count=0;
-   int index=-1;
-   for ( unsigned i =0 ; i<her.bolts.size(); ++i ){
-     //vector in direction of first bolt considering centre of ellipse as origin
-     float x0 = her.bolts[i][0]-a;
-     float y0 = her.bolts[i][1]-b;
-     std::cout<<"(x0,y0) = "<<"("<<x0<<","<<y0<<")"<<std::endl;
-     int count=0;
-      
-     for ( unsigned j =0 ; j<her.bolts.size(); ++j ){
-       if ( i == j ) continue;
-       //vector in direction of second bolt considering centre of ellipse as origin
-       float x1 = her.bolts[j][0]-a;
-       float y1 = her.bolts[j][1]-b;
-       std::cout<<"(x1,y1) = "<<"("<<x1<<","<<y1<<")"<<std::endl;
-       //small angle between vector is cos(theta)=a.b/|a||b|. Angle is between 0 to 180
-       float dang = acos(((x0*x1)+(y0*y1))/(sqrt((x0*x0)+(y0*y0))*sqrt((x1*x1)+(y1*y1))))*(180.0/acos(-1));
-       std::cout<<"dang = "<<dang<<std::endl;
-       float rem = fabs(dang-(round(dang/15.0)*15));
-       if(rem<4||rem>11){count++;}
-     }
-     if (count>=max_count){max_count=count; index = i;}
-     
-     
-   }
-   std::cout<<"-----------------------Second-----------------------"<<std::endl;
-   std::cout<<"index = "<<index<<std::endl;
-   //index is probable true bolt.
-   float x0 = her.bolts[index][0]-a;
-   float y0 = her.bolts[index][1]-b;
-   std::cout<<"(x0,y0) = "<<"("<<x0<<","<<y0<<")"<<std::endl;
-   float deviation=0.;
-   for ( unsigned k =0 ; k<her.bolts.size(); ++k ){
-     //if ( index == k ) continue;
-     //vector in direction of second bolt considering centre of ellipse as origin
-     float x1 = her.bolts[k][0]-a;
-     float y1 = her.bolts[k][1]-b;
-     std::cout<<"(x1,y1) = "<<"("<<x1<<","<<y1<<")"<<std::endl;
-     //small angle between vector is cos(theta)=|a.b|/|a||b|
-     float dang = acos(((x0*x1)+(y0*y1))/(sqrt((x0*x0)+(y0*y0))*sqrt((x1*x1)+(y1*y1))))*(180.0/acos(-1));
-     std::cout<<"dang = "<<dang<<std::endl;
-     float rem = dang-(round(dang/15.0)*15);
-     deviation2D->Fill(her.bolts[k][0],her.bolts[k][1],rem);
-     angledev->Fill(rem);	      
-     angledist->Fill(dang);
-     
-     //differentiating two PMT's having same number of bolts
-     deviation += fabs(rem);
-   }
-   deviation_acc->Fill(a,2750-b,deviation);
- }
+void pmts_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, ImageData& imagedata ){
+  for ( const PMTIdentified& pmt : ellipse_pmts ){
+    EllipseData ed( pmt.pmtid, pmt.circ[0], pmt.circ[1], 
+		    pmt.circ.get_a(), pmt.circ.get_b(), pmt.circ.get_e(), pmt.circ.get_phi(), 
+		    pmt.bolts.size() );
+    for ( const Vec3f bolt : pmt.bolts ){
+      // find closest matching blob
+      unsigned idxmatch=0;
+      float    distmin2 =1000000;
+      for ( unsigned idx=0; idx<imagedata.fBlobs.size(); ++idx){
+	const BlobData & b = imagedata.fBlobs[idx];
+	float dist2 = (b.x-bolt[0])*(b.x-bolt[0]) + (b.y-bolt[1])*(b.y-bolt[1]);
+	if ( dist2 < distmin2 ){
+	  idxmatch = idx;
+	  distmin2 = dist2;
+	}
+      }
+      ed.blobentry.push_back( imagedata.fBlobs[idxmatch] );
+    }
+    ed.ndof = pmt.dists.size();
+    ed.chi2 = 0.0;
+    for ( float d : pmt.dists ){
+      ed.chi2 += d*d;
+    }
+    ed.peakval = pmt.peakval;
+  
+    imagedata.AddPMT( ed );
+  }
 }
 
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
-			     bool write_image, const std::string& infname, const MedianTextData & mtd ){ 
+			     bool write_image, const std::string& infname, const MedianTextData & mtd , ImageData& imagedata){ 
 
   bool do_ellipse_hough = (bool)config::Get_int( "do_ellipse_hough" );
   if ( do_ellipse_hough ){
@@ -803,8 +865,8 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     float bbmax = (float)config::Get_double("ellipse_hough_bbmax");
     float eemin = (float)config::Get_double("ellipse_hough_eemin");
     float eemax = (float)config::Get_double("ellipse_hough_eemax");
-    float phiphimin = (float)config::Get_double("ellipse_hough_phphimin");
-    float phiphimax = (float)config::Get_double("ellipse_hough_phiphimax");
+    float phiphimin = (float)config::Get_double("ellipse_hough_phimin");
+    float phiphimax = (float)config::Get_double("ellipse_hough_phimax");
     float xmin = (float)config::Get_double("ellipse_hough_xmin");
     float xmax = (float)config::Get_double("ellipse_hough_xmax");
     float ymin = (float)config::Get_double("ellipse_hough_ymin");
@@ -843,6 +905,9 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
       }
       ellipse_pmts.push_back( PMTIdentified( pmtloc, boltlocs, dists, her.peakval ) );
     }
+
+    ellipses_to_ttree( ellipse_pmts, imagedata );
+
 
     //Trial here.
     histogram_stddev(ellipse_pmts, "before");
@@ -918,7 +983,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     // remove pmts below threshold (9 bolts)
     //    prune_pmts( ellipse_pmts, 9, "ellipsehough" );
     //prune_pmts( ellipse_pmts, 9, "ellipsehough" );
-    prune_pmts_improved( ellipse_pmts, 10, "ellipsehough" );
+    prune_pmts_improved( ellipse_pmts );//, 10, "ellipsehough" );
 
     std::cout<<"========================== AFTER Pruning PMTS ===================================="<<std::endl;
     for  (const PMTIdentified & pmt : ellipse_pmts) {
@@ -930,7 +995,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     //TH2D *ellipse_feature = new TH2D("Ellipse feature", "Ellipse feature; y-value;phi(degree);size; count); 
 
     histogram_stddev(ellipse_pmts, "after_pruning");
-    histogram_deviation(ellipse_pmts, "after");
+    //histogram_deviation(ellipse_pmts, "after");
     //Fill ellipse_dist histogram
     TH1D * ellipse_dist = new TH1D ("ellipse_dist",
 				    "Distance from bolt to PMT ellipse; distance (pixels); Count/bin",
@@ -957,6 +1022,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
     }
     histogram_blobs( blobs_afterprune, "_final" );
 
+    pmts_to_ttree( ellipse_pmts, imagedata );
 
     string outfilename = build_output_textfilename( infname, "he_pmts" ); 
     std::ofstream fpmt_out (outfilename);
@@ -1394,9 +1460,9 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
   */
   if(0){
  vector<vector<int>>disk;
-  for(int i=0; i<blobs1.size(); ++i){
+  for(unsigned i=0; i<blobs1.size(); ++i){
     vector<int>entries;
-    for(int j =0; j<blobs1.size();++j){
+    for(unsigned j =0; j<blobs1.size();++j){
       float dist = RobustLength(fabs(blobs1[i][0]-blobs1[j][0]),fabs(blobs1[i][1]-blobs1[j][1]));
       if(dist<=35){
 	entries.push_back(j);
@@ -1409,8 +1475,8 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     disk.push_back(entries);
   }
 
-  for(int i=0; i<disk.size(); i++){
-    int sum = 0;
+  for(unsigned i=0; i<disk.size(); i++){
+    //int sum = 0;
     if(disk[i].size()<3){
       blobs.push_back(blobs1[i]);
     }
@@ -1436,7 +1502,7 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
   draw_foundblobs( blobs1, blbs_near );
   draw_foundblobs( blobs1, blbs_size );
 
-  for(int j=0; j<blobs1.size(); ++j){
+  for(unsigned j=0; j<blobs1.size(); ++j){
     Vec3f bl = blobs1[j];
     int x = bl[0];
     int y = bl[1];
@@ -1449,13 +1515,13 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
     bool near = false;
     int n=0;
     float ang;
-    int ind;
-    for(int i=0; i<blobs1.size(); ++i){
+    //unsigned ind;
+    for(unsigned i=0; i<blobs1.size(); ++i){
       if(i==j){continue;}
       float dist = RobustLength(fabs(blobs1[i][0]-x),fabs(blobs1[i][1]-y));
       if (dist<blobcutlen){//35){//25){//35){ 
 	n++;   //count number of blobs within 35 px
-	ind = i;
+	//ind = i;
 	ang = atan2f((x-blobs1[i][0]),-(y-blobs1[i][1])); //getting angle with ^ axis wrt image  
 	ang = RADTODEG( ang );
 	ang = (ang<0)?(ang+360):ang; //getting angle between 0-360
@@ -1513,16 +1579,28 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
   }
 }
 
+long int get_image_num_from_filename( char* filename ){
+  int idx_start;
+  int idx_end=-1;
+  char * pEnd;
+  while ( filename[++idx_end] != '.' ){}
+  idx_start=idx_end;
+  while ( isdigit( filename[--idx_start] ) ){}
+  ++idx_start;
+  long int i = strtol( &filename[idx_start], &pEnd, 10 );
+  return i;
+}
+
 
 
 int main (int argc, char **argv) {
-
+  
   unsigned blobs_supplied=0;
   if(std::string(argv[argc-1])=="-i" || std::string(argv[argc-1])=="i"){
     std::cout<<"true"<<std::endl;
     blobs_supplied=1;
   }
-
+  
   if (argc != 2 && argc != 3 && argc!=4 && argc!=5) {
     printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>]\n");
     printf("usage: FindBoltLocations <Input_image_with_path> [<median-bolt-loc-filename>][<truth-text-file>]\n");
@@ -1530,180 +1608,192 @@ int main (int argc, char **argv) {
     return -1;
   }
   //have_truth == 0 means 2 argument mode without true bolt information provided
-      //bool have_truth = argc - 2;
+  //bool have_truth = argc - 2;
+  
+  long int imgnum = get_image_num_from_filename( argv[1] );
+  std::cout<<"Processing image "<<argv[1]<<" image number "<<imgnum<<std::endl;
+  
+  Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
+  
+  
+  Mat image_line = image_color.clone(); //This image will have blobs, mtd and lines
+  //trial to find circles of pmt
+  /*      Mat tri;
+	  cvtColor (image_color, tri, COLOR_RGBA2GRAY);
+	  //     Mat magent =
+	  cmyk[1].at<uchar>(i, j) = (1 - g - k) / (1 - k) * 255.;
+	  Mat img_gaus;
+	  //GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma)
+	  GaussianBlur( tri, img_gaus, Size(5, 5), 6);
+	  
+	  imwrite("gausblur.jpg",img_gaus);
+	  
+	  Mat image_can = img_gaus.clone();
+	  Canny (img_gaus, image_can, 200, 230);
+	  imwrite("canny.jpg",image_can);
+  */
+  if (!image_color.data) {
+    printf ("No image data \n");
+    return -1;
+  }
 
-      std::cout<<"Processing image "<<argv[1]<<std::endl;
+  //std::cout<<"Image opened"<<std::endl;
+  
+  
+  //option has final, text, candidate, circled, filters
+  vector < bool > option = setup_image_saveflags();
+  
+  //      std::cout<<"Got the Config file fine."<<std::endl;
+  
+  Mat image_final = image_color.clone();
+  
+  Mat input_blobs = image_color.clone();
+  //Mat image_ellipse = image_color.clone();
+  Mat image_houghellipse = image_color.clone();
+  Mat img_blob_map = image_color.clone();
+  
+  //std::cout<<"Clone complete"<<std::endl;
+  
+  /// build output image
+  Mat image;				  
+  cvtColor (image_color, image, COLOR_RGBA2GRAY);
+  //Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
+  //Mat image2 = equalize_by_color( image_color, argv[1], false );
+  
+  //std::cout<<"Image converted to grayscale"<<std::endl;
+  
+  // Open a root file to put histograms into
+  TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
+  
+  // Setup TTree entry for this image
+  TTree* tree = new TTree("ImageTree","Image Data");
+  tree->SetAutoSave(0);
+  ImageData* imagedata = new ImageData();
+  tree->Branch("ImageData",&imagedata, 32000, 99 );
+  fill_image_ttree( imgnum, *imagedata ); 
+  
+  try
+    {
+      bool verbose = config::Get_int("verbosity");
       
-      Mat image_color = imread (argv[1], IMREAD_COLOR);	//IMREAD_GRAYSCALE,
+      // Gaussian blur
+      //std::cout<<"Calling gaussian blur"<<std::endl;
+      Mat img_blur = apply_gaussian_blur( image, option[4], argv[1] );
+      
+      // Bilateral filter
+      //std::cout<<"Calling bilateral filter"<<std::endl;
+      Mat img_flt = apply_bilateral_filter( img_blur, option[4], argv[1] );
+      
+      // Sobel edge detection
+      //std::cout<<"Calling sobel"<<std::endl;
+      Mat grad = apply_sobel_edge( img_flt, option[4], argv[1] );
 
+      //Canny edge detector.
+      //std::cout<<"Calling canny"<<std::endl;
+      Mat img_can = apply_canny_edge( grad, option[ option.size()-1 ], argv[1] );
       
-      Mat image_line = image_color.clone(); //This image will have blobs, mtd and lines
-      //trial to find circles of pmt
-      /*      Mat tri;
-      cvtColor (image_color, tri, COLOR_RGBA2GRAY);
-      //     Mat magent =
-      cmyk[1].at<uchar>(i, j) = (1 - g - k) / (1 - k) * 255.;
-      Mat img_gaus;
-      //GaussianBlur( image, img_blur, Size(blurpixels, blurpixels), blursigma)
-      GaussianBlur( tri, img_gaus, Size(5, 5), 6);
+      // equalize image
+      //std::cout<<"Calling clahe"<<std::endl;
+      Mat image_clahe = apply_clahe( img_can, (bool)config::Get_int("clahe_write"), argv[1] );
       
-      imwrite("gausblur.jpg",img_gaus);
-
-      Mat image_can = img_gaus.clone();
-      Canny (img_gaus, image_can, 200, 230);
-      imwrite("canny.jpg",image_can);
-      */
-      if (!image_color.data) {
-	printf ("No image data \n");
-	return -1;
+      // threshold cut
+      //std::cout<<"Apply threshold cut"<<std::endl;
+      apply_image_threshold (image_clahe, config::Get_int ("threshold") );
+      
+      // do blob detection
+      Mat blob_circles;
+      std::vector < KeyPoint > keypoints;
+      //std::cout<<"Detecting blobs"<<std::endl;
+      vector< Vec3f > blobs1;
+      if(!blobs_supplied){
+	blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints, *imagedata );
       }
 
-      //std::cout<<"Image opened"<<std::endl;
-
+      //vector< Vec3f > blobs2;
+      if(blobs_supplied){
+	blobs1 = fill_bolts_vector(string(argv[2]));
+	//std::cout<<argv[2]<<std::endl;
+      }
       
-      //option has final, text, candidate, circled, filters
-      vector < bool > option = setup_image_saveflags();
-
-      //      std::cout<<"Got the Config file fine."<<std::endl;
-					      
-      Mat image_final = image_color.clone();
-
-      Mat input_blobs = image_color.clone();
-      //Mat image_ellipse = image_color.clone();
-      Mat image_houghellipse = image_color.clone();
-      Mat img_blob_map = image_color.clone();
-
-      //std::cout<<"Clone complete"<<std::endl;
-					      
-      /// build output image
-      Mat image;				  
-      cvtColor (image_color, image, COLOR_RGBA2GRAY);
-      //Mat image1 = output_image_by_color( image_color, false, 3, argv[1], false ); // K (intensity)
-      //Mat image2 = equalize_by_color( image_color, argv[1], false );
-
-      //std::cout<<"Image converted to grayscale"<<std::endl;
-
-      // Open a root file to put histograms into
-      TFile * fout = new TFile ("FindBoltLocation.root", "RECREATE");
-
-      //std::cout<<"Prepared FindBoltLocation.root"<<std::endl;
-
-
-      try
-	{
-	  bool verbose = config::Get_int("verbosity");
-
-	  // Gaussian blur
-	  //std::cout<<"Calling gaussian blur"<<std::endl;
-	  Mat img_blur = apply_gaussian_blur( image, option[4], argv[1] );
-
-	  // Bilateral filter
-	  //std::cout<<"Calling bilateral filter"<<std::endl;
-	  Mat img_flt = apply_bilateral_filter( img_blur, option[4], argv[1] );
-
-	  // Sobel edge detection
-	  //std::cout<<"Calling sobel"<<std::endl;
-	  Mat grad = apply_sobel_edge( img_flt, option[4], argv[1] );
-
-	  //Canny edge detector.
-	  //std::cout<<"Calling canny"<<std::endl;
-	  Mat img_can = apply_canny_edge( grad, option[ option.size()-1 ], argv[1] );
-
-	  // equalize image
-	  //std::cout<<"Calling clahe"<<std::endl;
-	  Mat image_clahe = apply_clahe( img_can, (bool)config::Get_int("clahe_write"), argv[1] );
-    
-	  // threshold cut
-	  //std::cout<<"Apply threshold cut"<<std::endl;
-	  apply_image_threshold (image_clahe, config::Get_int ("threshold") );
-
-	  // do blob detection
-	  Mat blob_circles;
-	  std::vector < KeyPoint > keypoints;
-	  //std::cout<<"Detecting blobs"<<std::endl;
-	  vector< Vec3f > blobs1;
-	  if(!blobs_supplied){
-	    blobs1 = blob_detect( image_clahe, blob_circles, option[3], argv[1], keypoints );
-	  }
-	  //vector< Vec3f > blobs2;
-	  if(blobs_supplied){
-	    blobs1 = fill_bolts_vector(string(argv[2]));
-	    //std::cout<<argv[2]<<std::endl;
-	  }
-	  
-	  if(config::Get_int ("save_blobs_in_text")){
-	      std::string name = build_output_filename(argv[1],"blobs");
-	      name = name.substr(0,name.length()-4);
-	      write_to_text(name, blobs1);
-	      //drawing blobs from Dan's file
-	      draw_foundblobs( blobs1, input_blobs );
-	      imwrite("input_blobs.jpg", input_blobs);
-	      
-	      histogram_blobs( blobs1, "all" );
-	    }
-
-	    vector < Vec3f > blobs;
-	    //Filtering closely packed blobs and yellowish blobs for corner image;
-	    bool corner = config::Get_int("corner");
-	    int blobcutval = config::Get_int("corner_blobcutval");
-	    if(corner){
-	      rem_bolts(blobs1, blobs, image_color, blobcutval);
-	  }
-	  else{
-	    blobs = blobs1;
-	  }
-
-	  histogram_blobs( blobs, "rem_bolts" );
-
-	  // Read in truth bolt locations if provided
-	  // Returns empty vector if text file is not supplied.
-	  //std::cout<<"Looking for the truth"<<std::endl;
-	  //if(argc==3){
-	    const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
-	    // }
-
-	  //drawing mdt in image
-	  draw_text_circles (image_line, mtd);
-	  draw_circle_from_data (blobs, image_line,
-				 Scalar (0, 0, 255), 1);
-	  TH1D *dis = new TH1D("distance of blob from truth","Distance of blob from truth;distance(px);counts/bin",1000,-0.5,999.5);
-	  make_bolt_dist_histogram_wrt_txt( blobs, mtd, dis, image_line );
-	  //string outputname = build_output_filename (argv[1], "mapped");
-	  //imwrite(outputname, image_line);
-
-	  //std::cout<<"Histogramming truth"<<std::endl;	    
-	  histogram_blobs_bymtd( keypoints, mtd );
-
+      if(config::Get_int ("save_blobs_in_text")){
+	std::string name = build_output_filename(argv[1],"blobs");
+	name = name.substr(0,name.length()-4);
+	write_to_text(name, blobs1);
+	//drawing blobs from Dan's file
+	draw_foundblobs( blobs1, input_blobs );
+	imwrite("input_blobs.jpg", input_blobs);
+	
+	histogram_blobs( blobs1, "all" );
+      }
+      
+      vector < Vec3f > blobs;
+      //Filtering closely packed blobs and yellowish blobs for corner image;
+      bool corner = config::Get_int("corner");
+      int blobcutval = config::Get_int("corner_blobcutval");
+      if(corner){
+	rem_bolts(blobs1, blobs, image_color, blobcutval);
+      }
+      else{
+	blobs = blobs1;
+      }
+      
+      histogram_blobs( blobs, "rem_bolts" );
+      
+      // Read in truth bolt locations if provided
+      // Returns empty vector if text file is not supplied.
+      //std::cout<<"Looking for the truth"<<std::endl;
+      //if(argc==3){
+      const MedianTextData & mtd = assign_data_from_text(argc, string (argv[argc - 1]));
+      // }
+      
+      //drawing mdt in image
+      draw_text_circles (image_line, mtd);
+      draw_circle_from_data (blobs, image_line,
+			     Scalar (0, 0, 255), 1);
+      TH1D *dis = new TH1D("distance of blob from truth","Distance of blob from truth;distance(px);counts/bin",1000,-0.5,999.5);
+      make_bolt_dist_histogram_wrt_txt( blobs, mtd, dis, image_line );
+      //string outputname = build_output_filename (argv[1], "mapped");
+      //imwrite(outputname, image_line);
+      
+      //std::cout<<"Histogramming truth"<<std::endl;	    
+      histogram_blobs_bymtd( keypoints, mtd );
+      
 	  //Debug information PMt
-	  if(verbose){
-	    for (const MedianTextRecord & rec:mtd) {
-	      std::cout << rec;
-	    }
-	  }
+      if(verbose){
+	for (const MedianTextRecord & rec:mtd) {
+	  std::cout << rec;
+	}
+      }
 
-	  // fast ellipse detection
-	  //fast_ellipse_detection( blobs, image_ellipse, true, argv[1], mtd );
+      // fast ellipse detection
+      //fast_ellipse_detection( blobs, image_ellipse, true, argv[1] );//, mtd );
+      
+      // slow ellipse detection (hough_ellipse.hpp)
+      //std::cout<<"Callign slow_ellipse_detection"<<std::endl;
+      
+      slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd, *imagedata ); 
+      
+      imagedata->SetSize();
+      tree->Fill();
+      tree->Write();
 
-	  // slow ellipse detection (hough_ellipse.hpp)
-	  //std::cout<<"Callign slow_ellipse_detection"<<std::endl;
 
-	  slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd ); 
 
-	  //std::cout<<"Done slow_ellipse_detection"<<std::endl;
-	  // circle detection on canny image to find bolts
-	  //Mat img_circles; // final image of locatad bolts
-	  //vector< Vec3f > circles = circle_bolt_detection( img_can, image_color, img_circles, option[3], argv[1] );
-
-	  // PMT circle detection on bolts found by circle_bolt_detection
-	  //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
-
-	  // PMT circle detection on bolts found by blob detection
-	  //pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );
-
+      //std::cout<<"Done slow_ellipse_detection"<<std::endl;
+      // circle detection on canny image to find bolts
+      //Mat img_circles; // final image of locatad bolts
+      //vector< Vec3f > circles = circle_bolt_detection( img_can, image_color, img_circles, option[3], argv[1] );
+      
+      // PMT circle detection on bolts found by circle_bolt_detection
+      //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
+      
+      // PMT circle detection on bolts found by blob detection
+      //pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );
+      
 
 
 	/*
-  ///bwlabel trial
+       ///bwlabel trial
 	///bwlabel trial
 	Mat contour1 = image.clone();
 	Mat contour3 = image.clone();
@@ -1837,13 +1927,13 @@ int main (int argc, char **argv) {
 	*/
     
     }
-    catch (std::string e)
+  catch (std::string e)
     {
-	std::cout << "Error with config file key " << e << std::endl;
+      std::cout << "Error with config file key " << e << std::endl;
     }
 
-    fout->Write ();
-    fout->Close ();
-
-    return 0;
+  fout->Write ();
+  fout->Close ();
+  
+  return 0;
 }

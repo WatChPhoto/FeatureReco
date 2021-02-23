@@ -131,7 +131,7 @@ double ellipse_st::Findtbar(double a, xypoint pprime) const{
   double t1 = -1*b*b+sqrt(a*a*pprime.x*pprime.x + b*b*pprime.y*pprime.y);
   double f = F(a, pprime, t0, t1);
   
-  int count =0;
+  //int count =0;
 
   //do the bisection method to find the roots of F.
   // 0.01 can be reduced for more accurate roots
@@ -188,25 +188,25 @@ double ellipse_st::GetRoot(double r0, double z0, double z1, double g) const{
 
 double ellipse_st::DistancePointEllipse2(xypoint p) const{
 
-  bool xflip;
-  bool yflip;
+  //bool xflip=false;
+  //bool yflip=false;
   //work in coordinates of ellipse
   xypoint pprime((p.x-c.x)*cos(phi)+(p.y-c.y)*sin(phi), 
 		 -1*(p.x-c.x)*sin(phi)+(p.y-c.y)*cos(phi));
 
   //do calculation as if point is in the first quadrant of the ellipse
-  if(pprime.x < 0){
-    pprime.x *= -1;
-    xflip = true;
-  }
-  if (pprime.y < 0){
-    pprime.y *= -1;
-    yflip = true;
-  }
+  //if(pprime.x < 0){
+  //  pprime.x *= -1;
+  //  xflip = true;
+  // }
+  //if (pprime.y < 0){
+  //  pprime.y *= -1;
+  //  yflip = true;
+  // }
 
 
   double x0, x1;
-  double dmin2;
+  double dmin2=0;
   double a = b/sqrt(1-e*e);   //long axis of ellipse
   
   if(pprime.y>0){

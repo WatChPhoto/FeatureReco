@@ -189,7 +189,7 @@ void draw_line( const std::vector< PMTIdentified >& pmtsfound, const MedianTextD
       int x= pmtid.bolts[ boltidx ][0];
       int y= pmtid.bolts[ boltidx ][1];
       
-      float dist = std::sqrt( (m_x-x)*(m_x-x) + (m_y-y)*(m_y-y) );
+      //float dist = std::sqrt( (m_x-x)*(m_x-x) + (m_y-y)*(m_y-y) );
       // std::cout<<"dist = "<<dist<<std::endl;
       // if ( dist > 20 ) continue;
 
@@ -205,10 +205,10 @@ void make_bolt_dist_histogram_wrt_txt( const std::vector<cv::Vec3f>& circles, co
   //goal is if a is closest to b and b is closest to a then they are the map.
   for (const MedianTextRecord & rec : mtd ){
     float  mindist = 1000000;
-    int m_x = rec.x();
-    int m_y = rec.y();
+    //int m_x = rec.x();
+    //int m_y = rec.y();
 
-    int x,y;
+    int x=0,y=0;
     for ( const cv::Vec3f & circ : circles ){
       //float dist = std::sqrt( (circ[0] - rec.x())*(circ[0] - rec.x()) +
       //		      (circ[1] - rec.y())*(circ[1] - rec.y()) );
