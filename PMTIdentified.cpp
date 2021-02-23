@@ -365,28 +365,21 @@ for( PMTIdentified& pmt : final_pmts ){
       }
     }
  
- 
-
     // now remove bolts
     std::vector<cv::Vec3f> bolts; // bolts going with this PMT
     std::vector<float> dists; // distance of bolt from PMT circle 
     std::vector<float> angles; // angle of each bolt
     std::vector<float> dangs;  // difference in angle from boltid's angle
     std::vector<int>   boltid; // 1 is at 12 o'clock, 2 ... 24 going around clockwise
-    
     // include comparison to truth if available
     std::vector<int>   idx_txt; // index of medianTextReader
     std::vector<float> dist_txt; // distance to closest matching bolt
     
     for (unsigned i=0; i<indices_to_keep.size() ; ++i ){
-      //if ( std::find( indices_to_keep.begin(), indices_to_keep.end(), i ) == indices_to_keep.end() ) continue;
       bolts.push_back( pmt.bolts[ indices_to_keep[i] ] );
       dists.push_back( pmt.dists[ indices_to_keep[i] ] );
-      float cor_ang = pmt.angles[ indices_to_keep[i] ] - ang_offset;
-      if ( cor_ang > 360.0 ) cor_ang-=360.0;
-      else if( cor_ang < 0 ) cor_ang+=360;
-      angles.push_back( cor_ang );
-      dangs.push_back( pmt.dangs[ indices_to_keep[i] ] - ang_offset );
+      angles.push_back( pmt.angles[ indices_to_keep[i] ] );
+      dangs.push_back( pmt.dangs[ indices_to_keep[i] ] );
       boltid.push_back( pmt.boltid[ indices_to_keep[i] ] );
       if ( pmt.idx_txt.size() > 0 ){
 	idx_txt.push_back( pmt.idx_txt[ indices_to_keep[i] ] );
@@ -397,6 +390,7 @@ for( PMTIdentified& pmt : final_pmts ){
     pmt.bolts = bolts;
     pmt.dists = dists;
     pmt.angles = angles;
+    pmt.dangs = dangs;
     pmt.boltid = boltid;
     pmt.idx_txt = idx_txt;
     pmt.dist_txt = dist_txt;
@@ -472,6 +466,7 @@ void prune_bolts_improved( std::vector< PMTIdentified >& final_pmts, float ang_o
     pmt.bolts = bolts;
     pmt.dists = dists;
     pmt.angles = angles;
+    pmt.dangs = dangs;
     pmt.boltid = boltid;
     pmt.idx_txt = idx_txt;
     pmt.dist_txt = dist_txt;
