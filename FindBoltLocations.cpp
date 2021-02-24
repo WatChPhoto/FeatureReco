@@ -1200,18 +1200,23 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   int maxR = config::Get_int ("sec_hough_maxR");	// = 10 # maximum radius in pixels
 
 
+  std::cout<<"blobs.size()="<<blobs.size()<<std::endl;
+
   /// Look for circles of bolts
   vector < Vec3f > circles_of_bolts;
 
   HoughCircles (image, circles_of_bolts, HOUGH_GRADIENT, dp,
 		minDist, param1, param2, minR, maxR);
 
+
+  std::cout<<"circles_of_bolts.size()="<<circles_of_bolts.size()<<std::endl;
   //Overlays detected circles from second hough transfrom
   //draw_circle_from_data ( circles_of_bolts, image_color,
   //			  Scalar (255, 102, 255));
 
   std::vector< PMTIdentified > final_pmts;
   find_candidate_bolts( blobs, circles_of_bolts, final_pmts, image );
+  std::cout<<"final_pmts.size()="<<final_pmts.size()<<std::endl;
 
   std::ostringstream osname, ostitle;
   osname << "hangbolt_" << label;
@@ -1237,6 +1242,8 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   //prune_bolts( final_pmts, hdangbolt->GetMean() );
   // remove pmts below threshold (12 bolts)
   prune_pmts( final_pmts, 12, label );
+
+  std::cout<<"final_pmts = "<<final_pmts.size()<<std::endl;
 	
   std::ostringstream osname2, ostitle2;
   osname2 << "bolt_dist_" << label;
@@ -1255,13 +1262,21 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
 
   // Make image of final answer
   // add the circles for the PMTs selected
+  std::cout<<"Found "<<final_pmts.size()<<" PMTs"<<std::endl;
+  double avgradius=0.0;
   for (const PMTIdentified & pmt : final_pmts) {
     vector < Vec3f > circs;
+    avgradius += pmt.circ[2];
+    //std::cout<<" pmt at "<<pmt.circ[0]<<", "<<pmt.circ[1]<<" r="<<pmt.circ[2]<<std::endl;
     circs.push_back( Vec3f( pmt.circ[0], pmt.circ[1], pmt.circ[2] ) );
     draw_circle_from_data (circs, image_color,
 			   Scalar (255, 102, 255), 2);
     draw_circle_from_data (pmt.bolts, image_color,
 			   Scalar (0, 0, 255), 3);
+  }
+  if ( final_pmts.size()>0 ){
+    avgradius /= final_pmts.size();
+    std::cout<<"Averge PMT radius = "<<avgradius<<" pixels"<<std::endl;
   }
 
   if (mtd.size()>0) {
@@ -1312,7 +1327,7 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
   std::ofstream fang_out (outfilename);
 
   for  (const PMTIdentified & pmt : final_pmts) {
-    std::cout << pmt;
+    //std::cout << pmt;
     fang_out << pmt;
     for ( const float &ang : pmt.angles) {
       float ang_cor = ang - hdangbolt->GetMean();
@@ -1648,9 +1663,9 @@ int main (int argc, char **argv) {
   Mat image_final = image_color.clone();
   
   Mat input_blobs = image_color.clone();
-  //Mat image_ellipse = image_color.clone();
+  Mat image_ellipse = image_color.clone();
   Mat image_houghellipse = image_color.clone();
-  Mat img_blob_map = image_color.clone();
+  //Mat img_blob_map = image_color.clone();
   
   //std::cout<<"Clone complete"<<std::endl;
   
@@ -1788,8 +1803,21 @@ int main (int argc, char **argv) {
       //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
       
       // PMT circle detection on bolts found by blob detection
-      //pmt_circle_detection( blobs, blob_circles, img_blob_map, option[1], argv[1], mtd, "houghblobs" );
+      Mat img_blob_map = Mat::zeros(image_houghellipse.rows, image_houghellipse.cols, CV_8UC3); 
+      //draw_circle_from_data (blobs, img_blob_map, Scalar (255, 255, 255));
       
+      //Mat img_blob_map = Mat::zeros (image_clahe.size (), image_clahe.type ());
+      draw_foundblobs( blobs, img_blob_map );
+
+      Mat src_gray2;
+      cvtColor(img_blob_map, src_gray2, COLOR_RGBA2GRAY);// cv::BGR2GRAY );
+
+      imwrite("img_blob_map.jpg", img_blob_map);
+      imwrite("src_gray2.jpg", src_gray2);
+      pmt_circle_detection( blobs, src_gray2, img_blob_map, true, argv[1], mtd, "houghblobs" );
+      
+
+      //void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
 
 
 	/*
