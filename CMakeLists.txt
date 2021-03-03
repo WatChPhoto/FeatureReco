@@ -41,3 +41,10 @@ target_link_libraries( FindBoltLocations featurereco_lib FeatureTreeLib ${OpenCV
 #include_directories( ${OpenCV_INCLUDE_DIRS} )
 #add_executable( test_ellipse_intersect test_ellipse_intersect.cpp )
 #target_link_libraries( test_ellipse_intersect intersect_lib ${OpenCV_LIBS} )
+
+project( automate )
+find_package( OpenCV REQUIRED )
+ADD_LIBRARY( automate_lib Configuration.cpp)
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable( automate automate.cpp )
+target_link_libraries( automate automate_lib ${OpenCV_LIBS} )

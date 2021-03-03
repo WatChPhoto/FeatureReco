@@ -72,7 +72,7 @@ hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
 # Ellipse hough transform
-do_ellipse_hough = 1  # 1 for true, 0 for false
+do_ellipse_hough = 0  # 1 for true, 0 for false
 ellipse_hough_minhits      =  9
 ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
@@ -97,8 +97,9 @@ sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image reso
 sec_hough_minDist = 216 #210 # min distance between circles
 sec_hough_param1 = 1 # threshold placed on image| Minimum brightness to use for hough space
 sec_hough_param2 = 3 #5  # minimum accumulator value to call it a circle
-sec_hough_minR = 80 #80 # minimum radius in pixels
-sec_hough_maxR = 140 #120 # maximum radius in pixels
+sec_hough_minR = 60#80 # minimum radius in pixels
+sec_hough_maxR = 250#250 #120 # maximum radius in pixels
+R_step =10
 
 #Fast ellipse detection parameters
 de_min_major = 120#90 
