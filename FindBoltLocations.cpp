@@ -521,7 +521,7 @@ void fast_ellipse_detection( const vector<Vec3f > & blobs, Mat& image_ellipse, b
   }
 
   // look for duplicate bolts and keep only best matches
-  prune_bolts_super_improved( f_ellipse_pmts, fhdangboltel->GetMean(),4 );
+  prune_bolts_super_improved( f_ellipse_pmts, 4 );
   // remove pmts below threshold (9 bolts)
   prune_pmts_improved( f_ellipse_pmts );//, 12, "f_ellipsehough" );
   
@@ -976,7 +976,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
 
 
     //   prune_bolts_improved2( ellipse_pmts, hdangboltel->GetMean() );
-    prune_bolts_super_improved( ellipse_pmts, hdangboltel->GetMean(), 4. );
+    prune_bolts_super_improved( ellipse_pmts, 4. );
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
     // look for duplicate bolts and keep only best matches
     //prune_bolts( ellipse_pmts, hdangboltel->GetMean() );
@@ -1190,32 +1190,169 @@ vector< Vec3f > circle_bolt_detection( const Mat & img_can, Mat& image_color, Ma
 /// Output:
 ///   Mat& image_color -- draw circles found, and color the points used on each circle
 ///      
-void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
+void pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
+  int minR = config::Get_int ("sec_hough_minR");	//= 3 # minimum radius in pixels
+  int maxR = config::Get_int ("sec_hough_maxR");	// = 10 # maximum radius in pixels
+  int step = config::Get_int("R_step");
+  // PMT circle detection on bolts found by blob detection
+ 
+  Mat image1 = Mat::zeros(image_color.rows, image_color.cols, CV_8UC3); //Drawing blobs
+  draw_circle_from_data( blobs, image1, Scalar(255,255,255),-1 );
+  Mat image;
+  cvtColor(image1, image, COLOR_RGBA2GRAY);// houghCircle takes grayscale input
+
+  //  imwrite("img_blobs.jpg", image1);
+  // imwrite("img_blobs_grey.jpg", image);
+  int dp = config::Get_int ("sec_hough_dp");	//if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
+  int minDist = config::Get_int ("sec_hough_minDist");	// min distance between circles
+  int param1 = config::Get_int ("sec_hough_param1");	// threshold placed on image
+  int param2 = config::Get_int ("sec_hough_param2");	// minimum accumulator value to call it a circle
+
+  int max_pmts=0;
+  int index=-1;
+
+  TH1D * pmt_count = new TH1D ( "Number of PMTS found in Range" ,"Range of size;PMTs count",20, 50, 250);
+  
+  //information to keep
+  //index(will give range of radius) , pmt_count, then sort
+  std::vector<Point2f> data;
+    
+  for(unsigned i=0; i<((maxR-minR)/step); i++){
+    Mat img = image_color.clone();
+   /// Look for circles of bolts
+    vector < Vec3f > pmt_circles;
+    
+    HoughCircles (image, pmt_circles, HOUGH_GRADIENT, dp,
+		  minDist, param1, param2, minR+i*step, minR+(i+1)*step); //i is minR and i+step is maxR
+
+    std::vector< PMTIdentified > final_pmts;
+    find_candidate_bolts( blobs, pmt_circles, final_pmts, image );
+    
+
+    Mat img_b4_prune = image_color.clone();
+    for (const PMTIdentified & pmt : final_pmts) {
+      vector < Vec3f > circs;
+      circs.push_back( Vec3f( pmt.circ[0], pmt.circ[1], pmt.circ[2] ) );
+      draw_circle_from_data (circs, img_b4_prune,
+			     Scalar (255, 102, 255), 2);
+      draw_circle_from_data (pmt.bolts, img_b4_prune,
+			     Scalar (0, 0, 255), 3);
+    }
+    //Overlaying result before pruning in a image.
+    
+    string outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle_before");
+    imwrite(outputname,img_b4_prune);
+        
+    //prune_bolts_super_improved(PMTIdentified pmts_list, float acceptable_deviation_from expected)
+    prune_bolts_super_improved( final_pmts, 4 );
+    //prune_bolts( final_pmts, hdangbolt->GetMean() );
+    // remove intersecting pmts and PMTs below threshold (12 bolts)
+    prune_circle_pmts( final_pmts, 12);//If 2 PMTs have equal bolts this function removes both.
+    std::cout<<"final_pmts.size()="<<final_pmts.size()<<std::endl;
+    
+    for (const PMTIdentified & pmt : final_pmts) {
+      vector < Vec3f > circs;
+      circs.push_back( Vec3f( pmt.circ[0], pmt.circ[1], pmt.circ[2] ) );
+      draw_circle_from_data (circs, img,
+			     Scalar (255, 102, 255), 2);
+      draw_circle_from_data (pmt.bolts, img,
+			     Scalar (0, 0, 255), 3);
+    }
+    
+    pmt_count->Fill(minR+i*step, final_pmts.size());
+    outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle");
+    imwrite(outputname,img);
+    data.push_back(Point2f(i, final_pmts.size()));
+    if(final_pmts.size()>max_pmts){
+      max_pmts = final_pmts.size();
+      index = i;
+    }
+ }  
+  
+  //we can also save multiple best range of size.
+  std::vector<Point2f> best_parameter;
+  for(unsigned i=0; i<data.size(); i++){
+    if(data[i].y==max_pmts){
+      float r = minR+(data[i].x)*step;
+      float R = minR+(data[i].x+1)*step;
+      best_parameter.push_back(Point2f(r,R));
+    }
+  }
+
+  //Collapse two ranges if they are two consecutive range.
+  
+  int prev_size = best_parameter.size();
+  int cur_size = 0;
+  //Continue the loop till we collapse all the ranges.
+  while(prev_size!=cur_size){
+    std::vector<Point2f> temp;
+    for(unsigned i = 0; i< best_parameter.size(); i+=2){
+      if((i+1)<best_parameter.size()){
+
+	if(best_parameter[i].y == best_parameter[i+1].x){
+	  float r = best_parameter[i].x;
+	  float R = best_parameter[i+1].y;
+	  temp.push_back(Point2f(r,R));
+	}
+      }
+      else{ temp.push_back(best_parameter[i]);}
+    }
+    prev_size = best_parameter.size();
+    
+    best_parameter = temp;
+    cur_size = best_parameter.size();  
+  }
+
+  
+  //want to write into text in format
+  //image_no[tab] Pmt found[tab] range of size1[tab] size2(if any) ...
+  size_t idx = infname.find_last_of("/");
+  string img_no = infname.substr(idx+1 );
+  string outputname =  "Radius_parameter"+img_no+".txt" ;
+  std::ofstream parameter_out( outputname );
+
+  for(int i =0; i<best_parameter.size();i++){
+    std::cout<<"range = [ "<<best_parameter[i].x<<" , "<<best_parameter[i].y<<" ]"<<std::endl;
+    parameter_out<<img_no<<'\t'<<max_pmts<<'\t'<<best_parameter[i].x<<'\t'<<best_parameter[i].y<<std::endl;
+  }
+  parameter_out.close();  
+			      
+  std::cout<<"best is = "<<index<<std::endl;
+  std::cout<<"Range of rad = "<<minR+index*step<<" - " <<minR+(index+1)*step<<std::endl;
+  /*This is original code
+  // PMT circle detection on bolts found by blob detection
+  Mat image1 = Mat::zeros(image_color.rows, image_color.cols, CV_8UC3); 
+  //Drawing blobs
+  draw_circle_from_data( blobs, image1, Scalar(255,255,255),-1 );
+
+  Mat image;
+  cvtColor(image1, image, COLOR_RGBA2GRAY);// houghCircle takes grayscale input
+  imwrite("img_blobs.jpg", image1);
+  imwrite("img_blobs_grey.jpg", image);
+
 
   int dp = config::Get_int ("sec_hough_dp");	//if dp=1 , the accum has resolution of input image. If dp=2 , the accumulator has half as big width and height. 
   int minDist = config::Get_int ("sec_hough_minDist");	// min distance between circles
   int param1 = config::Get_int ("sec_hough_param1");	// threshold placed on image
   int param2 = config::Get_int ("sec_hough_param2");	// minimum accumulator value to call it a circle
-  int minR = config::Get_int ("sec_hough_minR");	//= 3 # minimum radius in pixels
-  int maxR = config::Get_int ("sec_hough_maxR");	// = 10 # maximum radius in pixels
 
 
   std::cout<<"blobs.size()="<<blobs.size()<<std::endl;
 
   /// Look for circles of bolts
-  vector < Vec3f > circles_of_bolts;
+  vector < Vec3f > pmt_circles;
 
-  HoughCircles (image, circles_of_bolts, HOUGH_GRADIENT, dp,
+  HoughCircles (image, pmt_circles, HOUGH_GRADIENT, dp,
 		minDist, param1, param2, minR, maxR);
 
-
-  std::cout<<"circles_of_bolts.size()="<<circles_of_bolts.size()<<std::endl;
+  
+  std::cout<<"pmt_circles.size()="<<pmt_circles.size()<<std::endl;
   //Overlays detected circles from second hough transfrom
-  //draw_circle_from_data ( circles_of_bolts, image_color,
+  //draw_circle_from_data ( pmt_circles, image_color,
   //			  Scalar (255, 102, 255));
 
   std::vector< PMTIdentified > final_pmts;
-  find_candidate_bolts( blobs, circles_of_bolts, final_pmts, image );
+  find_candidate_bolts( blobs, pmt_circles, final_pmts, image );
   std::cout<<"final_pmts.size()="<<final_pmts.size()<<std::endl;
 
   std::ostringstream osname, ostitle;
@@ -1237,12 +1374,30 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
     }
   }
 
+  Mat img_b4_prune = image_color.clone();
+  for (const PMTIdentified & pmt : final_pmts) {
+    vector < Vec3f > circs;
+    circs.push_back( Vec3f( pmt.circ[0], pmt.circ[1], pmt.circ[2] ) );
+    draw_circle_from_data (circs, img_b4_prune,
+			   Scalar (255, 102, 255), 2);
+    draw_circle_from_data (pmt.bolts, img_b4_prune,
+			   Scalar (0, 0, 255), 3);
+  }
+  //Overlaying result before pruning in a image.
+  imwrite("Hough_circle_before.jpg",img_b4_prune);
+
+  
   // look for duplicate bolts and keep only best matches
-  prune_bolts_super_improved( final_pmts, hdangbolt->GetMean(), 4 );
+  //prune_bolts_super_improved(PMTIdentified pmts_list, float acceptable_deviation_from expected)
+  prune_bolts_super_improved( final_pmts, 4 );
   //prune_bolts( final_pmts, hdangbolt->GetMean() );
   // remove pmts below threshold (12 bolts)
-  prune_pmts( final_pmts, 12, label );
+  prune_circle_pmts( final_pmts, 12);
+  //prune_pmts( final_pmts, 12, label );
 
+   */
+
+  /*
   std::cout<<"final_pmts = "<<final_pmts.size()<<std::endl;
 	
   std::ostringstream osname2, ostitle2;
@@ -1352,7 +1507,7 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, 
     string outputname = build_output_filename (infname, label );
     imwrite (outputname, image_color);
   }
-
+  */
 }
 
 
@@ -1801,20 +1956,22 @@ int main (int argc, char **argv) {
       
       // PMT circle detection on bolts found by circle_bolt_detection
       //pmt_circle_detection( circles, img_circles, img_circles, option[1], argv[1], mtd, "houghbolts" );
-      
+      /*
       // PMT circle detection on bolts found by blob detection
       Mat img_blob_map = Mat::zeros(image_houghellipse.rows, image_houghellipse.cols, CV_8UC3); 
       //draw_circle_from_data (blobs, img_blob_map, Scalar (255, 255, 255));
       
       //Mat img_blob_map = Mat::zeros (image_clahe.size (), image_clahe.type ());
-      draw_foundblobs( blobs, img_blob_map );
+      draw_circle_from_data( blobs, img_blob_map, Scalar(255,255,255),-1 );
 
       Mat src_gray2;
       cvtColor(img_blob_map, src_gray2, COLOR_RGBA2GRAY);// cv::BGR2GRAY );
 
       imwrite("img_blob_map.jpg", img_blob_map);
       imwrite("src_gray2.jpg", src_gray2);
-      pmt_circle_detection( blobs, src_gray2, img_blob_map, true, argv[1], mtd, "houghblobs" );
+      */
+      Mat img_blob_map = image_houghellipse.clone();
+      pmt_circle_detection( blobs, img_blob_map, true, argv[1], mtd, "houghblobs" );
       
 
       //void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){

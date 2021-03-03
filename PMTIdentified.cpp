@@ -295,7 +295,7 @@ void make_bolt_dist_histogram( const std::vector< PMTIdentified > & final_pmts, 
 
 
 
-void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float ang_offset, float dev_thresh ){
+void prune_bolts_super_improved( std::vector< PMTIdentified >& final_pmts, float dev_thresh ){
   float angle_betn_consecutive_bolts = 360.0 / 24; // angle between two consecutive bolts.
 
 
@@ -552,23 +552,10 @@ void prune_bolts( std::vector< PMTIdentified >& final_pmts, float ang_offset ){
 }
 
 
-void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) { //, unsigned numbolts, const std::string& label ){
-
-  /*  
-      for ( unsigned i = 0; i < final_pmts.size(); i++ ){ 
-      if(final_pmts[i].bolts.size()>8){
-      not_pruned_pmts.push_back(final_pmts[i]);
-      }
-      }
-      
-      final_pmts.clear();
-      final_pmts = not_pruned_pmts;
-      pruned_indx.clear();
-      not_pruned_pmts.clear();
-  */
+void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) {
   int size_prev = final_pmts.size();
   int size_cur = final_pmts.size()-1;
-  int count =0;
+ 
   while(size_prev!=size_cur){
     size_prev = final_pmts.size();
     std::vector< PMTIdentified > not_pruned_pmts;
@@ -613,12 +600,7 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) { //, unsi
     }
     final_pmts.clear();
     final_pmts = not_pruned_pmts;
-    // pruned_indx.clear();
-    //not_pruned_pmts.clear();
     size_cur = final_pmts.size();
-
-    std::cout<<"loop number= "<<count<<std::endl;
-    count++;
   }
 
 
@@ -655,7 +637,6 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) { //, unsi
     if(num15<4){
       pruned_indx.push_back(j);
     }
-    
   } 
   
   for ( unsigned c = 0; c < final_pmts.size(); c++ ){ 
@@ -671,8 +652,108 @@ void prune_pmts_improved(  std::vector< PMTIdentified >& final_pmts ) { //, unsi
 
   final_pmts.clear();
   final_pmts = not_pruned_pmts;
-  //remove the pmt if it's neighbouring (3 closest PMT's size is 
+}
 
+void prune_circle_pmts(  std::vector< PMTIdentified >& final_pmts, int no_thresh ) {
+  int size_prev = final_pmts.size();
+  int size_cur = final_pmts.size()-1;
+ 
+  while(size_prev!=size_cur){
+    size_prev = final_pmts.size();
+    std::vector< PMTIdentified > not_pruned_pmts;
+    std::vector<int> pruned_indx;
+    
+    for ( unsigned i = 0; i < final_pmts.size(); ++i ){ 
+      PMTIdentified pmt = final_pmts[i];
+      double x0 = pmt.circ.get_xy().x;
+      double y0 = pmt.circ.get_xy().y;
+      double a0 = pmt.circ.get_a();
+      for(unsigned j = 0; j< final_pmts.size(); ++j){
+	if(i==j){continue;}
+	PMTIdentified pmt1 = final_pmts[j];
+	double x1 = pmt1.circ.get_xy().x;
+	double y1 = pmt1.circ.get_xy().y;
+	double a1 = pmt1.circ.get_a();
+	double dist = std::sqrt((x1-x0)*(x1-x0)+(y1-y0)*(y1-y0));//RobustLength(x1-x0, y1-y0);
+	if(dist<=a0+a1){
+	  EllipseIntersect E;
+	  int category = E.intersect(pmt.circ, pmt1.circ);
+	  //if(){pruned_indx.push_back(i); break;}
+	  if(category==ELLIPSE1_STRICTLY_CONTAINS_ELLIPSE0||category == ELLIPSE1_CONTAINS_ELLIPSE0_BUT_TANGENT||category == ELLIPSES_OVERLAP||category == ELLIPSE0_OUTSIDE_ELLIPSE1_BUT_TANGENT){
+	    if(pmt1.bolts.size()>=pmt.bolts.size()){
+	      pruned_indx.push_back(i); break;
+	    }
+	  }
+	}
+      }
+     
+    }
+    	 
+ 
+    for ( unsigned c = 0; c < final_pmts.size(); c++ ){ 
+      bool skip=false;
+      for( unsigned k=0; k< pruned_indx.size();k++){
+	unsigned val = pruned_indx[k];
+	if(val==c){skip=true; break;}
+      }
+      if(!skip && final_pmts[c].bolts.size()>=no_thresh){
+	not_pruned_pmts.push_back(final_pmts[c]);
+      }
+    }
+    final_pmts.clear();
+    final_pmts = not_pruned_pmts;
+    size_cur = final_pmts.size();
+  }
+
+
+  //Now removing PMTs that doesn't have atleast three bolts that have another bolts within 15+-3 degree.
+  std::vector< PMTIdentified > not_pruned_pmts;
+  std::vector<int> pruned_indx;
+    
+  for (unsigned j=0; j< final_pmts.size(); j++){
+    //const PMTIdentified &p = final_pmts[j];
+    float a0 = final_pmts[j].circ.get_xy().x;
+    float a1 = final_pmts[j].circ.get_xy().y;
+    
+    int num15=0; //number of bolts that has another bolt within 15+-3 deg
+    // PMTIdentified pmt = final_pmts[i];
+    for(unsigned i=0; i<final_pmts[j].bolts.size(); i++){
+      float x0 = final_pmts[j].bolts[i][0];
+      float y0 = final_pmts[j].bolts[i][1];
+      for(unsigned k=0; k<final_pmts[j].bolts.size(); k++){
+	if(i!=k){
+	  float x1 = final_pmts[j].bolts[k][0];
+	  float y1 = final_pmts[j].bolts[k][1];
+	  
+	  //cos(theta) = a.b/|a||b|
+	  float theta = acos(((x0-a0)*(x1-a0)+(y0-a1)*(y1-a1))/(std::sqrt((x0-a0)*(x0-a0)+(y0-a1)*(y0-a1))*std::sqrt((x1-a0)*(x1-a0)+(y1-a1)*(y1-a1))));
+	//float theta = fabs(final_pmts[j].angles[k]-final_pmts[j].angles[i]
+	  theta = RADTODEG(theta);
+	  if(fabs(theta-15.0)<3){
+	    num15++; break;
+	  }
+	}
+      }
+    }
+    
+    if(num15<4){
+      pruned_indx.push_back(j);
+    }
+  } 
+  
+  for ( unsigned c = 0; c < final_pmts.size(); c++ ){ 
+    bool skip=false;
+    for(unsigned k=0; k< pruned_indx.size(); k++){
+      unsigned val = pruned_indx[k];
+      if(val==c){skip=true; break;}
+    }
+    if(!skip){
+      not_pruned_pmts.push_back(final_pmts[c]);
+    }
+  }
+
+  final_pmts.clear();
+  final_pmts = not_pruned_pmts;
 }
 
 
