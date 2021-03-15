@@ -1970,8 +1970,11 @@ int main (int argc, char **argv) {
       imwrite("img_blob_map.jpg", img_blob_map);
       imwrite("src_gray2.jpg", src_gray2);
       */
-      Mat img_blob_map = image_houghellipse.clone();
-      pmt_circle_detection( blobs, img_blob_map, true, argv[1], mtd, "houghblobs" );
+
+
+      
+      //Mat img_blob_map = image_houghellipse.clone();
+      //pmt_circle_detection( blobs, img_blob_map, true, argv[1], mtd, "houghblobs" );
       
 
       //void pmt_circle_detection( const std::vector< Vec3f >& blobs, const Mat& image, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
