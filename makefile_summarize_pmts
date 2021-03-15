@@ -1,0 +1,14 @@
+
+
+all: summarize_pmts_found.exe
+
+summarize_pmts_found.exe: summarize_pmts_found.o
+	g++ -std=c++11 -Wall -O2 summarize_pmts_found.o `root-config --libs --glibs` -o summarize_pmts_found.exe
+
+summarize_pmts_found.o: summarize_pmts_found.cpp
+	g++ -std=c++11 -Wall -O2 -I`root-config --incdir` -c summarize_pmts_found.cpp
+
+clean:
+	rm *.o *.exe
+
+.PHONY: all clean
