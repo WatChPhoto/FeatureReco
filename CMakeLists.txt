@@ -1,15 +1,15 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 project( UndistortImage )
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
 add_executable( UndistortImage UndistortImage.cpp )
 target_link_libraries( UndistortImage ${OpenCV_LIBS} )
-
+set(CMAKE_MACOSX_RPATH 1)
 
 project( FindBoltLocations )
 find_package( OpenCV REQUIRED )
 find_package( ROOT 6.14 CONFIG REQUIRED)
-include("${ROOT_DIR}/modules/RootNewMacros.cmake")
+#include("${ROOT_DIR}/modules/RootNewMacros.cmake")
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -28,6 +28,13 @@ add_dependencies(FeatureTreeLib G__FeatureTreeLib)
 include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
 add_executable( FindBoltLocations FindBoltLocations.cpp )
 target_link_libraries( FindBoltLocations featurereco_lib FeatureTreeLib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf ROOT::Tree)
+
+
+project( analyse_merged_ttree )
+ADD_LIBRARY( imagedatareaderlib ImageDataReader.cpp )
+add_executable( analyse_merged_ttree analyse_merged_ttree.cpp )
+include_directories( ${ROOT_INCLUDE_DIRS})
+target_link_libraries( analyse_merged_ttree imagedatareaderlib FeatureTreeLib ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf ROOT::Tree)
 
 #project( distance_to_ellipse_test )
 #find_package( OpenCV REQUIRED )

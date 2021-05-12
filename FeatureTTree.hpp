@@ -188,7 +188,7 @@ public:
     }
     std::cout<<"ImageData::SetSize = "<<fEntrySize<<std::endl;
   }
-  void Clear(){
+  void Clear_data(){
     fBlobs.clear();
     fEllipses.clear();
   }

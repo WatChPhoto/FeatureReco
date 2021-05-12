@@ -27,6 +27,7 @@ using namespace cv;
 
 void fill_ttree_blobs( const vector<OpenBlobDetector::Center>& blobinfo, ImageData & imagedata ){
   
+  
   unsigned entry=0;
   for ( const OpenBlobDetector::Center & blob : blobinfo ){
     BlobData b;
