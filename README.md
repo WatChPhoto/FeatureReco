@@ -1,8 +1,8 @@
 # FeatureReco
 
-Code to do feature recognition to locate bolts and PMT centers.  Implemented using OpenCV libraries.
+Code to do feature recognition to locate bolts and PMT centers.  Implemented using OpenCV libraries.  Output is to ROOT trees.
 
-You will need a copy of opencv libraries installed.  To build the code:
+You will need a copy of opencv libraries installed, as well as the ROOT libraires (root 6).  To build the code:
 
 ```
 > cd FeatureReco
@@ -66,16 +66,19 @@ Output file names are:
 </tr>
 </table>
 
+
+# Processing scripts
+
+
+
+# Post processing : analyse_merge_ttree
+
+
+
+
 To do list:
-* Get it to work better for corner images
-  * Find some way to filter blobs that are inside of the ellipses of bolts
-  * Maybe could do a first hough transform on one of the layers (colors) or filetered image to find ellipses from dynode or edge of PMT    features that could help get rid of blobs inside the PMT ellipses
-  * Could try picking from candidate ellipses by looking at properties of contained blobs
-
-* For corner images, look for feature of edge of tank?  Could be used to separate PMTs on wall from those on bottom or top
-
-* Start reading in some of the drone distance to wall and pointing data to get range of possible PMT ellipse shapes
-    to tune the ellipse-hough parameters
+* Improve parameters for top of tank images.
+* Work on feature labelling!
 
 
 
