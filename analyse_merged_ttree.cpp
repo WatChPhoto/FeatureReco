@@ -447,8 +447,9 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
 
   
   // d = -23.9 b + 3700.2
-  const double cm_per_pixel = -23.9; // cm of distance per ellipse-b pixel width
-  const double d_offset = 3700.2; // cm
+  //(corrected) d = -22.34b + 3513.92
+  const double cm_per_pixel = -22.34;//-23.9; // cm of distance per ellipse-b pixel width
+  const double d_offset = 3513.92;//3700.2; // cm
   for ( const EllipseData& el : idt.fPMTs ){
     float x = el.xx;
     float y = 3000-el.yy;
