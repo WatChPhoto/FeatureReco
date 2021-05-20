@@ -74,6 +74,8 @@ double d_of_xpixel( double *x, double *p ){
 
 
 
+
+
 void basic_histograms( TFile* fout, const ImageData& idt, const int imgn, bool include2d=false  ){
   
   ostringstream os;
@@ -391,6 +393,16 @@ double simplelineh( double * x, double * p ){
 }
 
 
+double d_vs_b( double * x, double *p ){
+  // x[0] is ellipse b
+  double b = x[0];
+  // two parameters
+  // d = A/b + C
+  // p[0] = A and p[1] = C
+  double A = p[0];
+  double C = p[1];
+  return A/b + C;
+}
 
 
 void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
@@ -398,7 +410,7 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   // get theta_DC for this image
   ImageDataReader & idr = ImageDataReader::GetInstance();
   CameraFace cf = idr.GetFace( "BarrelSurveyFar", idt.ips.imgnum );
-  float theta_DC = cf.yaw - 19.0; // 19 degrees offset between yaw and theta_DC
+  float theta_DC = cf.yaw - 21.0; // 19 degrees offset between yaw and theta_DC
   std::cout<<"Image "<<idt.ips.imgnum<<" yaw is "<<theta_DC<<std::endl;
   
   ostringstream os;
@@ -441,6 +453,7 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
     
   // vectors for a horizontal and vertical band!
   std::vector< float > h_x, hx_e;
+  std::vector< float > h_d, hd_e;
   std::vector< float > h_b, hb_e;
   std::vector< float > v_y, vy_e;
   std::vector< float > v_b, vb_e;
@@ -448,8 +461,13 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   
   // d = -23.9 b + 3700.2
   //(corrected) d = -22.34b + 3513.92
-  const double cm_per_pixel = -22.34;//-23.9; // cm of distance per ellipse-b pixel width
-  const double d_offset = 3513.92;//3700.2; // cm
+  //const double cm_per_pixel = -22.34;//-23.9; // cm of distance per ellipse-b pixel width
+  // 1  cm_pixels (cm.pixels)    5.41328e+04   3.73565e+03   8.76727e-01   7.05341e-07
+  // 2  d_offset  (cm)           2.34248e+02   2.89152e+01   6.78805e-03   7.05282e-05
+  //const double cm_pixels = 5.41328e+04; //338663.89;
+  //const double d_offset = 2.34248e+02; // -1992.47; //3513.92;//3700.2; // cm
+  const double cm_pixels = -3.313; //338663.89;
+  const double d_offset = 1082.0; // -1992.47; //3513.92;//3700.2; // cm
   for ( const EllipseData& el : idt.fPMTs ){
     float x = el.xx;
     float y = 3000-el.yy;
@@ -462,16 +480,26 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
     // horizontal band (vertical extent from 1200 to 1800?)
     if ( y > ymin && y < ymax ){
       h_x.push_back( x ); hx_e.push_back( 0.0 );
-      h_b.push_back( b * cm_per_pixel + d_offset ); hb_e.push_back( -0.5*cm_per_pixel );
+      h_d.push_back( cm_pixels * b + d_offset ); hd_e.push_back( 0.5 );
+      h_b.push_back( b );  hb_e.push_back( 0.5 );
     }
     // vertical band (horizontal extent from 1700 to 2300?)
     if ( x > xmin && x < xmax ){
       v_y.push_back( y ); vy_e.push_back( 0.0 );
-      v_b.push_back( b * cm_per_pixel + d_offset ); vb_e.push_back( -0.5*cm_per_pixel );
+      v_b.push_back( cm_pixels / b + d_offset ); vb_e.push_back( 0.5 );
     }
   }
 
-  TGraphErrors * tgh = new TGraphErrors( h_x.size(), &h_x[0], &h_b[0], &hx_e[0], &hb_e[0] );
+  
+  // one graph with original ellipse b size
+  TGraphErrors * tghb = new TGraphErrors( h_x.size(), &h_x[0], &h_b[0], &hx_e[0], &hb_e[0] );
+  tghb->SetName( (string("tghb_") + imgnum).c_str() );
+  tghb->SetTitle(" ; x (pixels); ellipse b (cm)");
+  tghb->SetMarkerStyle(20);
+  tghb->SetMarkerColor(kBlue);
+
+  // second graph with ellise b converted to distance
+  TGraphErrors * tgh = new TGraphErrors( h_x.size(), &h_x[0], &h_d[0], &hx_e[0], &hd_e[0] );
   tgh->SetName( (string("tgh_") + imgnum).c_str() );
   tgh->SetTitle(" ; x (pixels); distance from ellipse b (cm)");
   tgh->SetMarkerStyle(20);
@@ -487,6 +515,69 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   tfh->FixParameter( 2, theta_DC); // camera facing is fixed
   tgh->Fit( tfh , "Q" );
 
+
+  TF1* tfh_guess = new TF1( (string("tfh_guess_") + imgnum).c_str(), d_of_xpixel, 0., 4000., 3 );
+  tfh_guess->SetParNames( "r_{K} (cm)       ",
+		    "#theta_{K} (deg) ",
+		    "#theta_{DC} (deg)" );
+  tfh_guess->SetParameter( 0, Rsk - tgh->Eval( 2000.0 ) ); // first guess for r_K
+  tfh_guess->SetParameter( 1, theta_DC ); // first guess for theta_K is camera facing
+  tfh_guess->SetParameter( 2, theta_DC );
+  tfh_guess->SetLineColor( kGreen );
+  tgh->GetListOfFunctions()->Add( tfh_guess );
+
+  if ( idt.ips.imgnum == 45 ){
+
+    TF1* tfh_man = new TF1( (string("tfh_man_") + imgnum).c_str(), d_of_xpixel, 0., 4000., 3 );
+    tfh_man->SetParNames( "r_{K} (cm)       ",
+			  "#theta_{K} (deg) ",
+			  "#theta_{DC} (deg)" );
+    tfh_man->SetParameter( 0, 1057.6 ); // first guess for r_K                                                                 
+    tfh_man->SetParameter( 1, 31.11  ); // first guess for theta_K is camera facing                                                             
+    tfh_man->SetParameter( 2, 43.00 );
+    tfh_man->SetLineColor( kCyan );
+    tgh->GetListOfFunctions()->Add( tfh_man );
+
+
+    // one graph with original ellipse b size
+    // Plot distance to wall from expected calculation, versus ellipse b
+    std::vector<float> dwall;
+    std::vector<float> dwall_e;
+    for ( float x : h_x ){
+      dwall.push_back( tfh_man->Eval(x) );
+      dwall_e.push_back( 5.0 );
+    }
+    TGraphErrors * tgd_vs_b = new TGraphErrors( h_b.size(), &h_b[0], &dwall[0], &hb_e[0], &dwall_e[0] );
+    tgd_vs_b->SetName( (string("tgd_vs_b_") + imgnum).c_str() );
+    tgd_vs_b->SetTitle(" ; ellipse b (pixels); distance to wall (cm)");
+    tgd_vs_b->SetMarkerStyle(20);
+    tgd_vs_b->SetMarkerColor(kBlue);
+
+    TF1* tfd_vs_b = new TF1((string("tfd_vs_b_") + imgnum).c_str(), "pol1", 10., 300. ) ;
+    //new TF1( (string("tfd_vs_b_") + imgnum).c_str(), d_vs_b, 10., 300., 2 );
+    //tfd_vs_b->SetParNames( "cm_pixels (cm.pixels) ",
+    //			  "d_offset  (cm)        ");
+    //tfd_vs_b->SetParameter( 0, 50000.0 );
+    //tfd_vs_b->SetParameter( 1, 100.0 );
+    tfd_vs_b->SetParNames( "y-intercept", "slope" );
+    tfd_vs_b->SetParameter( 0, 800.0 );
+    tfd_vs_b->SetParameter( 1, -40.0 );
+    tfd_vs_b->SetLineColor( kCyan );
+
+    tgd_vs_b->Fit( tfd_vs_b, "Q" );
+
+    
+    
+    tgd_vs_b->Write();
+
+    
+    
+  }
+ 
+
+
+
+  
   if ( tfh->GetParameter(0) < 1000.0 ||
        tfh->GetParameter(0) > 3000.0 ){ 
     // refit with a straight line
@@ -549,7 +640,7 @@ void analyse_merged_ttree( string filename = "merge_ttrees.root" ){
   for ( unsigned i=0; i<tree->GetEntries(); ++i){
     std::cout<<"Analyse image "<<imgdata->ips.imgnum<<std::endl;
     tree->GetEntry( i );
-    basic_histograms( fout, *imgdata, imgdata->ips.imgnum );
+    //basic_histograms( fout, *imgdata, imgdata->ips.imgnum );
     ellipse_size_vs_pos( fout, *imgdata );
   }
   fout->Write();
