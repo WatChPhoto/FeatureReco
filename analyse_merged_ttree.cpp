@@ -40,6 +40,8 @@ double d_of_theta( double *x, double *p ){
   double th_DC  = p[2];
   
   double thx    = x[0];
+  std::cout<<"thx = "<<thx<<std::endl;
+
   double th_okx = 180.0 - thx + th_K;
   if ( th_okx > 180.0 ) th_okx = 360.0 - th_okx;
   double phx    = RADTODEG( std::asin( r_K / Rsk * std::sin( DEGTORAD( th_okx ) ) ) );
@@ -65,11 +67,13 @@ double d_of_xpixel( double *x, double *p ){
   
   double thx    = th_pix0 - x[0] * th_f / 4000.0;
   double th_okx = 180.0 - thx + th_K;
+    //double th_okx = 180.0 - (th_DC+(fabs(x[0]-2000)/2000.0)*(th_f/2.0));
   if ( th_okx > 180.0 ) th_okx = 360.0 - th_okx;
   double phx    = RADTODEG( std::asin( r_K / Rsk * std::sin( DEGTORAD( th_okx ) ) ) );
   double th_kox = 180.0 - phx - th_okx;
   double dx     = std::sqrt(  Rsk*Rsk + r_K*r_K - 2*r_K*Rsk*std::cos( DEGTORAD( th_kox ) ) );
-  return dx;
+  double theta = DEGTORAD((fabs(x[0]-2000.)/2000.)*(93.9/2));
+  return dx*std::cos(theta);
 }
 
 
@@ -435,8 +439,8 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   // now make graphs of "distance to wall" versus angle
   float xmin = hlocx->GetMean() - 500.0;
   float xmax = hlocx->GetMean() + 500.0;
-  float ymin = hlocy->GetMean() - 500.0;
-  float ymax = hlocy->GetMean() + 500.0;
+  float ymin = hlocy->GetMean() - 200;//500.0;
+  float ymax = hlocy->GetMean() + 200;//500.0;
 
     
   // vectors for a horizontal and vertical band!
@@ -448,13 +452,13 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   
   // d = -23.9 b + 3700.2
   //(corrected) d = -22.34b + 3513.92
-  const double cm_per_pixel = -22.34;//-23.9; // cm of distance per ellipse-b pixel width
-  const double d_offset = 3513.92;//3700.2; // cm
+  const double cm_per_pixel = 338663.89;//-22.34;//-23.9; // cm of distance per ellipse-b pixel width
+  const double d_offset = -1992.47;//3513.92;//3700.2; // cm
   for ( const EllipseData& el : idt.fPMTs ){
     float x = el.xx;
     float y = 3000-el.yy;
-    float b = el.bb;
-
+    float b = el.aa;//el.bb;
+    
     // trim any more than 2-sigma from mean
     if ( fabs( b - bmean ) > 2*brms ) continue;
 
@@ -462,7 +466,8 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
     // horizontal band (vertical extent from 1200 to 1800?)
     if ( y > ymin && y < ymax ){
       h_x.push_back( x ); hx_e.push_back( 0.0 );
-      h_b.push_back( b * cm_per_pixel + d_offset ); hb_e.push_back( -0.5*cm_per_pixel );
+      h_b.push_back( cm_per_pixel/b+d_offset);//b * cm_per_pixel + d_offset ); 
+      hb_e.push_back( -0.5*cm_per_pixel );
     }
     // vertical band (horizontal extent from 1700 to 2300?)
     if ( x > xmin && x < xmax ){
@@ -478,13 +483,22 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
   tgh->SetMarkerColor(kBlue);
  
   TF1* tfh = new TF1( (string("tfh_") + imgnum).c_str(), d_of_xpixel, 0., 4000., 3 );
-  tfh->SetParNames( "r_{K} (cm)       ",
+ 
+   tfh->SetParNames( "r_{K} (cm)       ",
 		    "#theta_{K} (deg) ",
 		    "#theta_{DC} (deg)" );
   tfh->SetParameter( 0, Rsk - tgh->Eval( 2000.0 ) ); // first guess for r_K
   tfh->SetParameter( 1, theta_DC ); // first guess for theta_K is camera facing
   tfh->SetParameter( 2, theta_DC );
   tfh->FixParameter( 2, theta_DC); // camera facing is fixed
+  
+  tfh->Write();
+  string quat = "045";
+  if(imgnum==quat){
+    tfh->Draw();
+    
+   }
+  tgh->Write();
   tgh->Fit( tfh , "Q" );
 
   if ( tfh->GetParameter(0) < 1000.0 ||
@@ -547,9 +561,7 @@ void analyse_merged_ttree( string filename = "merge_ttrees.root" ){
   TFile* fout = new TFile("analyse_ttree.root","recreate");
 
   for ( unsigned i=0; i<tree->GetEntries(); ++i){
-    std::cout<<"Analyse image "<<imgdata->ips.imgnum<<std::endl;
     tree->GetEntry( i );
-    basic_histograms( fout, *imgdata, imgdata->ips.imgnum );
     ellipse_size_vs_pos( fout, *imgdata );
   }
   fout->Write();
