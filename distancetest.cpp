@@ -326,7 +326,7 @@ int main(int argc, char **argv){
   std::cout<<i239.face.pitch<<std::endl;
   std::cout<<i239.face.roll<<std::endl;
 
-  std::vector<Ellipse> ellipses1 = read_ellipses_in_image(filename+".txt");
+  std::vector<Ellipse> ellipses1 = read_ellipses_in_image("he_pmts"+filename+".txt");
   std::vector<cv::Point2f> ellipses;
   for(int i=0; i<ellipses1.size();i++){
     ellipses.push_back(cv::Point2f(ellipses1[i].x,ellipses1[i].y));
