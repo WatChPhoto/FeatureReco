@@ -443,7 +443,7 @@ int main(int argc, char **argv){
   double theta = std::atan2(dir(1,0),dir(0,0))*180./PI; // angle with x-axis.
   theta=(theta>=0)?theta:(360+theta);
   std::cout<<"theta ="<<theta<<std::endl;
-  double range = 45;//25;//30;
+  double range = 20;
   double th1 = ((theta-range)>=0)?(theta-range):(360+theta-range);
   double th2 = ((theta+range)>=0)?(theta+range):(360+theta+range);
   th2 = (th2>360)?(th2-360.):th2;
