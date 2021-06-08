@@ -188,29 +188,7 @@ int main(int argc, char **argv){
   std::string survey_id = std::string(argv[argc-2]);
 
   std::cout<<"filename = "<<filename<<std::endl;
-  std::vector<TransformationData> v;
-  std::ifstream MyReadFile("mapped.txt");
-  
-  // Use a while loop together with the getline() function to read the file line by line
-  
-  TransformationData t;
-  while (MyReadFile >> t) {
-    // Output the text from the file
-    //    std::cout << t.id<<std::endl;  
-    v.push_back(t);
-    //std::cout<<i<<std::endl;
-  }
-  
-  // Close the file
-  MyReadFile.close(); 
-  
-  std::ifstream my1;
-  my1.open(filename+"lbl.txt");
-  LabelledData d;
-  std::vector<LabelledData> dat;
-  while(my1 >> d){dat.push_back(d); std::cout<<"pushing"<<std::endl;}
-  my1.close();
-  std::cout<<"dat size = "<<dat.size()<<std::endl;
+
   float offset = 250;
   float PI = std::acos(-1);
   double fx=2.760529621789217e+03;
@@ -228,26 +206,56 @@ int main(int argc, char **argv){
   cv::Matx33d camera_matrix (fx, 0, cx,
 			     0, fy, cy,
 			     0,  0,  1);
-  
+
   cv::Matx33d rmat; 
   cv::Rodrigues(rvec,rmat);
+
+
+  std::cout<<"here "<<std::endl;
+  cv::Mat image = imread ("046.jpg", cv::IMREAD_COLOR);//("045.jpg", cv::IMREAD_COLOR);
+  std::cout<<"there "<<std::endl;
+  cv::Mat img = image.clone();
+  cv::Mat img1 = image.clone();
+  cv::Mat img2 = image.clone();
+ 
+
   
-  std::vector<cv::Point3f> object_points;
+  if(0){
+    std::vector<TransformationData> v;
+  std::vector<LabelledData> dat;
+    std::ifstream MyReadFile("mapped.txt");
+   std::cout<<"dat size = "<<dat.size()<<std::endl;  
+  // Use a while loop together with the getline() function to read the file line by line
+  
+  TransformationData t;
+  while (MyReadFile >> t) {
+    // Output the text from the file
+    //    std::cout << t.id<<std::endl;  
+    v.push_back(t);
+    //std::cout<<i<<std::endl;
+  }
+  
+  // Close the file
+  MyReadFile.close(); 
+  
+  std::ifstream my1;
+  my1.open(filename+"lbl.txt");
+  LabelledData d;
+
+  while(my1 >> d){dat.push_back(d); std::cout<<"pushing"<<std::endl;}
+  my1.close();
+
+    std::vector<cv::Point3f> object_points;
   
   for(int i=0; i<v.size();i++){
     object_points.push_back( cv::Point3f(v[i].x,v[i].y,v[i].z));
     
     //   std::cout<<v[i].id<<'\t'<<v[i].el_x<<'\t'<<v[i].el_y<<'\t'<<v[i].el_b<<'\t'<<v[i].el_e<<'\t'<<v[i].el_phi<<'\t'<<v[i].x<<'\t'<<v[i].y<<'\t'<<v[i].z<<std::endl;
   }
-  
+  std::cout<<"1ere "<<std::endl;    
   std::vector<cv::Point2f>image_points;
   projectPoints(object_points,rvec,tvec,camera_matrix,dist_coeffs,image_points);
-  
-  cv::Mat image = imread (filename+".jpg", cv::IMREAD_COLOR);//("045.jpg", cv::IMREAD_COLOR);
-  cv::Mat img = image.clone();
-  cv::Mat img1 = image.clone();
-  cv::Mat img2 = image.clone();
-  for(int i=0;i<image_points.size();i++){
+    for(int i=0;i<image_points.size();i++){
     cv::circle( image, cv::Point( image_points[i].x, image_points[i].y ), 10, cv::Scalar(0,255,250), -1 );
   }
   imwrite("output.jpg",image);
@@ -305,6 +313,8 @@ int main(int argc, char **argv){
   gr3->SetNameTitle("a vs dist","a vs dist");
   gr3->Write();
   fout->Write();
+ 
+  }
   
   
   
@@ -325,7 +335,7 @@ int main(int argc, char **argv){
   std::cout<<i239.face.yaw<<std::endl;
   std::cout<<i239.face.pitch<<std::endl;
   std::cout<<i239.face.roll<<std::endl;
-
+  std::cout<<"he_pmts"+filename+".txt"<<std::endl;
   std::vector<Ellipse> ellipses1 = read_ellipses_in_image("he_pmts"+filename+".txt");
   std::vector<cv::Point2f> ellipses;
   for(int i=0; i<ellipses1.size();i++){
