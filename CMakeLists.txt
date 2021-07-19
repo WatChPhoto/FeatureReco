@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.0)#2.8.12)
 project( UndistortImage )
 find_package( OpenCV REQUIRED )
 include_directories( ${OpenCV_INCLUDE_DIRS} )
@@ -56,3 +56,13 @@ target_link_libraries( analyse_merged_ttree imagedatareaderlib FeatureTreeLib ${
 #include_directories( ${OpenCV_INCLUDE_DIRS} )
 #add_executable( automate automate.cpp )
 #target_link_libraries( automate automate_lib ${OpenCV_LIBS} )
+
+
+project( distance )
+find_package( OpenCV REQUIRED )
+find_package( ROOT 6.14 CONFIG REQUIRED)
+#ADD_LIBRARY( imagedatareaderlib ImageDataReader.cpp )
+include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+add_executable( distancetest distancetest.cpp )
+target_link_libraries( distancetest imagedatareaderlib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf ROOT::Tree)
+

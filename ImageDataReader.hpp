@@ -60,7 +60,7 @@ public:
   void operator=(ImageDataReader const&)  = delete;
   
   CameraFace GetFace( std::string surveyid, unsigned imgnum ) const;
-
+  ImageMetaData GetMetaData(std::string surveyid, unsigned imgnum) const;
 private:// --Just this change.
   ImageDataReader();
   ~ImageDataReader(){ if (instance) delete instance; }

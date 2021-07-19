@@ -23,3 +23,7 @@ rm G__FeatureTreeLib.cxx
 rm *.root
 rm he_pmts*.txt
 rm \#*
+rm analyse_merged_ttree
+rm distancetest
+rm libimagedatareaderlib.a
+

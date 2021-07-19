@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iostream>
 //#include <opencv2/calib3d.hpp>
+#include<algorithm>
 
 ImageDataReader * ImageDataReader::instance = nullptr;
 
@@ -79,7 +80,7 @@ CameraFace ImageDataReader::GetFace( std::string surveyid, unsigned imgnum ) con
   for ( const ImageMetaData &imd : md ){
     if ( imd.survey == surveyid && imd.imgnum == imgnum ){
       ++imgcount;
-      std::cout<<imd.survey<<", "<<imgnum<<std::endl;
+      //std::cout<<imd.survey<<", "<<imgnum<<std::endl;
       yaw += imd.face.yaw;
       pitch += imd.face.pitch;
       roll += imd.face.roll;	
@@ -91,9 +92,21 @@ CameraFace ImageDataReader::GetFace( std::string surveyid, unsigned imgnum ) con
     pitch /= imgcount;
     roll /= imgcount;
   }
-  std::cout<<"imgcount="<<imgcount<<" yaw="<<yaw<<" pitch="<<pitch<<" roll="<<roll<<std::endl;
 
   return CameraFace(yaw,pitch,roll);
+}
+
+ImageMetaData ImageDataReader::GetMetaData( std::string surveyid, unsigned imgnum ) const{
+  //CameraFace facing;
+  ImageMetaData m;
+  for ( const ImageMetaData &imd : md ){
+    if ( imd.survey == surveyid && imd.imgnum == imgnum ){
+      m=imd;
+      break;
+    }
+  } 
+
+  return m;
 }
 
 
