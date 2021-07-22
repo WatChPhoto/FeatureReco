@@ -10,9 +10,10 @@ text_file_mode = 1 # zero means our usual format, and 1 means format for reprojr
 #verbosity
 verbosity = 0 # 0 for not verbose, 1 for verbose
 
-#filters, circled, Candidate, text, final
+#final, text, Candidate, circled, filters, range_intermediate_files, rem_images
 #save_option = 11111
-save_option =  00001
+save_option =  1000000
+no_of_options=7
 
 # Contrast Limited Adaptive Histogram Equalization
 do_clahe = 0 # 0 off, 1 on
@@ -72,17 +73,21 @@ hough_minR = 3 #5 # minimum radius in pixels
 hough_maxR = 6 #10 # maximum radius in pixels
 
 # Ellipse hough transform
-do_ellipse_hough = 0  # 1 for true, 0 for false
+do_ellipse_hough = 1  # 1 for true, 0 for false
 ellipse_hough_minhits      =  9
 ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
-ellipse_hough_nbins_bb     =  50  
+########Calculated inside the Findboltlocation code#####
+#ellipse_hough_nbins_bb     =  50  
+############################################
 ellipse_hough_nbins_ee     =  10  
-ellipse_hough_nbins_phiphi =  11  
-ellipse_hough_nbins_x      = 975
+ellipse_hough_nbins_phiphi =  60#11  
+ellipse_hough_nbins_x      = 950
 ellipse_hough_nbins_y      = 700
-ellipse_hough_bbmin        = 70  
-ellipse_hough_bbmax        = 110 
+##########is calculated inside Findboltlocation code#####
+#ellipse_hough_bbmin        = 70  
+#ellipse_hough_bbmax        = 110 
+############################################
 ellipse_hough_eemin        =   0.0
 ellipse_hough_eemax        =  0.35
 ellipse_hough_phimin    =   0.0 
