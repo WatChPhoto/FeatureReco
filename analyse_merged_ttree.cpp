@@ -489,7 +489,7 @@ void ellipse_size_vs_pos( TFile * fout, const ImageData& idt ){
     // vertical band (horizontal extent from 1700 to 2300?)
     if ( x > xmin && x < xmax ){
       v_y.push_back( y ); vy_e.push_back( 0.0 );
-      v_b.push_back( cm_pixels / b + d_offset ); vb_e.push_back( 0.5 );
+      v_b.push_back( cm_per_pixel / b + d_offset ); vb_e.push_back( 0.5 );
     }
   }
 

@@ -365,13 +365,13 @@ std::vector<bool> setup_verbosity(int option){
 
 
 //flags to turn on/off saving images                                                                                                          
-std::vector < bool > setup_image_saveflags () {
+std::vector < bool > setup_image_saveflags (int option_no) {
   std::vector < bool > options;
     try
       {
         int option = config::Get_int ("save_option");
 
-	for (unsigned i = 0; i < 5; i++)
+	for (unsigned i = 0; i < option_no; i++)
           {
 	    options.push_back (bool (option % 2));
 	    option /= 10;
@@ -381,5 +381,12 @@ std::vector < bool > setup_image_saveflags () {
       {
 	std::cout << "Error with config file key " << e << std::endl;
       }
+
+    //lets reverse the order so that our order matches
+    for(unsigned i=0; i<=options.size()/2;i++){
+      bool temp=options[i];
+      options[i]=options[options.size()-i];
+      options[options.size()-i]=temp;
+    } 
     return options;
 }

@@ -45,7 +45,7 @@ void fill_ttree_blobs( const vector<OpenBlobDetector::Center>& blobinfo, ImageDa
 }
 
 
-void fill_image_ttree( int imgnum, ImageData& imtt ){
+void fill_image_ttree( int imgnum, ImageData& imtt, std::vector<float>b_range ){
   imtt.ips.imgnum            = imgnum;
   imtt.ips.do_clahe          = config::Get_int   ( "do_clahe"                 );
   imtt.ips.clahe_gridsize    = config::Get_int   ( "clahe_gridsize"           );
@@ -74,13 +74,13 @@ void fill_image_ttree( int imgnum, ImageData& imtt ){
   imtt.ips.ehough_minhits      = config::Get_int   ( "ellipse_hough_minhits" );
   imtt.ips.ehough_threshold    = config::Get_int   ( "ellipse_hough_threshold" ); 
   imtt.ips.ehough_drscale      = config::Get_double( "ellipse_hough_drscale" );
-  imtt.ips.ehough_nbins_bb     = config::Get_int   ( "ellipse_hough_nbins_bb" ); 
+  imtt.ips.ehough_nbins_bb     = unsigned((b_range[1]-b_range[0]+20)*config::Get_double   ( "ellipse_hough_nbins_bb_scale" )); 
   imtt.ips.ehough_nbins_ee     = config::Get_int   ( "ellipse_hough_nbins_ee" ); 
   imtt.ips.ehough_nbins_phiphi = config::Get_int   ( "ellipse_hough_nbins_phiphi" );  
   imtt.ips.ehough_nbins_x      = config::Get_int   ( "ellipse_hough_nbins_x" ); 
   imtt.ips.ehough_nbins_y      = config::Get_int   ( "ellipse_hough_nbins_y" ); 
-  imtt.ips.ehough_bbmin        = config::Get_double( "ellipse_hough_bbmin" ); 
-  imtt.ips.ehough_bbmax        = config::Get_double( "ellipse_hough_bbmax" ); 
+  imtt.ips.ehough_bbmin        = b_range[0]-10;//config::Get_double( "ellipse_hough_bbmin" ); 
+  imtt.ips.ehough_bbmax        = b_range[1]+10;//config::Get_double( "ellipse_hough_bbmax" ); 
   imtt.ips.ehough_eemin        = config::Get_double( "ellipse_hough_eemin" );
   imtt.ips.ehough_eemax        = config::Get_double( "ellipse_hough_eemax" );
   imtt.ips.ehough_phimin       = config::Get_double( "ellipse_hough_phimin" );     
@@ -850,20 +850,19 @@ void pmts_to_ttree( const std::vector< PMTIdentified >&  ellipse_pmts, ImageData
 }
 
 void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_houghellipse, 
-			     bool write_image, const std::string& infname, const MedianTextData & mtd , ImageData& imagedata){ 
+			     bool write_image, const std::string& infname, const MedianTextData & mtd , ImageData& imagedata, std::vector<float> b_range){ 
 
   bool do_ellipse_hough = (bool)config::Get_int( "do_ellipse_hough" );
   if ( do_ellipse_hough ){
-
-    unsigned nbins_bb = (unsigned)config::Get_int("ellipse_hough_nbins_bb");
+    float bbmin = b_range[0]-10;//(float)config::Get_double("ellipse_hough_bbmin");
+    float bbmax = b_range[1]+10;//(float)config::Get_double("ellipse_hough_bbmax");
+    unsigned nbins_bb = (unsigned)((bbmax-bbmin)*config::Get_double("ellipse_hough_nbins_bb_scale"));
     unsigned nbins_ee = (unsigned)config::Get_int("ellipse_hough_nbins_ee");
     unsigned nbins_phiphi = (unsigned)config::Get_int("ellipse_hough_nbins_phiphi");
     unsigned nbins_x = (unsigned)config::Get_int("ellipse_hough_nbins_x");
     unsigned nbins_y = (unsigned)config::Get_int("ellipse_hough_nbins_y");
     //# above number of bins multiply as short (2 bytes per bin)
     //# therefore eg. 2 x 40 x 10 x 10 x 2300 x 1300 = 23.8 GB !!!
-    float bbmin = (float)config::Get_double("ellipse_hough_bbmin");
-    float bbmax = (float)config::Get_double("ellipse_hough_bbmax");
     float eemin = (float)config::Get_double("ellipse_hough_eemin");
     float eemax = (float)config::Get_double("ellipse_hough_eemax");
     float phiphimin = (float)config::Get_double("ellipse_hough_phimin");
@@ -1191,7 +1190,7 @@ vector< Vec3f > circle_bolt_detection( const Mat & img_can, Mat& image_color, Ma
 /// Output:
 ///   Mat& image_color -- draw circles found, and color the points used on each circle
 ///      
-void pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, bool write_images, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
+std::vector<float> pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, bool write_files, const std::string & infname, const MedianTextData & mtd, const std::string& label  ){
   int minR = config::Get_int ("sec_hough_minR");	//= 3 # minimum radius in pixels
   int maxR = config::Get_int ("sec_hough_maxR");	// = 10 # maximum radius in pixels
   int step = config::Get_int("R_step");
@@ -1241,9 +1240,10 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, 
     }
     //Overlaying result before pruning in a image.
     
-    string outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle_before");
-    imwrite(outputname,img_b4_prune);
-        
+    if(write_files){
+      string outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle_before");
+      imwrite(outputname,img_b4_prune);
+    }
     //prune_bolts_super_improved(PMTIdentified pmts_list, float acceptable_deviation_from expected)
     prune_bolts_super_improved( final_pmts, 4 );
     //prune_bolts( final_pmts, hdangbolt->GetMean() );
@@ -1261,8 +1261,12 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, 
     }
     
     pmt_count->Fill(minR+i*step, final_pmts.size());
-    outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle");
-    imwrite(outputname,img);
+    
+    if(write_files){
+      string outputname = build_output_filename ( infname , std::to_string(i)+"hough_circle");
+      imwrite(outputname,img);
+    }
+    
     data.push_back(Point2f(i, final_pmts.size()));
     if(final_pmts.size()>max_pmts){
       max_pmts = final_pmts.size();
@@ -1309,17 +1313,25 @@ void pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat& image_color, 
   //image_no[tab] Pmt found[tab] range of size1[tab] size2(if any) ...
   size_t idx = infname.find_last_of("/");
   string img_no = infname.substr(idx+1 );
-  string outputname =  "Radius_parameter"+img_no+".txt" ;
-  std::ofstream parameter_out( outputname );
-
-  for(int i =0; i<best_parameter.size();i++){
-    std::cout<<"range = [ "<<best_parameter[i].x<<" , "<<best_parameter[i].y<<" ]"<<std::endl;
-    parameter_out<<img_no<<'\t'<<max_pmts<<'\t'<<best_parameter[i].x<<'\t'<<best_parameter[i].y<<std::endl;
+  img_no=img_no.substr(0,img_no.length()-4);
+  
+  std::cout<<img_no<<std::endl;
+  if(write_files){
+    string outputname =  "Radius_parameter"+img_no+".txt" ;
+    std::ofstream parameter_out( outputname );
+    
+    for(int i =0; i<best_parameter.size();i++){
+      std::cout<<"range = [ "<<best_parameter[i].x<<" , "<<best_parameter[i].y<<" ]"<<std::endl;
+      parameter_out<<img_no<<'\t'<<max_pmts<<'\t'<<best_parameter[i].x<<'\t'<<best_parameter[i].y<<std::endl;
+    }
+    parameter_out.close();  
   }
-  parameter_out.close();  
-			      
+  
   std::cout<<"best is = "<<index<<std::endl;
   std::cout<<"Range of rad = "<<minR+index*step<<" - " <<minR+(index+1)*step<<std::endl;
+
+  return std::vector<float>(best_parameter[0].x, best_parameter[0].y);
+
   /*This is original code
   // PMT circle detection on bolts found by blob detection
   Mat image1 = Mat::zeros(image_color.rows, image_color.cols, CV_8UC3); 
@@ -1595,7 +1607,7 @@ void histogram_blobs_bymtd( const vector< KeyPoint>& keypoints, const MedianText
 
 
 //Removing the noise inside of PMT(Filtering blobs)
-void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img, const float blobcutlen=35){
+void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv::Mat img,bool write_outputs, const float blobcutlen=35){
   /*  TH1D* blobsize = new TH1D("hblobsize", "Size of Blob; Size; counts/bin", 50, -0.5, 49.5 );  
   TH1D* blobsdistance = new TH1D("Mindistance betn blobs", "Min distance between blobs; dist; counts/bin",5000. , -0.5, 4999.5 );  
   int ab=0;
@@ -1741,12 +1753,13 @@ void rem_bolts (const vector< Vec3f >& blobs1, vector< Vec3f >& blobs, const cv:
 
   }  
 
-
-  imwrite("rem_yellow.jpg", blbs_yellow);
-  imwrite("rem_near.jpg", blbs_near);
-   imwrite("rem_size.jpg", blbs_size);
-
-  //imwrite("trimmmmm.jpg", blbs);
+  if(write_outputs){
+    imwrite("rem_yellow.jpg", blbs_yellow);
+    imwrite("rem_near.jpg", blbs_near);
+    imwrite("rem_size.jpg", blbs_size);
+    //imwrite("trimmmmm.jpg", blbs);
+  }
+  
   }
 }
 
@@ -1765,7 +1778,7 @@ long int get_image_num_from_filename( char* filename ){
 
 
 int main (int argc, char **argv) {
-  
+  std::cout<<"argv[5] = "<<argv[5]<<std::endl;
   unsigned blobs_supplied=0;
   if(std::string(argv[argc-1])=="-i" || std::string(argv[argc-1])=="i"){
     std::cout<<"true"<<std::endl;
@@ -1811,8 +1824,8 @@ int main (int argc, char **argv) {
   //std::cout<<"Image opened"<<std::endl;
   
   
-  //option has final, text, candidate, circled, filters
-  vector < bool > option = setup_image_saveflags();
+  //option has final, text, candidate, circled, filters, range_before,range_after
+  vector < bool > option = setup_image_saveflags(config::Get_int("no_of_options"));
   
   //      std::cout<<"Got the Config file fine."<<std::endl;
   
@@ -1841,7 +1854,7 @@ int main (int argc, char **argv) {
   tree->SetAutoSave(0);
   ImageData* imagedata = new ImageData();
   tree->Branch("ImageData",&imagedata, 32000, 99 );
-  fill_image_ttree( imgnum, *imagedata ); 
+  
   
   try
     {
@@ -1902,7 +1915,7 @@ int main (int argc, char **argv) {
       bool corner = config::Get_int("corner");
       int blobcutval = config::Get_int("corner_blobcutval");
       if(corner){
-	rem_bolts(blobs1, blobs, image_color, blobcutval);
+	rem_bolts(blobs1, blobs, image_color, option[6], blobcutval );
       }
       else{
 	blobs = blobs1;
@@ -1941,9 +1954,12 @@ int main (int argc, char **argv) {
       
       // slow ellipse detection (hough_ellipse.hpp)
       //std::cout<<"Callign slow_ellipse_detection"<<std::endl;
+      Mat img_blob_map = image_houghellipse.clone();
+      std::vector<float> b_range = pmt_circle_detection( blobs, img_blob_map,option[5], argv[1], mtd, "houghblobs" ); 
+      slow_ellipse_detection( blobs, image_houghellipse, option[0], argv[1], mtd, *imagedata, b_range ); 
       
-      slow_ellipse_detection( blobs, image_houghellipse, true, argv[1], mtd, *imagedata ); 
-      
+
+      fill_image_ttree( imgnum, *imagedata,b_range ); 
       imagedata->SetSize();
       tree->Fill();
       tree->Write();
