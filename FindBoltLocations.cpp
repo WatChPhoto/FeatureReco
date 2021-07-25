@@ -74,7 +74,7 @@ void fill_image_ttree( int imgnum, ImageData& imtt, std::vector<float>b_range ){
   imtt.ips.ehough_minhits      = config::Get_int   ( "ellipse_hough_minhits" );
   imtt.ips.ehough_threshold    = config::Get_int   ( "ellipse_hough_threshold" ); 
   imtt.ips.ehough_drscale      = config::Get_double( "ellipse_hough_drscale" );
-  imtt.ips.ehough_nbins_bb     = unsigned(b_range[1]-b_range[0]+20);//config::Get_int   ( "ellipse_hough_nbins_bb" ); 
+  imtt.ips.ehough_nbins_bb     = unsigned((b_range[1]-b_range[0]+20)*config::Get_double   ( "ellipse_hough_nbins_bb_scale" )); 
   imtt.ips.ehough_nbins_ee     = config::Get_int   ( "ellipse_hough_nbins_ee" ); 
   imtt.ips.ehough_nbins_phiphi = config::Get_int   ( "ellipse_hough_nbins_phiphi" );  
   imtt.ips.ehough_nbins_x      = config::Get_int   ( "ellipse_hough_nbins_x" ); 
@@ -856,7 +856,7 @@ void slow_ellipse_detection( const std::vector< cv::Vec3f > blobs, Mat& image_ho
   if ( do_ellipse_hough ){
     float bbmin = b_range[0]-10;//(float)config::Get_double("ellipse_hough_bbmin");
     float bbmax = b_range[1]+10;//(float)config::Get_double("ellipse_hough_bbmax");
-    unsigned nbins_bb = (unsigned)(bbmax-bbmin);//(unsigned)config::Get_int("ellipse_hough_nbins_bb");
+    unsigned nbins_bb = (unsigned)((bbmax-bbmin)*config::Get_double("ellipse_hough_nbins_bb_scale"));
     unsigned nbins_ee = (unsigned)config::Get_int("ellipse_hough_nbins_ee");
     unsigned nbins_phiphi = (unsigned)config::Get_int("ellipse_hough_nbins_phiphi");
     unsigned nbins_x = (unsigned)config::Get_int("ellipse_hough_nbins_x");

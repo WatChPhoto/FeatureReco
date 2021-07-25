@@ -78,12 +78,12 @@ ellipse_hough_minhits      =  9
 ellipse_hough_threshold    = 120   # hough space count to stop finding ellipses
 ellipse_hough_drscale      = 4.0  # multiplier to pixel diagonal length to associate points 2 ellipse
 ########Calculated inside the Findboltlocation code#####
-#ellipse_hough_nbins_bb     =  50  
+ellipse_hough_nbins_bb_scale     =  1.5 #Scale the number of bins by c such that nbins = c*range_of_radius  
 ############################################
 ellipse_hough_nbins_ee     =  10  
-ellipse_hough_nbins_phiphi =  60#11  
-ellipse_hough_nbins_x      = 950
-ellipse_hough_nbins_y      = 700
+ellipse_hough_nbins_phiphi =  18 #11  
+ellipse_hough_nbins_x      = 1000 #950
+ellipse_hough_nbins_y      = 690 #700
 ##########is calculated inside Findboltlocation code#####
 #ellipse_hough_bbmin        = 70  
 #ellipse_hough_bbmax        = 110 
@@ -92,10 +92,10 @@ ellipse_hough_eemin        =   0.0
 ellipse_hough_eemax        =  0.35
 ellipse_hough_phimin    =   0.0 
 ellipse_hough_phimax    = 3.14159265359
-ellipse_hough_xmin         =  100
-ellipse_hough_xmax         =  3900
-ellipse_hough_ymin         = 100
-ellipse_hough_ymax         = 2900
+ellipse_hough_xmin         =  0 #100
+ellipse_hough_xmax         =  4000 #3900
+ellipse_hough_ymin         = 0 #100
+ellipse_hough_ymax         = 2750 #2900
 
 #Second Hough transform parameters
 sec_hough_dp = 1 # Inverse ratio of the accumulator resolution to the image resolution. For example, if dp=1 , the accumulator has the same resolution as the input image. If dp=2 , the accumulator has half as big width and height. |1 is the best
@@ -119,8 +119,8 @@ do_avg = 1 #1 for true 0 for false
 do_rms = 0
 
 #Is the image corner image?
-corner = 1
-corner_blobcutval = 15 # 35 for corner images
+corner = 0
+corner_blobcutval = 0#15 # 35 for corner images
 
 #Save blobs for someone to give us list	of true	bolts back.
 save_blobs_in_text = 0

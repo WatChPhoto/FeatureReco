@@ -360,10 +360,14 @@ cv::Mat get_scene(std::vector<WorldPmt> all_pmts,std::vector<cv::Point3f>light_i
     }
 
   //drawing sk-coordinate
-  std::vector<cv::Point3f> axes;
+  std::vector<cv::Point3f> axes={cv::Point3f(0,0,0),cv::Point3f(2000,0,0),cv::Point3f(0,2000,0),cv::Point3f(0,0,2000)};
+
   std::vector<cv::Point2f>axes_points;
   std::vector<cv::Scalar> color;
-  //selecting points that will be in frame.
+  
+  projectPoints(axes,rvec,tvec,camera_matrix,dist_coeffs,axes_points);
+  /*
+ //selecting points that will be in frame.
   double s=-tvec(2,0)/(R1(2,0)*2000);
   
   if(s>=0 && s<1){
@@ -395,7 +399,7 @@ cv::Mat get_scene(std::vector<WorldPmt> all_pmts,std::vector<cv::Point3f>light_i
     j++;
   }
 }
-  
+  */
   /*
 	cv::Matx31d xp = R1*cv::Matx31d(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z)+tvec;
 	if(xp(2,0)>0){
@@ -403,11 +407,11 @@ cv::Mat get_scene(std::vector<WorldPmt> all_pmts,std::vector<cv::Point3f>light_i
 	} 
       */
     //Sk axes direction
-  /*
+  
   cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[1].x, axes_points[1].y ), cv::Scalar(0,0,250), 2 );
   cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[2].x, axes_points[2].y ), cv::Scalar(0,250,0), 2 );
   cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[3].x, axes_points[3].y ), cv::Scalar(250,0,0), 2 );
-  */
+  
   clk=false;
   return scene;
 }
