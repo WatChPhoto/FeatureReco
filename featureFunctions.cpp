@@ -385,8 +385,8 @@ std::vector < bool > setup_image_saveflags (int option_no) {
     //lets reverse the order so that our order matches
     for(unsigned i=0; i<=options.size()/2;i++){
       bool temp=options[i];
-      options[i]=options[options.size()-i];
-      options[options.size()-i]=temp;
+      options[i]=options[options.size()-i-1];
+      options[options.size()-i-1]=temp;
     } 
     return options;
 }
