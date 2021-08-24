@@ -1274,6 +1274,7 @@ std::vector<float> pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat&
     }
  }  
   
+  TH1D* range_of_size = new TH1D("Size range","Best range of radius;range of rad(px);no. of PMTs",19,60,250);
   //we can also save multiple best range of size.
   std::vector<Point2f> best_parameter;
   for(unsigned i=0; i<data.size(); i++){
@@ -1282,6 +1283,7 @@ std::vector<float> pmt_circle_detection( const std::vector< Vec3f >& blobs, Mat&
       float R = minR+(data[i].x+1)*step;
       best_parameter.push_back(Point2f(r,R));
     }
+    range_of_size->Fill((minR+(data[i].x)*step+minR+(data[i].x+1)*step)/2.,data[i].y);
   }
 
   //Collapse two ranges if they are two consecutive range.

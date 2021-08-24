@@ -13,123 +13,9 @@
 #include <TGraph.h>
 #include <TFile.h>
 #include "ImageDataReader.hpp"
+#include "distancelib.hpp"
 
-//data structure
-class TransformationData{
-public:
-  std::string id; //PMT id
-  double el_x;  //centre of PMt
-  double el_y;
-  double el_b;  //minor axis of ellipse
-  double el_e;  //eccentricity of ellipse
-  double el_phi; //angle with x-axis.
 
-  //mapped to 3d coordinate.
-  double x;
-  double y;
-  double z;
-  
-  //TransformationData();
-  TransformationData():id(""),el_x(0),el_y(0),el_b(0),el_e(0),el_phi(0),x(0),y(0),z(0){};
-  TransformationData(std::string id, double el_x, double el_y, double el_b, double el_e, double el_phi, double x, double y, double z):id(id),el_x(el_x),el_y(el_y),el_b(el_b),el_e(el_e),el_phi(el_phi),x(x),y(y),z(z){}
-  
-  cv::Matx31d get_camera_coords(cv::Matx33d rmat, cv::Matx31d tvec){
-    cv::Matx31d v (x,y,z);
-    return rmat*v+tvec;
-  }
-
-  double get_a(){
-    return el_b/std::sqrt(1.-el_e*el_e);
-  }
-};
-
-std::istream& operator>>( std::istream& is, TransformationData& t){
-  is>>t.id;
-  is>>t.el_x;
-  is>>t.el_y;
-  is>>t.el_b;
-  is>>t.el_e;
-  is>>t.el_phi;
-  is>>t.x;
-  is>>t.y;
-  is>>t.z;
-
-  return is;
-}
-
-class WorldPmt{
-public:
-  std::string id;
-  double x;
-  double y;
-  double z;
-  
-  WorldPmt():id(""),x(0),y(0),z(0){}
-  WorldPmt(std::string id, double x, double y, double z):id(id),x(x),y(y),z(z){}
-};
-
-std::istream& operator>>( std::istream& is, WorldPmt& t){
-  is>>t.id;
-  is>>t.x;
-  is>>t.y;
-  is>>t.z;
-
-  return is;
-}
-
-//data structure
-class Ellipse{
-public:
-  std::string id; //PMT id
-  double x;  //centre of PMt
-  double y;
-  double b;  //minor axis of ellipse
-  double e;  //eccentricity of ellipse
-  double phi; //angle with x-axis.
-
-  //TransformationData();
-  Ellipse():id(""),x(0),y(0),b(0),e(0),phi(0){};
-  Ellipse(std::string id, double x, double y, double b, double e, double phi):id(id),x(x),y(y),b(b),e(e),phi(phi){}
-  
-  double get_a(){
-    return b/std::sqrt(1.-e*e);
-  }
-};
-
-std::istream& operator>>( std::istream& is, Ellipse& p){
-  is>>p.id;
-  is>>p.x;
-  is>>p.y;
-  is>>p.b;
-  is>>p.e;
-  is>>p.phi;
-
-  return is;
-}
-
-//read all pmts in sk detector.
-std::vector<WorldPmt> read_all_pmts(std::string filename="SK_all_PMT_locations.txt"){
-  std::vector<WorldPmt> all_pmts; 
-  WorldPmt t; //temporary container
-
-  std::ifstream myfile(filename);
-  while (myfile >> t) {
-    all_pmts.push_back(t);
-    }
-  myfile.close();
-  return all_pmts;  
-}
-
-//read pmts from an image.
-std::vector<Ellipse> read_ellipses_in_image(std::string filename ="045.txt"){
-  std::vector<Ellipse>ellipses;
-  Ellipse e;
-  std::ifstream myfile(filename);
-  while(myfile>>e){
-    ellipses.push_back(e);
-  }
-  return ellipses;
-}
 double reprojection_error(std::vector<cv::Point2f> ellipses, std::vector<cv::Point2f> im_points,float offset){
  
   /*std::vector<double> d;
@@ -201,35 +87,27 @@ double reprojection_error(std::vector<cv::Point2f> ellipses, std::vector<cv::Poi
   }
   return dsq;
 }
-
-unsigned get_img_num(std::string filename){
-  unsigned img_num;
-  std::stringstream ss;  
-  ss << filename;  
-  ss >> img_num;
-
-  return img_num;
+void draw_error(std::vector<Ellipse> ellipses, std::vector<cv::Point2f> im_points,float offset, cv::Mat& m){
+ 
+  for(int i=0; i<ellipses.size();i++){
+    double x0 = ellipses[i].x;
+    double y0 = ellipses[i].y;
+    double lmin = 1000000000000000000000000000;
+    cv::Point2f p2;
+    for(int j=0;j<im_points.size();j++){
+      double x1 = im_points[j].x;
+      double y1 = im_points[j].y-offset;
+      double d = (x1-x0)*(x1-x0)+(y1-y0)*(y1-y0);
+      if(d<lmin){lmin=d; p2=cv::Point2f(x1,y1);}
+    }
+    //draw line from ellipses to points
+    cv::line(m,cv::Point2f(x0,y0),p2,cv::Scalar(0,230,0),2);
+    cv::circle(m,cv::Point2f(x0,y0),10,cv::Scalar(0,0,230),-1);
+    cv::Size axes(  int(ellipses[i].get_a()), int(ellipses[i].b) );
+    cv::ellipse(m,cv::Point2f(x0,y0),axes,ellipses[i].phi*PI/180.,0,360,cv::Scalar (255, 102, 255),2);
+  }
 }
 
-class LabelledData{
-public:
-  std::string imnum;
-  std::string id;
-  double x; 
-  double y;
-  std::string by;
-  LabelledData():imnum(""),id(""),x(0),y(0),by(""){}
-};
-
-std::istream& operator>>( std::istream& is, LabelledData& p){
-  is>>p.imnum;
-  is>>p.id;
-  is>>p.x;
-  is>>p.y;
-  is>>p.by;
-  
-  return is;
-}
 void distance_range(double& low, double& high, std::vector<Ellipse> e){
   low =1000000000000000000000000;
   high=0;
@@ -248,333 +126,10 @@ void make_error_histogram(std::vector<cv::Point3f>ev, int z){
   }
 }
 
-struct cam{
-public:
-  double r;
-  double theta;
-  double z;
-  double yaw;
-  double pitch;
-  double roll;
-  cam(){
-    r=0;
-    theta=0;
-    z=0;
-    yaw=0;
-    pitch=0;
-    roll=0;
-  }
-  cam(double r, double theta, double z, double yaw, double pitch, double roll):r(r),theta(theta),z(z),yaw(yaw),pitch(pitch),roll(roll){}
-};
-
-
-bool clk=false; //clicked?
-cv::Mat get_scene(std::vector<WorldPmt> all_pmts,std::vector<cv::Point3f>light_injectors,cam cam1,cv::Matx33d R, cv::Matx31d p){
-  double PI=std::acos(-1);
-  cv::Mat scene(3000, 4000, CV_8UC3, cv::Scalar(255,255,255));
-  //camera matrix;
-  double fx=2.760529621789217e+03;//1100;//
-  double fy=2.767014510543478e+03;//1100;//
-  double cx=scene.cols/2.;//1.914303537872458e+03;
-  double cy=scene.rows/2.;//1.596386868474348e+03;
-  cv::Matx33d camera_matrix(fx,0,cx,
-			    0,fy,cy,
-			    0,0,1);
-  cv::Matx14d dist_coeffs (0, 0, 0, 0); //just four par. radial & tangential.x
-
-  double thx = cam1.pitch*PI/180;
-  double thy = cam1.yaw*PI/180;
-  double thz = cam1.roll*PI/180;
-  
-  cv::Matx33d Rx (1.0,   0.0,      0.0,
-		   0.0, cos(thx), -sin(thx),
-		   0.0, sin(thx),  cos(thx));
-  cv::Matx33d Ry (cos(thy), 0.0, sin(thy),
-		   0.0,      1.0,    0.0,
-		   -sin(thy), 0.0, cos(thy));
-  cv::Matx33d Rz (cos(thz), -sin(thz), 0.0,
-		   sin(thz),  cos(thz), 0.0,
-		   0.0,        0.0,     1.0 );
-  //-ve 90 degree rotation in x
-  cv::Matx33d Rf0 (1.0,   0.0,      0.0,
-  		   0.0, cos(-PI/2.), -sin(-PI/2.),
-		   0.0, sin(-PI/2.),  cos(-PI/2.));
-
-  //+ve 90 degree rotation in then y
-  cv::Matx33d Rf1 (cos(PI/2.), 0.0, sin(PI/2.),
-		   0.0,      1.0,    0.0,
-		   -sin(PI/2.), 0.0, cos(PI/2.));
-
-  //given the coordinte in unrotated frame, finds the matrix that will give coordinate in rotated frame.
-  //rotation matrix for cam1.
-  cv::Matx33d R1 = Rz.t()*Rx.t()*Ry.t()*Rf1.t()*Rf0.t();
-  
-  //vector along three axes of camera;
-  //let's do 30 cm in each dir
-  cv::Matx31d x(30,0,0);
-  cv::Matx31d y(0,30,0);
-  cv::Matx31d z(0,0,30);
-  //endpoints of vector
-  x = R.t()*x+p;
-  y = R.t()*y+p;
-  z = R.t()*z+p;
-  cv::Matx31d rvec;
-  cv::Rodrigues(R1,rvec);
-  cv::Matx31d pos(cam1.r*cos(cam1.theta*PI/180),cam1.r*sin(cam1.theta*PI/180.),cam1.z);
-  cv::Matx31d tvec = -R1*pos;
-  std::vector<cv::Point3f> object_in_view;
-  std::vector<cv::Point2f>im_points;
-  
-  for(int i=0; i<all_pmts.size();i++){
-    cv::Matx31d xp = R1*cv::Matx31d(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z)+tvec;
-    if(xp(2,0)>0){
-      object_in_view.push_back(cv::Point3f(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z));
-    } 
-  }
-  
-  projectPoints(object_in_view,rvec,tvec,camera_matrix,dist_coeffs,im_points);  
-  
-  for(int i=0;i<im_points.size();i++){
-    cv::circle( scene, cv::Point( im_points[i].x, im_points[i].y ), 10, cv::Scalar(0,240,240), -1 );
-  }
-  
-  std::vector<cv::Point3f> obj={ cv::Point3f(p(0,0),p(1,0),p(2,0)), cv::Point3f(x(0,0),x(1,0),x(2,0)), cv::Point3f(y(0,0),y(1,0),y(2,0)), cv::Point3f(z(0,0),z(1,0),z(2,0)) };
-  std::vector<cv::Point2f>image_points;
-  projectPoints(obj,rvec,tvec,camera_matrix,dist_coeffs,image_points);
-
-  
-  //Drawing camera direction
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[1].x, image_points[1].y ), cv::Scalar(0,0,250), 2 );
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[2].x, image_points[2].y ), cv::Scalar(0,250,0), 2 );
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[3].x, image_points[3].y ), cv::Scalar(250,0,0), 2 );
-
-  //projecting light injectors
-  std::vector<cv::Point2f> injector_points;
-  projectPoints(light_injectors,rvec,tvec,camera_matrix,dist_coeffs,injector_points);
-  for(int i=0;i<injector_points.size();i++){
-      int x=injector_points[i].x;
-      int y=injector_points[i].y;
-      if(x>0 && x<scene.cols && y>0 && y<scene.rows){
-	cv::circle( scene, cv::Point( x, y), 5, cv::Scalar(220,31,237), -1 );
-      }
-    }
-
-  //drawing sk-coordinate
-  std::vector<cv::Point3f> axes={cv::Point3f(0,0,0),cv::Point3f(2000,0,0),cv::Point3f(0,2000,0),cv::Point3f(0,0,2000)};
-
-  std::vector<cv::Point2f>axes_points;
-  std::vector<cv::Scalar> color;
-  
-  projectPoints(axes,rvec,tvec,camera_matrix,dist_coeffs,axes_points);
-  /*
- //selecting points that will be in frame.
-  double s=-tvec(2,0)/(R1(2,0)*2000);
-  
-  if(s>=0 && s<1){
-    // then add s*<2000,0,0> to the points
-    axes.push_back(cv::Point3f(s*2000,0,0));
-    axes.push_back(cv::Point3f(2000,0,0));
-    color.push_back(cv::Scalar(0,0,255));
-  }
-  s=-tvec(2,0)/(R1(2,1)*2000);
-  if(s>=0 && s<1){
-    // then add s*<0,2000,0> to the points
-    axes.push_back(cv::Point3f(0,s*2000,0));
-    axes.push_back(cv::Point3f(0,2000,0));
-    color.push_back(cv::Scalar(0,255,0));
-  }
-  s=-tvec(2,0)/(R1(2,2)*2000);
-  if(s>=0 && s<1){
-    // then add s*<0,2000,0> to the points
-    axes.push_back(cv::Point3f(0,0,s*2000));
-    axes.push_back(cv::Point3f(0,0,2000));
-    color.push_back(cv::Scalar(255,0,0));
-  }
-  
-  if(axes.size()>0){
-    projectPoints(axes,rvec,tvec,camera_matrix,dist_coeffs,axes_points);
-  int j=0;
-  for(int i=0; i<axes_points.size(); i+=2){
-    cv::arrowedLine( scene, cv::Point( axes_points[i].x, axes_points[i].y ),cv::Point( axes_points[i+1].x, axes_points[i+1].y ), color[j], 2 );
-    j++;
-  }
-}
-  */
-  /*
-	cv::Matx31d xp = R1*cv::Matx31d(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z)+tvec;
-	if(xp(2,0)>0){
-	object_in_view.push_back(cv::Point3f(all_pmts[i].x,all_pmxts[i].y,all_pmts[i].z));
-	} 
-      */
-    //Sk axes direction
-  
-  cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[1].x, axes_points[1].y ), cv::Scalar(0,0,250), 2 );
-  cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[2].x, axes_points[2].y ), cv::Scalar(0,250,0), 2 );
-  cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[3].x, axes_points[3].y ), cv::Scalar(250,0,0), 2 );
-  
-  clk=false;
-  return scene;
-}
-
-
-
-
-//Icon class
-class Icon{
-public:
-  cv::Mat img;
-  cv::Point2f pos;
-  std::string text;
-  cv::Scalar text_color;
-  cv::Scalar color;
-  cv::Point2f size;
-  int index;
-  bool sign; //true for + and false for -
-  Icon(){
-    pos=cv::Point2f(0,0);
-    text="";
-    text_color=cv::Scalar(0,0,0);
-    color=cv::Scalar(0,0,0);
-    size=cv::Point2f(100,50);
-    index=-1;
-    sign=true;
-  }
-
-
-  
-
-  Icon(cv::Mat &img,cv::Point2f pos, cv::Point2f size, std::string text, cv::Scalar color,int index, bool sign, cv::Scalar text_color=cv::Scalar(255,255,255)):img(img),pos(pos),size(size),text(text),color(color),index(index),sign(sign),text_color(text_color){}
-  
-  void show(int x, int y,bool clicked,std::vector<float> &c1){
-    cv::Scalar fill =color;
-    cv::Scalar t_fill=text_color;
-    if(is_inside(x,y)){
-      fill=cv::Scalar(0,250,0); 
-      t_fill=cv::Scalar(0,0,0);
-      if(clicked){
-	clk=true;
-	fill=cv::Scalar(255,255,255); t_fill=cv::Scalar(0,250,0);
-	if(index!=-1){
-	  if(sign){
-	    c1[index]++;
-	  }
-	  else{
-	    c1[index]--;
-	  }
-	}
-	else{
-	  // r, theta, z, yaw, pitch, roll.
-	  std::cout<<"enter r theta z yaw pitch roll : ";
-	  std::cin>>c1[0]>>c1[1]>>c1[2]>>c1[3]>>c1[4]>>c1[4];
-	  //getting rid of token in buffer
-	  while (std::cin.get() != '\n') 
-	    {
-	      continue;
-	    }
-
-	}
-      }
-    }
-    std::cout<<c1[0]<<" "<<c1[1]<<" "<<c1[2]<<" "<<c1[3]<<" "<<c1[4]<<" "<<c1[5]<<std::endl;
-    rectangle(img,pos,pos+size,fill,-1);
-    putText(img, text,cv::Point2f(pos.x,pos.y+size.y)+cv::Point2f(10,-10),cv::FONT_HERSHEY_SIMPLEX,2,t_fill,2);
-  } 
-
-  bool is_inside(int x, int y){
-    if(x>=pos.x && x<=pos.x+size.x && y>=pos.y && y<=pos.y+size.y){
-      return true;
-    }
-    else{
-      return false;
-    }
-  }
-};
-
-
-cv::Mat outs;
-cam c1;
-cv::Mat image_to_show;
-bool left_down=false;
-bool left_up=false;
-std::vector<float> cam1(6,0);
-std::vector<WorldPmt> al_pmt;
-std::vector<cv::Point3f> li; 
-cv::Matx33d R_o;
-cv::Matx31d ps;
-//r,theta,z,yaw,pitch,roll;
-
-void onMouse(int event, int x, int y, int flags, void* userdata){
-  bool clicked=false;
-  if(event==cv::EVENT_LBUTTONDOWN){
-    clicked=true;
-  }
-  image_to_show=outs.clone();
-  
-  int xmin = image_to_show.cols-900;
-  int ymin = image_to_show.rows-800;
-  int xmax = image_to_show.cols;
-  int ymax = image_to_show.rows;
-  if(x>xmin && y>ymin && x<xmax && y<ymax){
-    cv::Point2f size = cv::Point2f(200,100);
-    int xoffset=100;
-    int yoffset=50;
-    Icon ri(image_to_show, cv::Point2f(xmin,ymin),size,"Rad+",cv::Scalar(0,0,0),0,true,cv::Scalar(255,255,255));
-    Icon rd(image_to_show, cv::Point2f(xmin,ymin+4*(size.y+yoffset)),size,"Rad-",cv::Scalar(0,0,0),0,false,cv::Scalar(255,255,255));
-    Icon thi(image_to_show, cv::Point2f(xmin+size.x+xoffset,ymin),size,"th+",cv::Scalar(0,0,0),1,true,cv::Scalar(255,255,255));
-    Icon thd(image_to_show, cv::Point2f(xmin+size.x+xoffset,ymin+4*(size.y+yoffset)),size,"th-",cv::Scalar(0,0,0),1,false,cv::Scalar(255,255,255));
-    Icon zi(image_to_show, cv::Point2f(xmin+2*(size.x+xoffset),ymin),size,"Z+",cv::Scalar(0,0,0),2,true,cv::Scalar(255,255,255));
-    Icon zd(image_to_show, cv::Point2f(xmin+2*(size.x+xoffset),ymin+4*(size.y+yoffset)),size,"Z-",cv::Scalar(0,0,0),2,false,cv::Scalar(255,255,255));
-
-    Icon yawd(image_to_show, cv::Point2f(xmin,ymin+size.y+yoffset),size,"Yaw-",cv::Scalar(0,0,0),3,false,cv::Scalar(255,255,255));
-    Icon yawi(image_to_show, cv::Point2f(xmin+2*(size.x+xoffset),ymin+size.y+yoffset),size,"Yaw+",cv::Scalar(0,0,0),3,true,cv::Scalar(255,255,255));
-    Icon pitd(image_to_show, cv::Point2f(xmin,ymin+2*(size.y+yoffset)),size,"Pih-",cv::Scalar(0,0,0),4,false,cv::Scalar(255,255,255));
-    Icon piti(image_to_show, cv::Point2f(xmin+2*(size.x+xoffset),ymin+2*(size.y+yoffset)),size,"Pih+",cv::Scalar(0,0,0),4,true,cv::Scalar(255,255,255));
-    Icon rold(image_to_show, cv::Point2f(xmin,ymin+3*(size.y+yoffset)),size,"Rol-",cv::Scalar(0,0,0),5,false,cv::Scalar(255,255,255));
-    Icon roli(image_to_show, cv::Point2f(xmin+2*(size.x+xoffset),ymin+3*(size.y+yoffset)),size,"Rol+",cv::Scalar(0,0,0),5,true,cv::Scalar(255,255,255));
-
-    Icon set_to(image_to_show, cv::Point2f(xmin+size.x+xoffset/2,ymin+size.y+yoffset/2),cv::Point2f(300,450),"<<\nSet",cv::Scalar(0,0,0),-1,true,cv::Scalar(255,255,255));
-    
-        
-    ri.show(x,y,clicked,cam1);
-    rd.show(x,y,clicked,cam1);
-    thi.show(x,y,clicked,cam1);
-    thd.show(x,y,clicked,cam1);
-    zi.show(x,y,clicked,cam1);
-    zd.show(x,y,clicked,cam1);
-    yawi.show(x,y,clicked,cam1);
-    yawd.show(x,y,clicked,cam1);
-    piti.show(x,y,clicked,cam1);
-    pitd.show(x,y,clicked,cam1);
-    roli.show(x,y,clicked,cam1);
-    rold.show(x,y,clicked,cam1);
-    set_to.show(x,y,clicked,cam1);
-  }
-
-
-
-
-  if(clk){
-    c1=cam(cam1[0],cam1[1],cam1[2],cam1[3],cam1[4],cam1[5]);
-    outs = get_scene(al_pmt,li, c1, R_o, ps);
-  } 
-  
-  imshow("Scene",image_to_show);
-
-  //imshow("Scene",outs);
-}
 
 
 int main(int argc, char **argv){
   
-  /*
-  cv::Matx31d r0 (1.45565547,-0.83269149,0.73368359);
-  cv::Matx31d t0(-185.21618339,-211.75779124,-880.66337725); 
-  cv::Matx33d R0;
-  cv::Rodrigues(r0,R0);
-  cv::Matx31d pos = -R0.t()*t0;
-  std::cout<<"position is ="<<pos(0,0)<<"\t"<<pos(1,0)<<"\t"<<pos(2,0)<<std::endl;
-  */
-
   std::string filename = std::string(argv[argc-1]);
   std::string survey_id = std::string(argv[argc-2]);
 
@@ -601,135 +156,33 @@ int main(int argc, char **argv){
   cv::Matx33d rmat; 
   cv::Rodrigues(rvec,rmat);
 
-
-  std::cout<<"here "<<std::endl;
   cv::Mat image = imread (filename+".jpg", cv::IMREAD_COLOR);//("045.jpg", cv::IMREAD_COLOR);
   
-  std::cout<<"there "<<std::endl;
   cv::Mat img = image.clone();
   cv::Mat img1 = image.clone();
   cv::Mat img2 = image.clone();
   
   cv::Mat img3; 
   cvtColor(image, img3, cv::COLOR_BGR2GRAY);
-
-  
-  if(0){
-    std::vector<TransformationData> v;
-  std::vector<LabelledData> dat;
-    std::ifstream MyReadFile("mapped.txt");
-   std::cout<<"dat size = "<<dat.size()<<std::endl;  
-  // Use a while loop together with the getline() function to read the file line by line
-  
-  TransformationData t;
-  while (MyReadFile >> t) {
-    // Output the text from the file
-    //    std::cout << t.id<<std::endl;  
-    v.push_back(t);
-    //std::cout<<i<<std::endl;
-  }
-  
-  // Close the file
-  MyReadFile.close(); 
-  
-  std::ifstream my1;
-  my1.open(filename+"lbl.txt");
-  LabelledData d;
-
-  while(my1 >> d){dat.push_back(d); std::cout<<"pushing"<<std::endl;}
-  my1.close();
-
-    std::vector<cv::Point3f> object_points;
-  
-  for(int i=0; i<v.size();i++){
-    object_points.push_back( cv::Point3f(v[i].x,v[i].y,v[i].z));
     
-    //   std::cout<<v[i].id<<'\t'<<v[i].el_x<<'\t'<<v[i].el_y<<'\t'<<v[i].el_b<<'\t'<<v[i].el_e<<'\t'<<v[i].el_phi<<'\t'<<v[i].x<<'\t'<<v[i].y<<'\t'<<v[i].z<<std::endl;
-  }
-  std::cout<<"1ere "<<std::endl;    
-  std::vector<cv::Point2f>image_points;
-  projectPoints(object_points,rvec,tvec,camera_matrix,dist_coeffs,image_points);
-    for(int i=0;i<image_points.size();i++){
-    cv::circle( image, cv::Point( image_points[i].x, image_points[i].y ), 10, cv::Scalar(0,255,250), -1 );
-  }
-  imwrite("output.jpg",image);
-  
-  for(int i=0;i<dat.size();i++){
- 
-    std::cout<<"(x,y) = "<<"( "<<dat[i].x<<" , "<<dat[i].y<<" )"<<std::endl;
-    std::cout<<dat[i].id.substr(6)<<std::endl;
-    if(dat[i].id.substr(6)=="00"){
-      cv::circle( img2, cv::Point(dat[i].x,dat[i].y), 10, cv::Scalar(0,255,250), -1 );
-      std::string text = dat[i].id.substr(0,5);
-      text=std::to_string(get_img_num(text));
-      cv::putText(img2, text,cv::Point( dat[i].x, dat[i].y ) , cv::FONT_HERSHEY_PLAIN,4, cv::Scalar(0,255,250),3);
-    }
-  }
-  imwrite("manlabelled.jpg",img2);
-  //TH1D* zcoord   = new TH1D( "zcoord"  ,"Z coord of features  ; size; distance",256,0.,256.);
-  
-  //   TCanvas *c1 = new TCanvas("c1","Graph of size vs distance",200,10,500,300);
-    
-  TFile* fout = new TFile("testingdistance.root","recreate");
-  Double_t x[v.size()], y[v.size()];
-  Int_t n = v.size();
-  for (Int_t i=0;i<n;i++) {
-    x[i] = v[i].get_a();
-    y[i] = (v[i].get_camera_coords(rmat, tvec))(2,0);
-  }
-  TGraph* gr = new TGraph(n,x,y);
-  gr->SetNameTitle("dist vs a","dist vs a");
-  gr->Write();
-  
-  for (Int_t i=0;i<n;i++) {
-    x[i] = v[i].el_b;
-    y[i] = (v[i].get_camera_coords(rmat, tvec))(2,0);
-  }
-  TGraph* gr1 = new TGraph(n,x,y);
-  gr1->SetNameTitle("dist vs b","dist vs b");
-  gr1->Write();
-  
-  //camera position is 
-  cv::Matx31d p = -rmat.t()*tvec;
-  for (Int_t i=0;i<n;i++) {
-    x[i] = v[i].el_b;
-    y[i] = std::sqrt((p(0,0)-v[i].x)*(p(0,0)-v[i].x)+(p(1,0)-v[i].y)*(p(1,0)-v[i].y)+(p(2,0)-v[i].z)*(p(2,0)-v[i].z));
-  }
-  TGraph* gr2 = new TGraph(n,x,y);
-  gr2->SetNameTitle("b vs dist","b vs dist");
-  gr2->Write();
-  
-  for (Int_t i=0;i<n;i++) {
-    x[i] = v[i].get_a();
-    y[i] = std::sqrt((p(0,0)-v[i].x)*(p(0,0)-v[i].x)+(p(1,0)-v[i].y)*(p(1,0)-v[i].y)+(p(2,0)-v[i].z)*(p(2,0)-v[i].z));
-  }
-  TGraph* gr3 = new TGraph(n,x,y);
-  gr3->SetNameTitle("a vs dist","a vs dist");
-  gr3->Write();
-  fout->Write();
- 
-  }
-  
-  
-  
-  /*====================================================================
-    this is new part.
-    ===================================================================*/
-  
   ImageDataReader & idr = ImageDataReader::GetInstance();
-  
-
-
-  ImageMetaData m = idr.GetMetaData(survey_id, get_img_num(filename));
+  unsigned img_no=get_img_num(filename);
+  ImageMetaData m = idr.GetMetaData(survey_id,img_no );
   ImageMetaData i239 = idr.GetMetaData("BarrelSurveyFar", 239);
+
+  //inputfile info
+  std::cout<<"image "<<filename<<" info"<<std::endl;
   std::cout<<m.face.yaw<<std::endl;
   std::cout<<m.face.pitch<<std::endl;
   std::cout<<m.face.roll<<std::endl;
-
+  
+  //manually labelled image info->239BarrelFar was manually labelled to get rvec and tvec
+  std::cout<<"image 239 info :"<<std::endl;
   std::cout<<i239.face.yaw<<std::endl;
   std::cout<<i239.face.pitch<<std::endl;
   std::cout<<i239.face.roll<<std::endl;
   std::cout<<"he_pmts"+filename+".txt"<<std::endl;
+
   std::vector<Ellipse> ellipses1 = read_ellipses_in_image("he_pmts"+filename+".txt");
   std::vector<cv::Point2f> ellipses;
   for(int i=0; i<ellipses1.size();i++){
@@ -741,19 +194,20 @@ int main(int argc, char **argv){
   }
   imwrite("textreadimg.jpg",img1);
 
-  //0 for 045
-  double yaw0 = (i239.face.yaw)*PI/180.;//64.0*PI/180.;
-  double pitch0 = (i239.face.pitch)*PI/180.;//2.0*PI/180.;
-  double roll0 = (i239.face.roll)*PI/180.;//-1.0*PI/180.;  
+  //for image 239
+  double yaw0 = (i239.face.yaw)*PI/180.;
+  double pitch0 = (i239.face.pitch)*PI/180.;
+  double roll0 = (i239.face.roll)*PI/180.;
   //this is for any image we want to work with.
   //this need to be read for particular image.
-  double yaw1 = (m.face.yaw)*PI/180.;//59.0*PI/180.;
-  double pitch1 = (m.face.pitch)*PI/180.;//2.0*PI/180.;
-  double roll1 = m.face.roll*PI/180.;  //-1.0*PI/180.;  
+  double yaw1 = (m.face.yaw)*PI/180.;
+  double pitch1 = (m.face.pitch)*PI/180.;
+  double roll1 = m.face.roll*PI/180.;  
+  //correcting depth
   double b = 1.02585; //ratio of density of sea water to pure water
   double c = -0.271196;//offset
   double z1 = m.depth;
-  z1 = c+b*z1;
+  z1 = c+b*z1;// corrected z-coordinate
   z1 *=100; //converting to cm
 
   std::cout<<"z depth is = "<<z1<<std::endl;
@@ -798,12 +252,12 @@ int main(int argc, char **argv){
 
   cv::Matx33d rot_BC = rot_AC*(rot_AB.t()); //given the coordinate in frame B, finds the coordinate in frame C.
   cv::Matx33d R = rot_BC*rmat;//rmat brings coordinate from world to 045 frame(B frame).x
-  R_o = R;
+  // R_o = R;
   cv::Matx31d rvec1;
   cv::Rodrigues(R,rvec1);
   cv::Matx31d tvec1;
 
-  std::cout<<"046 rotation matrix"<<std::endl;
+  std::cout<<img_no<<" rotation matrix"<<std::endl;
   std::cout<<R(0,0)<<"\t"<<R(0,1)<<"\t"<<R(0,2)<<std::endl;
   std::cout<<R(1,0)<<"\t"<<R(1,1)<<"\t"<<R(1,2)<<std::endl;
   std::cout<<R(2,0)<<"\t"<<R(2,1)<<"\t"<<R(2,2)<<std::endl;
@@ -824,8 +278,8 @@ int main(int argc, char **argv){
   }
   */
   
-  std::vector<WorldPmt> all_pmts = read_all_pmts();
-  al_pmt = all_pmts;
+  std::vector<WorldPoints> all_pmts = read_all_world_points();
+ 
   //std::cout<<"Now printing th read world coordinate of pmts"<<std::endl;
   /*  for(int i=0; i<all_pmts.size();i++){
     // std::cout<<all_pmts[i].id<<"\t"<<all_pmts[i].x<<"\t"<<all_pmts[i].y<<"\t"<<all_pmts[i].z<<std::endl;
@@ -838,7 +292,7 @@ int main(int argc, char **argv){
   double minx=0;
   double miny=0;
   double minz=0;
-  std::vector<int> final_id;
+  std::vector<std::string> final_id;
   std::vector<cv::Point3f> obv;
   std::vector<cv::Point2f> imp;
   
@@ -846,7 +300,7 @@ int main(int argc, char **argv){
   double theta = std::atan2(dir(1,0),dir(0,0))*180./PI; // angle with x-axis.
   theta=(theta>=0)?theta:(360+theta);
   std::cout<<"theta ="<<theta<<std::endl;
-  double range =0;//25;
+  double range =20;//25;
   double th1 = ((theta-range)>=0)?(theta-range):(360+theta-range);
   double th2 = ((theta+range)>=0)?(theta+range):(360+theta+range);
   th2 = (th2>360)?(th2-360.):th2;
@@ -905,7 +359,7 @@ int main(int argc, char **argv){
   
   double ang;
   double rad;
-  for(int z=z1-4;z<z1+4; z+=1){	
+  for(int z=z1-3;z<z1+3; z+=1){	
     //vector to hold value of x,y and the error value.
     std::vector<cv::Point3f>ev; //error value
     //     for(int x=l.x; x<h.x; x+=5){
@@ -931,18 +385,24 @@ int main(int argc, char **argv){
 	cv::Matx31d p(x, y, z);
 	cv::Matx31d tv = -R*p;
 	std::vector<cv::Point3f> object_in_view;
-	std::vector<int> id;
+	std::vector<std::string> id;
 	for(int i=0; i<all_pmts.size();i++){
 	  cv::Matx31d xp = R*cv::Matx31d(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z)+tv;
 	  if(xp(2,0)>0){
 	    object_in_view.push_back(cv::Point3f(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z));
-	    int num;
+	    
+
 	    std::string str = all_pmts[i].id.substr(0,5);
-	    std::stringstream ss;  
-	    ss << str;  
-	    ss >> num;
-	    id.push_back(num);
-	    //	   std::cout<<"passed all the hurdles"<<std::endl;
+	    if(isalpha(str[0])){
+	      id.push_back(str);
+	    }
+	    else{
+	      int num;
+	      std::stringstream ss;  
+	      ss << str;  
+	      ss >> num;
+	      id.push_back(std::to_string(num));
+	    }
 	  }
 	  
 	}
@@ -951,7 +411,7 @@ int main(int argc, char **argv){
 	  projectPoints(object_in_view,rvec1,tv,camera_matrix,dist_coeffs,im_points);
 	  
 	  double rep_error = reprojection_error(ellipses, im_points,offset);
-	  ev.push_back(cv::Point3f(x,y,rep_error));
+	  ev.push_back(cv::Point3f(x,y,rep_error)); 
 	  //error->Fill(x,y,z,rep_error);
 	  //	  std::cout<<"Repo error = "<<rep_error<<std::endl;
 	  if(rep_error<min_rep_err){
@@ -972,19 +432,25 @@ int main(int argc, char **argv){
     make_error_histogram(ev,z);
   }
   
+  //writing rotation and translation vector to file
+  std::ofstream file(filename+"_rot_trans.txt");
+  file<<"rot_vec = ["<<rvec1(0,0)<<'\t'<<rvec1(0,1)<<'\t'<<rvec1(0,2)<<"]"<<std::endl;
+  file<<"tr_vec = ["<<tvec1(0,0)<<'\t'<<tvec1(0,1)<<'\t'<<tvec1(0,2)<<"]"<<std::endl;
+  file.close();
+  
   std::cout<<"position is ("<<minx<<" , "<<miny<<" , "<<minz<<" )"<<std::endl;
-  ps=cv::Matx31d(minx,miny,minz);
+  //ps=cv::Matx31d(minx,miny,minz);
   
   std::cout<<"rad = "<<rad<<"  ang = "<<ang<<std::endl;
   cv::Matx31d a = R.t()*ACz.t()*ACx.t()*cv::Matx31d(0,0,1);
   std::cout<<"angle of direction is ="<<std::atan2(a(1,0),a(0,0))*180./PI;
   
-    //20001: UK B1
+  /*    //20001: UK B1
     //30001: Korean B1
     std::vector<std::string>label{"20001","UKB2","UKB3","UKB4","UKB5","30001","KB2","KB3","KB4","KB5"};
     std::vector<cv::Point2f>im_points;
     std::vector<cv::Point3f>light_injectors{cv::Point3f(1490.73,768.14,1302.95),cv::Point3f(1490.73,768.14,666.65),cv::Point3f(1490.73,768.14,30.35),cv::Point3f(1490.73,768.14,-676.65),cv::Point3f(1490.73,768.14,-1312.95),cv::Point3f(1490.73,768.14,1232.25),cv::Point3f(1490.73,768.14,595.95),cv::Point3f(1490.73,768.14,-40.35),cv::Point3f(1490.73,768.14,-605.95),cv::Point3f(1490.73,768.14,-1242.25)};
-    li=light_injectors;
+    //li=light_injectors;
     projectPoints(light_injectors,rvec1,tvec1,camera_matrix,dist_coeffs,im_points);
  
     for(int i=0;i<im_points.size();i++){
@@ -995,23 +461,28 @@ int main(int argc, char **argv){
 	cv::putText(img, label[i],cv::Point( x, y-offset ) , cv::FONT_HERSHEY_PLAIN,4, cv::Scalar(0,255,250),3);
       }
     }
-  
-  /*  std::ofstream my;
-    my.open ("answer.txt");
-    my << "position is ("<<minx<<" , "<<miny<<" )"<<std::endl;
-    my.close();*/
-  //std::vector<cv::Point2f> imp;
-  //projectPoints(object_in_view,rvec,tv,camera_matrix,dist_coeffs,im_points);
+   */   
+  for(int i=0;i<imp.size();i++){
     
-    for(int i=0;i<imp.size();i++){
-    cv::circle( img, cv::Point( imp[i].x, imp[i].y-offset ), 10, cv::Scalar(0,255,250), -1 );
     if(imp[i].x>0 && imp[i].x<4000 && imp[i].y>0 && imp[i].y-offset<2700){
-      std::string text = std::to_string(final_id[i]);
-      cv::putText(img, text,cv::Point( imp[i].x, imp[i].y-offset ) , cv::FONT_HERSHEY_PLAIN,4, cv::Scalar(0,255,250),3);
+      std::string text = final_id[i];
+      if(isdigit(text[0])){
+	cv::circle( img, cv::Point( imp[i].x, imp[i].y-offset ), 10, cv::Scalar(0,255,250), -1 );
+	cv::putText(img, text,cv::Point( imp[i].x, imp[i].y-offset ) , cv::FONT_HERSHEY_PLAIN,4, cv::Scalar(0,255,250),3);
+      }
+      else{
+	cv::circle( img, cv::Point( imp[i].x, imp[i].y-offset ), 10, cv::Scalar(0,255,250), -1 );
+	cv::putText(img, text,cv::Point( imp[i].x, imp[i].y-offset ) , cv::FONT_HERSHEY_PLAIN,4, cv::Scalar(0,255,250),3);
+      }
     }
   }
-  imwrite("best.jpg",img);
+  std::string name = std::to_string(img_no)+"best.jpg";
+  draw_error(ellipses1,imp,offset,img);
+  imwrite(name,img);
  
+  //********************************Code done here****************************//
+
+
   //relation
   Double_t x[] = {15.17,16.06,14.72,13.39,12.29,10.98,9.82,8.32,7.14,5.94,-2.08,2.18,-6.73,-5.29,4.84,2.25,-11.39};
   Double_t y[] = {15.37227,15.89127,14.86923,13.49113,12.01067,10.56916,9.81259,8.305633,6.725209,5.767187,-2.668217,2.070681,-7.142699,-5.689827,4.720788,1.582416,-11.79712};
@@ -1064,38 +535,7 @@ int main(int argc, char **argv){
   std::cout<<"Input r theta Z yaw pitch roll :";
   //vector<double>cam2;
 
-  outs = get_scene(all_pmts,light_injectors, c1, R, ps);
-  //  outs=image_to_show = get_scene(all_pmts,li, c1, R_o, ps);
-  while(true){
-  cv::namedWindow("Scene", cv::WINDOW_NORMAL);    
-  cv::resizeWindow("Scene", 1200, 600);
- 
-  cv::setMouseCallback("Scene", onMouse);
-  
-  cv::waitKey(0);
-  }
-  /*
-  //img=
-  // while(std::cin>>cam1.r>>cam1.theta>>cam1.z>>cam1.yaw>>cam1.pitch>>cam1.roll){
-  while(true){
-    cv::Mat scene = get_scene(all_pmts,light_injectors, cam1, R, pos);
-    //    outs=scene;
-    std::cout<<"r, theta, z, yaw, pitch, roll  :  "<<cam1.r<<" , "<<cam1.theta<<" , "<<cam1.z<<" , "<<cam1.yaw<<" , "<<cam1.pitch<<" , "<<cam1.roll<<std::endl;
-    
-   //imshow("Scene",scene);
-    cv::waitKey(1000);
-    std::cout<<"Input r theta Z yaw pitch roll :";
-      
-    
-    //clearing buffer
-    while (std::cin.get() != '\n') 
-      {
-	continue;
-      }
-    
 
-
-      }*/
   return 0;
 }
 
