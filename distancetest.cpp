@@ -102,7 +102,7 @@ void draw_error(std::vector<Ellipse> ellipses, std::vector<cv::Point2f> im_point
     }
     //draw line from ellipses to points
     cv::line(m,cv::Point2f(x0,y0),p2,cv::Scalar(0,230,0),2);
-    cv::circle(m,cv::Point2f(x0,y0),10,cv::Scalar(0,0,230),-1);
+    cv::circle(m,cv::Point2f(x0,y0),10,cv::Scalar(255, 102, 255),-1);
     cv::Size axes(  int(ellipses[i].get_a()), int(ellipses[i].b) );
     cv::ellipse(m,cv::Point2f(x0,y0),axes,ellipses[i].phi*PI/180.,0,360,cv::Scalar (255, 102, 255),2);
   }
