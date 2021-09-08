@@ -72,6 +72,7 @@ public:
   void flip_background();
 private:
   void calculate_R_tv();
+  unsigned clip(cv::Point3f n,cv::Matx31d p0,cv::Matx31d p,cv::Matx31d v,cv::Point3f& start,cv::Point3f& end);
   std::vector<WorldPoints> all_pmts;
   bool bkg_opt=false;
   //camera parameters

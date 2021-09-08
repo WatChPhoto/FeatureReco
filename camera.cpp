@@ -89,13 +89,29 @@ void cam::decrement(std::string var, float step=1.){
   calculate_R_tv();
 }
 
+unsigned cam::clip(cv::Point3f n,cv::Matx31d p0,cv::Matx31d p,cv::Matx31d v,cv::Point3f& start,cv::Point3f& end){
+  double a = p(0,0)*n.x+p(1,0)*n.y+p(2,0)*n.z;
+  double b = (p(0,0)+v(0,0))*n.x+(p(1,0)+v(1,0))*n.y+(p(2,0)+v(2,0))*n.z;
+  unsigned count=0;
+  if(a>0){count++; start=cv::Point3f(p(0,0),p(1,0),p(2,0));}
+  if(b>0){count++; end=cv::Point3f(p(0,0)+v(0,0),p(1,0)+v(1,0),p(2,0)+v(2,0));}
+  if(count==1){
+    double t=(n.x*(p0(0,0)-p(0,0))+n.y*(p0(1,0)-p(1,0))+n.z*(p0(2,0)-p(2,0)))/(n.x*(v(0,0)-p(0,0))+n.y*(v(1,0)-p(1,0))+n.z*(v(2,0)-p(2,0)));
+    cv::Matx31d v1 = (1.0-t)*p+t*v;
+    cv::Point3f s = cv::Point3f(v1(0,0),v1(1,0),v1(2,0));
+    if(a<=0){end=s;}
+    else if(b<=0){start=s;}
+  }
+  
+  return count;
+}
+
 cv::Mat cam::get_scene(const cv::Mat& sc){
   cv::Mat scene = sc.clone();
  
   cv::Matx31d rvec;
   cv::Rodrigues(R,rvec);
   cv::Matx31d pos(r*cos(theta*PI/180.),r*sin(theta*PI/180.),z);
-  
   std::vector<cv::Point3f> object_in_view;
   std::vector<cv::Point2f>im_points;
   std::vector<std::string>labels;
@@ -143,15 +159,50 @@ cv::Mat cam::get_scene(const cv::Mat& sc){
   y = R1.t()*y+p;
   z = R1.t()*z+p;
   
-  
-  std::vector<cv::Point3f> obj={ cv::Point3f(p(0,0),p(1,0),p(2,0)), cv::Point3f(x(0,0),x(1,0),x(2,0)), cv::Point3f(y(0,0),y(1,0),y(2,0)), cv::Point3f(z(0,0),z(1,0),z(2,0)) };
+  cv::Point3f start,end;
+  std::vector<cv::Scalar> axis_col;
+  std::vector<cv::Point3f>obj;
+  unsigned counts = clip(cv::Point3f(0,0,1),pos,p,x,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(0,0,255));
+  }
+
+  counts = clip(cv::Point3f(0,0,1),pos,p,y,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(0,255,0));
+  }
+
+  counts = clip(cv::Point3f(0,0,1),pos,p,z,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(255,0,0));
+  }
+
   std::vector<cv::Point2f>image_points;
   projectPoints(obj,rvec,tv,camera_matrix,dist_coeffs,image_points);    
   
+  /* counts = clip(cv::Point3f(1,0,0),cv::Point3f(0,0,0),image_points[0],image_points[1],start,end);
+  if(counts>0){
+    axis_pts.push_back(start);
+    axis_pts.push_back(end);
+    final_axis_col.push_back(255,0,0);
+  }
+  */
+  
   //Drawing camera direction
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[1].x, image_points[1].y ), cv::Scalar(0,0,250), 2 );
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[2].x, image_points[2].y ), cv::Scalar(0,250,0), 2 );
-  cv::arrowedLine( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[3].x, image_points[3].y ), cv::Scalar(250,0,0), 2 );
+  for(int i=0;i<image_points.size();i+=2){
+    cv::line( scene, cv::Point( image_points[i].x, image_points[i].y ),cv::Point( image_points[i+1].x, image_points[i+1].y ), cv::Scalar(0,0,250), 2 );
+  }
+  /*
+  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[1].x, image_points[1].y ), cv::Scalar(0,0,250), 2 );
+  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[2].x, image_points[2].y ), cv::Scalar(0,250,0), 2 );
+  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[3].x, image_points[3].y ), cv::Scalar(250,0,0), 2 );
+  */
   /*
   //drawing sk-coordinate
   std::vector<cv::Point3f> axes={cv::Point3f(0,0,0),cv::Point3f(2000,0,0),cv::Point3f(0,2000,0),cv::Point3f(0,0,2000)};
