@@ -15,6 +15,39 @@
 #include "ImageDataReader.hpp"
 #include "distancelib.hpp"
 
+struct minimize{
+  TGraph2D *fGraph;
+  std::vector<cv::Point2f> ellipses;
+  std::vector<WorldPoints> all_pmts;
+  //camera matrix
+  minimize(TGraph2d *g,std::vector<cv::Pointf> e,std::vector<WorldPoints>p):fGraph(g),ellipses(e),all_pmts(p){}
+  
+  std::vector<cv::Point2f> transform(const double* p){
+    
+    
+  }
+
+  double operator(const double* par){
+    //x,y,z,yaw,pitch,roll
+    std::vector<cv::Point2f> im_points = transform(p);
+    float offset=250; //since images were cropped.
+    double dsq=0;
+    for(int i=0; i<ellipses.size();i++){
+      double x0 = ellipses[i].x;
+      double y0 = ellipses[i].y;
+      double lmin = 1000000000000000000000000000;
+      for(int j=0;j<im_points.size();j++){
+	double x1 = im_points[j].x;
+	double y1 = im_points[j].y-offset;
+	double d = (x1-x0)*(x1-x0)+(y1-y0)*(y1-y0);
+	if(d<lmin){lmin=d;}
+      }
+      dsq +=lmin;
+    }
+    return dsq;
+  }
+
+};
 
 double reprojection_error(std::vector<cv::Point2f> ellipses, std::vector<cv::Point2f> im_points,float offset){
  
@@ -265,13 +298,6 @@ int main(int argc, char **argv){
   std::cout<<"Rotation vector"<<std::endl;
   std::cout<<rvec1(0,0)<<"\t"<<rvec1(0,1)<<"\t"<<rvec1(0,2)<<std::endl;
 
-  cv::Matx33d sss;
-  cv::Rodrigues(cv::Matx31d(1.48220885,-0.85878027, 0.75081903),sss);
-  std::cout<<"239 real"<<std::endl;
-  std::cout<<sss(0,0)<<"\t"<<sss(0,1)<<"\t"<<sss(0,2)<<std::endl;
-  std::cout<<sss(1,0)<<"\t"<<sss(1,1)<<"\t"<<sss(1,2)<<std::endl;
-  std::cout<<sss(2,0)<<"\t"<<sss(2,1)<<"\t"<<sss(2,2)<<std::endl;
-
   /*
   for(int i=0; i<v.size(); i++){
     cv::Matx31d camera_coords = v[i].get_camera_coords(rmat, tvec);
@@ -323,34 +349,6 @@ int main(int argc, char **argv){
   double high_r = 20+1700.-(86190./upper_r);
   std::cout<<"low_r = "<<low_r<<"\t"<<"high_r = "<<high_r<<std::endl;
 
-  //
-  std::vector<cv::Point2f>cord;
-  cord.push_back(cv::Point2f(low_r*cos(low),low_r*sin(low)));
-  cord.push_back(cv::Point2f( low_r*cos(high),low_r*sin(high)));
-  cord.push_back(cv::Point2f(high_r*cos(low),high_r*sin(low)));
-  cord.push_back(cv::Point2f(high_r*cos(high),high_r*sin(high)));
-
-  cv::Point2f l=cv::Point2f(2000,2000);
-  cv::Point2f h=cv::Point2f(0,0);
-
-  for(int i=0; i<cord.size();i++){
-    if(cord[i].x>h.x){
-      h.x=cord[i].x;
-    }
-    if(cord[i].x<l.x){
-      l.x=cord[i].x;
-    }
-    if(cord[i].y>h.y){
-      h.y=cord[i].y;
-    }
-    if(cord[i].y<l.y){
-      l.y=cord[i].y;
-    }
-    std::cout<<"( "<<cord[i].x<<","<<cord[i].y<<" )"<<std::endl;
-  }
-  std::cout<<"high and low"<<std::endl;
-  std::cout<<"( "<<h.x<<","<<h.y<<" )"<<std::endl;
-  std::cout<<"( "<<l.x<<","<<l.y<<" )"<<std::endl;
   
   TFile* fout = new TFile("testingdistance.root","recreate");
   //TH3D *error =   new TH3D("reprojection error","Reprojection error;x;y;z",int((h.x-l.x+20)/5),l.x-10,h.x+10,int((h.y-l.y+20)/5),l.y-10,h.y+10,100.,z1-50,z1+50.);
@@ -484,6 +482,7 @@ int main(int argc, char **argv){
 
 
   //relation
+  //correcting Z value
   Double_t x[] = {15.17,16.06,14.72,13.39,12.29,10.98,9.82,8.32,7.14,5.94,-2.08,2.18,-6.73,-5.29,4.84,2.25,-11.39};
   Double_t y[] = {15.37227,15.89127,14.86923,13.49113,12.01067,10.56916,9.81259,8.305633,6.725209,5.767187,-2.668217,2.070681,-7.142699,-5.689827,4.720788,1.582416,-11.79712};
   TGraph *g = new TGraph((sizeof(x)/sizeof(Double_t)),x,y);
