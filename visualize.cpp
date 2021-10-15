@@ -17,7 +17,7 @@ cam c1;
 cv::Mat image_to_show;
 int img_no=0;
 std::vector<Icon>icons(15);
-std::vector<Icon> icons2(2);
+std::vector<Icon> icons2(3);
 
 void onMouse(int event, int x, int y, int flags, void* userdata){
   bool clicked=false;
@@ -52,7 +52,7 @@ void onMouse(int event, int x, int y, int flags, void* userdata){
     }   
   }
 
- int xmin2 = scene.cols-500;
+ int xmin2 = scene.cols-750;
  int ymin2=0;
  if(x>xmin2 && y>ymin2 && x<xmax && y<100){
    for(int i=0;i<icons2.size();i++){
@@ -114,12 +114,13 @@ void set_icons(std::vector<Icon>& i,std::vector<Icon>& i2 ){
   i[12].set( "Set_to:",cv::Point2f(xmin+size.x+xoffset/2,ymin+3*size.y+3*yoffset),cv::Point2f(300,110),cv::Scalar(0,0,0),cv::Scalar(255,255,255));
   i[13].set( "Show_bkg:",cv::Point2f(xmin+size.x+xoffset/2,ymin+size.y+yoffset/2),cv::Point2f(300,110),cv::Scalar(0,0,0),cv::Scalar(255,255,255));
 i[14].set( "Org_cam:",cv::Point2f(xmin+size.x+xoffset/2,ymin+2*size.y+2*yoffset),cv::Point2f(300,110),cv::Scalar(0,0,0),cv::Scalar(255,255,255));
-
+ 
   
- int xmin2 = scene.cols-500;
+ int xmin2 = scene.cols-750;
  int ymin2=0;
- i2[0].set( "Save",cv::Point2f(xmin2,ymin2),size,cv::Scalar(0,0,0),cv::Scalar(255,255,255));
- i2[1].set( "Exit",cv::Point2f(xmin2+size.x+xoffset,ymin2),size,cv::Scalar(0,0,0),cv::Scalar(255,255,255));
+ i2[0].set( "Error",cv::Point2f(xmin2,ymin2),size,cv::Scalar(0,0,0),cv::Scalar(255,255,255));
+ i2[1].set( "Save",cv::Point2f(xmin2+size.x+xoffset,ymin2),size,cv::Scalar(0,0,0),cv::Scalar(255,255,255));
+ i2[2].set( "Exit",cv::Point2f(xmin2+2*(size.x+xoffset),ymin2),size,cv::Scalar(0,0,0),cv::Scalar(255,255,255));
 }
 
 int main(int argc, char **argv){
@@ -130,6 +131,9 @@ int main(int argc, char **argv){
   
   //read all pmts
   std::vector<WorldPoints> all_pmts = read_all_world_points();
+  //read hough_ellipses
+  std::vector<Ellipse> all_ellipses= read_ellipses_in_image("he_pmts"+filename+".txt");  
+
 
   scene = cv::Mat(3000, 4000, CV_8UC3, cv::Scalar(255,255,255));   
   bkg_scene=cv::Mat(3000, 4000, CV_8UC3, cv::Scalar(255,255,255));
@@ -144,7 +148,7 @@ int main(int argc, char **argv){
   c1.rv_orig=r;
   c1.tv_orig=t;
   c1.set_world_points(all_pmts);
-
+  c1.set_ellipses(all_ellipses);
   std::cout<<"r_old"<<c1.rv_orig(0,0)<<" , "<<c1.rv_orig(1,0)<<" , "<<c1.rv_orig(2,0)<<std::endl;
   std::cout<<"t_old"<<c1.tv_orig(0,0)<<" , "<<c1.tv_orig(1,0)<<" , "<<c1.tv_orig(2,0)<<std::endl;
   
