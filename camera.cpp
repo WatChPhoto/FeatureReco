@@ -89,22 +89,162 @@ void cam::decrement(std::string var, float step=1.){
   calculate_R_tv();
 }
 
-unsigned cam::clip(cv::Point3f n,cv::Matx31d p0,cv::Matx31d p,cv::Matx31d v,cv::Point3f& start,cv::Point3f& end){
-  double a = p(0,0)*n.x+p(1,0)*n.y+p(2,0)*n.z;
-  double b = (p(0,0)+v(0,0))*n.x+(p(1,0)+v(1,0))*n.y+(p(2,0)+v(2,0))*n.z;
-  unsigned count=0;
-  if(a>0){count++; start=cv::Point3f(p(0,0),p(1,0),p(2,0));}
-  if(b>0){count++; end=cv::Point3f(p(0,0)+v(0,0),p(1,0)+v(1,0),p(2,0)+v(2,0));}
-  if(count==1){
-    double t=(n.x*(p0(0,0)-p(0,0))+n.y*(p0(1,0)-p(1,0))+n.z*(p0(2,0)-p(2,0)))/(n.x*(v(0,0)-p(0,0))+n.y*(v(1,0)-p(1,0))+n.z*(v(2,0)-p(2,0)));
-    cv::Matx31d v1 = (1.0-t)*p+t*v;
-    cv::Point3f s = cv::Point3f(v1(0,0),v1(1,0),v1(2,0));
-    if(a<=0){end=s;}
-    else if(b<=0){start=s;}
+void find_intersect(cv::Matx31d n, cv::Matx31d p, cv::Matx31d u, cv::Matx31d v, cv::Matx31d& x){
+  double t = n.dot(p-u)/n.dot(v-u);
+  x=u+t*(v-u);
+}
+
+//If part of object falls outside the image boundary then it givis garbage result. 
+//To avoid this clipping is necessary.
+unsigned cam::clip(cv::Matx31d n,cv::Matx31d p,cv::Matx31d pt[2], cv::Point3f& start,cv::Point3f& end){ 
+  //checking number of points inside the plane and outside the plane.
+  //inside if in the direction of normal otherwise outside.
+  unsigned in[2]; //point
+  int n_in=0;
+  for(unsigned i=0;i<2;i++){
+    cv::Matx31d u=pt[i]-p;
+    float n_dot_u = n(0,0)*u(0,0)+n(1,0)*u(1,0)+n(2,0)*u(2,0);
+    if(n_dot_u>=0){in[i]=1; n_in++;}
+    else{in[i]=0;}
   }
   
-  return count;
+  //If two points are inside no clipping needed. return original points.
+  if(n_in==2){
+    start=cv::Point3f(pt[0](0,0),pt[0](1,0),pt[0](2,0));
+    end=cv::Point3f(pt[1](0,0),pt[1](1,0),pt[1](2,0));
+    return n_in;
+  }
+  //If no points are inside then nothing is returned, since nothing is visible.
+  else if(n_in==0){return n_in;}
+  //If one point is inside and another is outside then find the intersection with the plane(boundary).
+  else if(n_in==1){
+    //find the intersection point.
+    cv::Matx31d x;
+    find_intersect(n,p,pt[0],pt[1],x);
+    if(in[0]){
+      start=cv::Point3f(pt[0](0,0),pt[0](1,0),pt[0](2,0));
+      //set intersection to it to end;
+      end=cv::Point3f(x(0,0),x(1,0),x(2,0));
+      return n_in;
+    }
+    else{
+      end=cv::Point3f(pt[1](0,0),pt[1](1,0),pt[1](2,0));
+      //set intersection to it to start;
+      start=cv::Point3f(x(0,0),x(1,0),x(2,0));
+      return n_in;
+    }
+  }
+
 }
+
+//x,y,z axes in world coordinate
+//p is origin of axes
+//pos is camera position in world coordinate
+//axis_col returns color of each axes
+//image_points_f is final transformed points
+void cam::get_transformed_axes(cv::Matx31d x, cv::Matx31d y, cv::Matx31d z, cv::Matx31d p, cv::Matx31d pos, std::vector<cv::Scalar>& axis_col,  std::vector<cv::Point2f>& image_points_f, cv::Size2i s){
+  
+  cv::Matx31d rvec;
+  cv::Rodrigues(R,rvec);//find rotation vector for our camera.
+  cv::Point3f start,end;
+  std::vector<cv::Point3f>obj;
+  cv::Matx31d lin[2];
+  lin[0]=p;
+  lin[1]=x;
+  cv::Matx31d normal; //z direction of our camera in world coordinate
+  normal = R.t()*cv::Matx31d(0,0,1);
+  //clipping aginst the z axis of the camera
+  unsigned counts = clip(normal,pos+normal,lin,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(0,0,255));
+  }
+  
+  lin[1]=y;
+  counts = clip(normal,pos+normal,lin,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(0,255,0));
+  }
+
+  lin[1]=z;
+  counts = clip(normal,pos+normal,lin,start,end);
+  if(counts>0){
+    obj.push_back(start);
+    obj.push_back(end);
+    axis_col.push_back(cv::Scalar(255,0,0));
+  }
+
+  std::vector<cv::Point2f>image_points;
+  if(obj.size()>0){
+    projectPoints(obj,rvec,tv,camera_matrix,dist_coeffs,image_points);    
+  }
+
+  float w=s.width;
+  float h=s.height;
+  //clipping in image space aginst left, right, top, and bottom of image.
+  for(unsigned i=0;i<image_points.size();i+=2){
+    lin[0]=cv::Matx31d(image_points[i].x,image_points[i].y,0);
+    lin[1]=cv::Matx31d(image_points[i+1].x,image_points[i+1].y,0);
+    counts = clip(cv::Matx31d(1,0,0),cv::Matx31d(0,0,0),lin,start,end); //aginst x=0 plane
+    if(counts>0){
+      lin[0]=cv::Matx31d(start.x,start.y,0);
+      lin[1]=cv::Matx31d(end.x,end.y,0);
+      counts = clip(cv::Matx31d(-1,0,0),cv::Matx31d(w,0,0),lin,start,end); //aginst x=image width plane
+      if(counts>0){
+	lin[0]=cv::Matx31d(start.x,start.y,0);
+	lin[1]=cv::Matx31d(end.x,end.y,0);
+	counts = clip(cv::Matx31d(0,1,0),cv::Matx31d(0,0,0),lin,start,end); //aginst y=0 plane
+	if(counts>0){
+	  lin[0]=cv::Matx31d(start.x,start.y,0);
+	  lin[1]=cv::Matx31d(end.x,end.y,0);
+	  counts = clip(cv::Matx31d(0,-1,0),cv::Matx31d(0,h,0),lin,start,end); //aginst y=image height plane
+	  
+	  if(counts>0){
+	    image_points_f.push_back(cv::Point2f(start.x,start.y));
+	    image_points_f.push_back(cv::Point2f(end.x,end.y));
+	  }
+	}
+      }
+    }
+    
+  }
+}
+
+void show_error(cv::Mat& m, unsigned err){
+  cv::rectangle(m,cv::Point2f(0,120),cv::Point2f(1000,300),cv::Scalar(255,255,255),-1);
+  std::string text ="Err = "+ std::to_string(err);
+  cv::putText(m,text,cv::Point(10,280),cv::FONT_HERSHEY_SIMPLEX,4,cv::Scalar(0,0,0),10);
+
+}
+
+void cam::draw_rep_error( const std::vector<cv::Point2f>& im_points, cv::Mat& m, float offset=250){
+  double sum=0;
+  for(int i=0; i<all_ellipses.size();i++){
+    double x0 = all_ellipses[i].x;
+    double y0 = all_ellipses[i].y+offset;
+    double lmin = 1000000000000000000000000000;
+    cv::Point2f p2;
+    for(int j=0;j<im_points.size();j++){
+      double x1 = im_points[j].x;
+      double y1 = im_points[j].y;//-offset;
+      double d = (x1-x0)*(x1-x0)+(y1-y0)*(y1-y0);
+      if(d<lmin){lmin=d; p2=cv::Point2f(x1,y1);}
+    }
+    sum+=lmin;
+    //draw line from ellipses to points 
+    cv::line(m,cv::Point2f(x0,y0),p2,cv::Scalar(0,255,0),4);//cv::Scalar(52,128,235),2);
+    cv::circle(m,cv::Point2f(x0,y0),10,cv::Scalar(255, 102, 255),-1);
+    cv::Size axes(  int(all_ellipses[i].get_a()), int(all_ellipses[i].b) );
+    cv::ellipse(m,cv::Point2f(x0,y0),axes,all_ellipses[i].phi*PI/180.,0,360,cv::Scalar (255, 102, 255),1);
+  }
+  
+  show_error(m,round(sum));
+}
+
+
 
 cv::Mat cam::get_scene(const cv::Mat& sc){
   cv::Mat scene = sc.clone();
@@ -144,123 +284,61 @@ cv::Mat cam::get_scene(const cv::Mat& sc){
       putText(scene, text,cv::Point2f(im_points[i].x,im_points[i].y),cv::FONT_HERSHEY_SIMPLEX,2,cv::Scalar(0,0,240),2);
     }
   }
+  //x  draw_error=true;
+  //draw error
+  if(show_rep_error){
+    draw_rep_error( im_points, scene, 250);
+  }
   //ends here
   
+  //From here on Drawing axes is performed.
+  /*###################Drawing Orientation of original drone while the picture was taken############################*/
   cv::Matx33d R1;
   cv::Rodrigues(rv_orig,R1);
   cv::Matx31d p = -R1.t()*tv_orig;
   //vector along three axes of camera;
   //let's do 30 cm in each dir
-  cv::Matx31d x(30,0,0);
-  cv::Matx31d y(0,30,0);
-  cv::Matx31d z(0,0,30);
-  //endpoints of vector
+  cv::Matx31d x(10,0,0);
+  cv::Matx31d y(0,10,0);
+  cv::Matx31d z(0,0,10);
+  //endpoints of vector in world coordinate
   x = R1.t()*x+p;
   y = R1.t()*y+p;
   z = R1.t()*z+p;
   
   cv::Point3f start,end;
   std::vector<cv::Scalar> axis_col;
-  std::vector<cv::Point3f>obj;
-  unsigned counts = clip(cv::Point3f(0,0,1),pos,p,x,start,end);
-  if(counts>0){
-    obj.push_back(start);
-    obj.push_back(end);
-    axis_col.push_back(cv::Scalar(0,0,255));
-  }
-
-  counts = clip(cv::Point3f(0,0,1),pos,p,y,start,end);
-  if(counts>0){
-    obj.push_back(start);
-    obj.push_back(end);
-    axis_col.push_back(cv::Scalar(0,255,0));
-  }
-
-  counts = clip(cv::Point3f(0,0,1),pos,p,z,start,end);
-  if(counts>0){
-    obj.push_back(start);
-    obj.push_back(end);
-    axis_col.push_back(cv::Scalar(255,0,0));
-  }
-
-  std::vector<cv::Point2f>image_points;
-  projectPoints(obj,rvec,tv,camera_matrix,dist_coeffs,image_points);    
-  
-  /* counts = clip(cv::Point3f(1,0,0),cv::Point3f(0,0,0),image_points[0],image_points[1],start,end);
-  if(counts>0){
-    axis_pts.push_back(start);
-    axis_pts.push_back(end);
-    final_axis_col.push_back(255,0,0);
-  }
-  */
-  
-  //Drawing camera direction
-  for(int i=0;i<image_points.size();i+=2){
-    cv::line( scene, cv::Point( image_points[i].x, image_points[i].y ),cv::Point( image_points[i+1].x, image_points[i+1].y ), cv::Scalar(0,0,250), 2 );
-  }
-  /*
-  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[1].x, image_points[1].y ), cv::Scalar(0,0,250), 2 );
-  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[2].x, image_points[2].y ), cv::Scalar(0,250,0), 2 );
-  cv::line( scene, cv::Point( image_points[0].x, image_points[0].y ),cv::Point( image_points[3].x, image_points[3].y ), cv::Scalar(250,0,0), 2 );
-  */
-  /*
-  //drawing sk-coordinate
-  std::vector<cv::Point3f> axes={cv::Point3f(0,0,0),cv::Point3f(2000,0,0),cv::Point3f(0,2000,0),cv::Point3f(0,0,2000)};
-  
   std::vector<cv::Point2f>axes_points;
-  std::vector<cv::Scalar> color;
+  get_transformed_axes(x, y, z, p, pos, axis_col, axes_points,sc.size());
+
+  //Drawing camera direction
+  for(int i=0;i<axes_points.size();i+=2){
+    cv::arrowedLine( scene, cv::Point( axes_points[i].x, axes_points[i].y ),cv::Point( axes_points[i+1].x, axes_points[i+1].y ), axis_col[i/2], 2 );
   
-  projectPoints(axes,rvec,tvec,camera_matrix,dist_coeffs,axes_points);
-  /*
-  //selecting points that will be in frame.
-  double s=-tvec(2,0)/(R1(2,0)*2000);
+  }
+  /*$$$$$$$$$$$$$$$$ Done drawing orientation of original drone $$$$$$$$$$$$$$$$*/
+ 
   
-  if(s>=0 && s<1){
-  // then add s*<2000,0,0> to the points
-  axes.push_back(cv::Point3f(s*2000,0,0));
-  axes.push_back(cv::Point3f(2000,0,0));
-    color.push_back(cv::Scalar(0,0,255));
-    }
-    s=-tvec(2,0)/(R1(2,1)*2000);
-    if(s>=0 && s<1){
-    // then add s*<0,2000,0> to the points
-    axes.push_back(cv::Point3f(0,s*2000,0));
-  axes.push_back(cv::Point3f(0,2000,0));
-  color.push_back(cv::Scalar(0,255,0));
-  }
-  s=-tvec(2,0)/(R1(2,2)*2000);
-  if(s>=0 && s<1){
-  // then add s*<0,2000,0> to the points
-  axes.push_back(cv::Point3f(0,0,s*2000));
-  axes.push_back(cv::Point3f(0,0,2000));
-  color.push_back(cv::Scalar(255,0,0));
-  }
+ /*###################Drawing Sk axes############################*/
+  x=cv::Matx31d(2000,0,0);
+  y=cv::Matx31d(0,2000,0);
+  z=cv::Matx31d(0,0,2000);
+  p=cv::Matx31d(0,0,0);
+  axis_col.clear();
+  axes_points.clear();
+  get_transformed_axes(x, y, z, p, pos, axis_col, axes_points,sc.size());
   
-  if(axes.size()>0){
-  projectPoints(axes,rvec,tvec,camera_matrix,dist_coeffs,axes_points);
-  int j=0;
-  for(int i=0; i<axes_points.size(); i+=2){
-  cv::arrowedLine( scene, cv::Point( axes_points[i].x, axes_points[i].y ),cv::Point( axes_points[i+1].x, axes_points[i+1].y ), color[j], 2 );
-  j++;
+  for(int i=0;i<axes_points.size();i+=2){
+    cv::arrowedLine( scene, cv::Point( axes_points[i].x, axes_points[i].y ),cv::Point( axes_points[i+1].x, axes_points[i+1].y ), axis_col[i/2], 2 );
+    
   }
-}
-  */
-  /*
-    cv::Matx31d xp = R1*cv::Matx31d(all_pmts[i].x,all_pmts[i].y,all_pmts[i].z)+tvec;
-    if(xp(2,0)>0){
-    object_in_view.push_back(cv::Point3f(all_pmts[i].x,all_pmxts[i].y,all_pmts[i].z));
-    } 
-  */
-  //Sk axes direction
-  /*
-    cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[1].x, axes_points[1].y ), cv::Scalar(0,0,250), 2 );
-    cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[2].x, axes_points[2].y ), cv::Scalar(0,250,0), 2 );
-    cv::arrowedLine( scene, cv::Point( axes_points[0].x, axes_points[0].y ),cv::Point( axes_points[3].x, axes_points[3].y ), cv::Scalar(250,0,0), 2 );
-  */
+  /*###################### Drawing SK axes ends here ######################################*/
+  
   button_clk=false;
   
   return scene;
 }
+
 void cam::print(){
     std::cout<<"r = "<<r<<" theta = "<<theta<<" z = "<<z<<" yaw = "<<yaw<<" pitch = "<<pitch<<" roll = "<<roll<<std::endl;
   }
@@ -297,8 +375,12 @@ void cam::calculate_R_tv(){
   tv = -R*pos; 
 }
  
-void cam::set_world_points(std::vector<WorldPoints> p){
+void cam::set_world_points(std::vector<WorldPoints>& p){
   all_pmts=p;
+}
+
+void cam::set_ellipses(std::vector<Ellipse>& e){
+  all_ellipses=e;
 }
 
 bool cam::show_background(){
@@ -309,6 +391,9 @@ void cam::flip_background(){
   bkg_opt=!(bkg_opt);
 }
 
+void cam::flip_error(){
+  show_rep_error=!(show_rep_error);
+}
 //Icon definations 
 Icon::Icon(){
   name="";
@@ -371,7 +456,7 @@ void Icon::show(int x, int y,bool clicked,cv::Mat& img, cam& c1){
 	  //cv::destroyAllWindows();
 	}
 	else if(name=="Error"){
-	  img;//not complete
+	  c1.flip_error();
 	}
       }
     }

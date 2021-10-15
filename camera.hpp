@@ -67,13 +67,20 @@ public:
   void decrement(std::string var, float step);
   cv::Mat get_scene(const cv::Mat& sc);  
   void print();
-  void set_world_points(std::vector<WorldPoints> p);
+  void set_world_points(std::vector<WorldPoints>& p);
+  void set_ellipses(std::vector<Ellipse>& e);
   bool show_background();
   void flip_background();
+  void flip_error();
 private:
+  bool show_rep_error=false;
   void calculate_R_tv();
-  unsigned clip(cv::Point3f n,cv::Matx31d p0,cv::Matx31d p,cv::Matx31d v,cv::Point3f& start,cv::Point3f& end);
+  unsigned clip(cv::Matx31d n,cv::Matx31d p,cv::Matx31d pt[2], cv::Point3f& start,cv::Point3f& end);
+  void get_transformed_axes(cv::Matx31d x, cv::Matx31d y, cv::Matx31d z, cv::Matx31d p, cv::Matx31d pos, std::vector<cv::Scalar>& axis_col,std::vector<cv::Point2f>& image_points_f, cv::Size2i s);
+  void draw_rep_error( const std::vector<cv::Point2f>& im_points, cv::Mat& m, float offset);
+
   std::vector<WorldPoints> all_pmts;
+  std::vector<Ellipse> all_ellipses;
   bool bkg_opt=false;
   //camera parameters
   const double fx=2.760529621789217e+03;
