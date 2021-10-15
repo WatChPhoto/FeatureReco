@@ -15,7 +15,7 @@
 #include "ImageDataReader.hpp"
 #include "distancelib.hpp"
 
-struct minimize{
+/*struct minimize{
   TGraph2D *fGraph;
   std::vector<cv::Point2f> ellipses;
   std::vector<WorldPoints> all_pmts;
@@ -48,7 +48,7 @@ struct minimize{
   }
 
 };
-
+*/
 double reprojection_error(std::vector<cv::Point2f> ellipses, std::vector<cv::Point2f> im_points,float offset){
  
   /*std::vector<double> d;

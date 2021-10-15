@@ -72,3 +72,12 @@ include_directories( ${OpenCV_INCLUDE_DIRS})
 add_executable( visualize visualize.cpp )
 ADD_LIBRARY( cameralib camera.cpp camera.hpp )
 target_link_libraries( visualize cameralib distancetestlib ${OpenCV_LIBS})
+
+
+project( minimization )
+find_package( OpenCV REQUIRED )
+find_package( ROOT 6.14 CONFIG REQUIRED)
+#ADD_LIBRARY( distancetestlib ImageDataReader.cpp distancelib.hpp )
+include_directories( ${OpenCV_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+add_executable( minimization minimization.cpp)
+target_link_libraries( minimization distancetestlib ${OpenCV_LIBS} ${ROOT_LIBS} ROOT::Core ROOT::Hist ROOT::Graf ROOT::Tree)
